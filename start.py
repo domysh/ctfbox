@@ -79,53 +79,6 @@ def cmd_check(program, get_output=False, print_output=False, no_stderr=False):
         return subprocess.call(program, shell=True) == 0
     return subprocess.call(program, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL if no_stderr else subprocess.STDOUT, shell=True) == 0
 
-def composecmd(cmd, composefile=None):
-    if composefile:
-        cmd = f"-f {composefile} {cmd}"
-    if not cmd_check("podman --version"):
-        return puts("Podman not found! please install podman!", color=colors.red)
-    elif not cmd_check("podman ps"):
-        return puts("Cannot use podman, the user hasn't the permission or podman isn't running", color=colors.red)
-    elif cmd_check("podman compose --version"):
-        return os.system(f"podman compose -p {g.compose_project_name} {cmd}")
-    elif cmd_check("podman-compose --version"):
-        return os.system(f"podman-compose -p {g.compose_project_name} {cmd}")
-    else:
-        return puts("Podman compose not found! please install podman compose!", color=colors.red)
-
-def check_already_running():
-    return g.container_name in cmd_check(f'podman ps --filter "name=^{g.container_name}$"', get_output=True)
-
-def prebuilder_exists():
-    return g.prebuild_image in cmd_check(f'podman image ls --filter "reference={g.prebuild_image}"', get_output=True)
-
-def prebuilt_exists():
-    return g.prebuilt_image in cmd_check(f'podman image ls --filter "reference={g.prebuilt_image}"', get_output=True)
-
-def remove_prebuilder():
-    return cmd_check(f'podman image rm {g.prebuild_image}')
-
-def remove_prebuilt():
-    return cmd_check(f'podman image rm {g.prebuilt_image}')
-
-def remove_prebuilded():
-    return cmd_check(f'podman container rm {g.prebuilded_container}')
-
-def remove_database_volume():
-    return cmd_check('podman volume rm -f oasis_oasis-postgres-db')
-
-def build_prebuilder():
-    return cmd_check(f'podman build -t {g.prebuild_image} -f ./vm/Dockerfile.prebuilder ./vm/', print_output=True)
-
-def build_prebuilt():
-    return cmd_check(f'podman run -it --device /dev/fuse --cap-add audit_write,net_admin --security-opt label=disable --name {g.prebuilded_container} {g.prebuild_image}', print_output=True)
-
-def kill_builder():
-    return cmd_check(f'podman kill {g.prebuilded_container}', no_stderr=True)
-
-def commit_prebuilt():
-    return cmd_check(f'podman commit {g.prebuilded_container} {g.prebuilt_image}:latest', print_output=True)
-
 def gen_args(args_to_parse: list[str]|None = None):                     
     
     #Main parser
@@ -134,8 +87,8 @@ def gen_args(args_to_parse: list[str]|None = None):
     subcommands = parser.add_subparsers(dest="command", help="Command to execute", required=True)
     
     #Compose Command
-    parser_compose = subcommands.add_parser('compose', help='Run podman compose command')
-    parser_compose.add_argument('compose_args', nargs=argparse.REMAINDER, help='Arguments to pass to podman compose', default=[])
+    parser_compose = subcommands.add_parser('compose', help='Run docker compose command')
+    parser_compose.add_argument('compose_args', nargs=argparse.REMAINDER, help='Arguments to pass to docker compose', default=[])
     
     #Start Command
     parser_start = subcommands.add_parser('start', help=f'Start {g.name}')
@@ -185,8 +138,6 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_clear.add_argument('--gameserver-config', '-S', action='store_true', help='Clear gameserver config')
     parser_clear.add_argument('--gameserver-data', '-G', action='store_true', help='Clear gameserver data')
     
-    subcommands.add_parser('enable-quotas', help='Enable quotas for VMs (Need XFS and this file has to be running directly in the host) (Need to be run only once)')
-    
     args = parser.parse_args(args=args_to_parse)
     
     if "privileged" not in args:
@@ -200,64 +151,58 @@ def gen_args(args_to_parse: list[str]|None = None):
     
     if "disk_limit" not in args:
         args.disk_limit = False
-    
-    if not check_for_quotas() and args.disk_limit:
-        if not ask_for_quota_command():
-            exit(1)
 
     return args
 
-def ask_for_quota_command():
-    print("This command will set some settings for podman to enable quotas")
-    print("- Run this only once")
-    print("- Run me directly in the host that runs the containers")
-    print("- Run me with root privilages")
-    puts("If one of these conditions are not met, please cancel this command", color=colors.red)
-    if input('You are running the command correctly? (y/N): ').lower() == 'y':
-        enable_quotas()
-        puts("Quotas enabled!", color=colors.green)
-        return True
-    else:
-        puts("Operation cancelled", color=colors.red)
-        return False
-
-
-quota_setting_xfs = [
-    ("100000:/var/lib/containers/storage/overlay", "/etc/projects"),
-    ("200000:/var/lib/containers/storage/volumes", "/etc/projects"),
-    ("storage:100000", "/etc/projid"),
-    ("volumes:200000", "/etc/projid"),
-]
-
-def check_for_quotas():
-    for data_to_write, filename in quota_setting_xfs:
-        try:
-            with open(filename, 'r') as f:
-                data = f.read()
-            if data_to_write not in data:
-                return False
-        except FileNotFoundError:
-            return False
-    return True
-
-def enable_quotas():
-    for data_to_write, filename in quota_setting_xfs:
-        try:
-            with open(filename, 'r') as f:
-                data = f.read()
-        except FileNotFoundError:
-            data = ""
-        if data_to_write not in data:
-            with open(filename, 'a') as f:
-                f.write(data_to_write+'\n')
-
-    if not cmd_check("xfs_quota -x -c 'project -s storage volumes' /", print_output=True):
-        puts("Failed to setup xfs quotas", color=colors.red)
-        exit(1)
-
-
-
 args = gen_args()
+
+def composecmd(cmd, composefile=None):
+    if composefile:
+        cmd = f"-f {composefile} {cmd}"
+    if not cmd_check("docker --version"):
+        return puts("Podman not found! please install docker!", color=colors.red)
+    elif not cmd_check("docker ps"):
+        return puts("Cannot use docker, the user hasn't the permission or docker isn't running", color=colors.red)
+    elif cmd_check("docker compose --version"):
+        return os.system(f"docker compose -p {g.compose_project_name} {cmd}")
+    elif cmd_check("docker-compose --version"):
+        return os.system(f"docker-compose -p {g.compose_project_name} {cmd}")
+    else:
+        return puts("Podman compose not found! please install docker compose!", color=colors.red)
+
+def check_already_running():
+    return g.container_name in cmd_check(f'docker ps --filter "name=^{g.container_name}$"', get_output=True)
+
+def prebuilder_exists():
+    return g.prebuild_image in cmd_check(f'docker image ls --filter "reference={g.prebuild_image}"', get_output=True)
+
+def prebuilt_exists():
+    return g.prebuilt_image in cmd_check(f'docker image ls --filter "reference={g.prebuilt_image}"', get_output=True)
+
+def remove_prebuilder():
+    return cmd_check(f'docker image rm {g.prebuild_image}')
+
+def remove_prebuilt():
+    return cmd_check(f'docker image rm {g.prebuilt_image}')
+
+def remove_prebuilded():
+    return cmd_check(f'docker container rm {g.prebuilded_container}')
+
+def remove_database_volume():
+    return cmd_check('docker volume rm -f oasis_oasis-postgres-db')
+
+def build_prebuilder():
+    return cmd_check(f'docker build -t {g.prebuild_image} -f ./vm/Dockerfile.prebuilder ./vm/', print_output=True)
+
+def build_prebuilt():
+    return cmd_check(f'docker run -it {"--privileged" if args.privileged else "--runtime=sysbox-runc"} --name {g.prebuilded_container} {g.prebuild_image}', print_output=True)
+
+def kill_builder():
+    return cmd_check(f'docker kill {g.prebuilded_container}', no_stderr=True)
+
+def commit_prebuilt():
+    return cmd_check(f'docker commit {g.prebuilded_container} {g.prebuilt_image}:latest', print_output=True)
+
 
 def write_compose(data):
     with open(g.composefile,"wt") as compose:
@@ -277,7 +222,6 @@ def write_compose(data):
                         "net.ipv4.tcp_timestamps=0",
                         "net.ipv4.conf.all.rp_filter=1",
                         "net.ipv6.conf.all.forwarding=0",
-                        "net.ipv6.conf.eth0.autoconf=0"
                     ],
                     "environment": {
                         "NTEAM": len(data['teams']),
@@ -341,7 +285,8 @@ def write_compose(data):
                     } if args.expose_gameserver else {}),
                     "depends_on": [
                         "router",
-                        "database"
+                        "database",
+                        *[f"team{ele['id']}" for ele in data['teams']]
                     ],
                     "networks": {
                         "internalnet": {
@@ -362,14 +307,6 @@ def write_compose(data):
                     f"team{team['id']}": {
                         "hostname": f"team{team['id']}",
                         "dns": [data['dns']],
-                        "cap_add": [
-                            "CAP_AUDIT_WRITE",
-                            "NET_ADMIN",
-                            "NET_RAW",
-                        ],
-                        "security_opt":[
-                            "label=disable",
-                        ],
                         "build": {
                             "context": "./vm",
                             "args": {
@@ -377,19 +314,8 @@ def write_compose(data):
                             }
                         },
                         **({ "storage_opt": {"size":data['max_disk_size']} } if args.disk_limit else {}),
-                        "sysctls": [
-                            "net.ipv4.ip_unprivileged_port_start=1" #Allow non-privilaged podman to bind all ports
-                        ],
-                        **({"privileged": "true"} if args.privileged else {}),
+                        **({"privileged": "true"} if args.privileged else { "runtime": "sysbox-runc" }),
                         "restart": "unless-stopped",
-                        "devices": [
-                            "/dev/fuse",
-                            "/dev/net/tun"
-                        ],
-                        #Allow to edit net.* sysctls (kernel will show only sys option in the network namespace of the container)
-                        "volumes": [
-                            "/proc/sys/net:/proc/sys/net",
-                        ],
                         "networks": {
                             f"vm-team{team['id']}": {
                                 "ipv4_address": f"10.60.{team['id']}.1"
@@ -611,6 +537,7 @@ def config_input():
     data['server_addr'] = input('Server address: ')
     data['network_limit_bandwidth'] = args.network_limit_bandwidth
     data['max_disk_size'] = args.max_disk_size
+    data['debug'] = False
     
     while True:
         try:
@@ -665,20 +592,17 @@ def write_gameserver_config(data):
     
 
 def main():
-    if not cmd_check("podman --version"):
-        puts("Podman not found! please install podman!", color=colors.red)
-    if not cmd_check("podman ps"):
-        puts("Podman is not running, please install podman and podman compose!", color=colors.red)
+    if not cmd_check("docker --version"):
+        puts("Podman not found! please install docker!", color=colors.red)
+    if not cmd_check("docker ps"):
+        puts("Podman is not running, please install docker and docker compose!", color=colors.red)
         exit()
-    elif not cmd_check("podman-compose --version") and not cmd_check("podman compose --version"):
-        puts("Podman compose not found! please install podman compose!", color=colors.red)
+    elif not cmd_check("docker-compose --version") and not cmd_check("docker compose --version"):
+        puts("Podman compose not found! please install docker compose!", color=colors.red)
         exit()
     
     if args.command:
         match args.command:
-            case "enable-quotas":
-                ask_for_quota_command()
-                return
             case "start":
                 if check_already_running():
                     puts(f"{g.name} is already running!", color=colors.yellow)
@@ -718,7 +642,7 @@ def main():
                 else:
                     puts(f"{g.name} is starting!", color=colors.yellow)
                     write_compose(read_config())
-                    puts(f"Running 'podman compose up -d{' --build' if use_build_on_compose else ''}'\n", color=colors.green)
+                    puts(f"Running 'docker compose up -d{' --build' if use_build_on_compose else ''}'\n", color=colors.green)
                     composecmd(f"up -d{' --build' if use_build_on_compose else ''} --remove-orphans", g.composefile)
             case "compose":
                 if not config_exists():
@@ -726,14 +650,14 @@ def main():
                 else:
                     write_compose(read_config())
                     compose_cmd = " ".join(args.compose_args)
-                    puts(f"Running 'podman compose {compose_cmd}'\n", color=colors.green)
+                    puts(f"Running 'docker compose {compose_cmd}'\n", color=colors.green)
                     composecmd(compose_cmd, g.composefile)
             case "restart":
                 if not config_exists():
                     puts(f"Config file not found! please run {sys.argv[0]} start", color=colors.red)
                 elif check_already_running():
                     write_compose(read_config())
-                    puts("Running 'podman compose restart'\n", color=colors.green)
+                    puts("Running 'docker compose restart'\n", color=colors.green)
                     composecmd("restart", g.composefile)
                 else:
                     puts(f"{g.name} is not running!" , color=colors.red, is_bold=True, flush=True)
@@ -742,7 +666,7 @@ def main():
                     puts(f"Config file not found! please run {sys.argv[0]} start", color=colors.red)
                 elif check_already_running():
                     write_compose(read_config())
-                    puts("Running 'podman compose down'\n", color=colors.green)
+                    puts("Running 'docker compose down'\n", color=colors.green)
                     composecmd("down --remove-orphans", g.composefile)
                 else:
                     puts(f"{g.name} is not running!" , color=colors.red, is_bold=True, flush=True)
