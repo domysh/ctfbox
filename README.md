@@ -78,7 +78,7 @@ To stop the services run:
 
 ```bash
 python3 start.py stop
-python3 start.py --clean # Only if you want remove all the volumes except configs
+python3 start.py clear --all # Only if you want remove all the volumes and configs
 ```
 
 Before run the competition, you can customize additional settings in the `oasis-setup-config.json` file:
