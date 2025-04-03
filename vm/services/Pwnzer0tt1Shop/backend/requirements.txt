@@ -1,0 +1,8 @@
+flask==3.0.3
+flask-sqlalchemy==3.1.1
+sqlalchemy==2.0.35
+bcrypt==4.2.0
+flask-cors==5.0.0
+flask-session==0.8.0
+fasteners==0.19
+gunicorn==23.0.0

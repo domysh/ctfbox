@@ -1,0 +1,11 @@
+services:
+  web:
+    build: ./
+    restart: unless-stopped
+    volumes:
+      - ./backend/db-data:/app/db-data
+    environment:
+      - SECRET_KEY
+      - TOKEN_SECRET
+    ports:
+      - "80:1234"

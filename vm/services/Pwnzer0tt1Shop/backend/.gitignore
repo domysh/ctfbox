@@ -1,0 +1,10 @@
+# Ignora la cartella db
+/db-data/
+/log.txt
+/log.lock
+
+# Ignora la cartella flask_session
+flask_session/
+
+__pycache__/
+*.pyc

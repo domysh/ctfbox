@@ -1,10 +1,11 @@
 import os
-import sqlite3
+import sqlite3, hashlib, uuid
 
 from flask import Flask, g, render_template, request, redirect, abort
 
 app = Flask(__name__)
 
+NOTE_ID_PREFIX = 'note_'
 
 def get_db() -> sqlite3.Connection:
     db = getattr(g, '_database', None)
@@ -30,11 +31,10 @@ def index():
     return render_template('index.html', notes=notes)
 
 
-@app.route('/view/<int:note_id>')
-def view_note(note_id: int):
-    cur = get_db().execute(
-        f'select title, content from notes where id = {note_id}')
-    cur.row_factory = lambda _, x: {'title': x[0], 'content': x[1]}
+@app.route('/view/<note_id>')
+def view_note(note_id: str):
+    cur = get_db().execute('select title, content, uuid from notes where id = ?', (note_id,))
+    cur.row_factory = lambda _, x: {'title': x[0], 'content': x[1], 'uuid': x[2]}
 
     try:
         note = next(cur)
@@ -57,10 +57,28 @@ def new_note():
 
         private = 1 if 'private' in request.form else 0
 
-        cur = get_db().execute(
-            f"insert into notes (private, title, content) values ('{private}', '{title}', '{content}')",
+
+        uuid_str = request.form.get('uuid')
+        if not uuid_str:
+            uuid_str = str(uuid.uuid4())
+        
+        db = get_db()
+        
+        cur = db.execute('select id from notes where uuid = ?', (uuid_str,))
+        cur.row_factory = lambda _, x: {'id': x[0]}
+
+        try:
+            note = next(cur)
+            return redirect(f'/view/{note["id"]}') # note already exists, redirect to it
+        except StopIteration:
+            pass # That's fine, we can create a new note
+            
+        note_id = hashlib.md5((NOTE_ID_PREFIX+uuid_str).encode()).hexdigest()
+        cur = db.execute(
+            f"insert into notes (private, title, content, id, uuid) values (?, ?, ?, ?, ?)",
+            (private, title, content, note_id, uuid_str)
         )
-        return redirect(f'/view/{cur.lastrowid}')
+        return redirect(f'/view/{note_id}')
 
     return render_template('new.html')
 
@@ -69,7 +87,8 @@ def create_app():
     with app.app_context():
         get_db().execute("""
         create table if not exists notes (
-            id integer primary key autoincrement, 
+            id varchar(32) primary key,
+            uuid varchar(36),
             private integer, 
             title text, 
             content text
