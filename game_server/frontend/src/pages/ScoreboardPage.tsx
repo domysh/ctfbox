@@ -1,5 +1,5 @@
 import { Box, Image, Paper, Pill, ScrollAreaAutosize, Space, Table, Text, Title } from "@mantine/core"
-import { useChartQuery, useConfigQuery, useScoreboardQuery, useTeamSolver } from "../scripts/query"
+import { useChartQuery, useStatusQuery, useScoreboardQuery, useTeamSolver } from "../scripts/query"
 import { ChartTooltipProps, LineChart } from "@mantine/charts"
 import { hashedColor } from "../scripts/utils"
 import { MdGroups } from "react-icons/md";
@@ -34,7 +34,7 @@ export const ScoreboardPage = () => {
 
     const chartData = useChartQuery()
     const scoreboardData = useScoreboardQuery()
-    const configData = useConfigQuery()
+    const configData = useStatusQuery()
     const teamSolver = useTeamSolver()
     const navigate = useNavigate()
 
@@ -68,7 +68,7 @@ export const ScoreboardPage = () => {
                 <Pill style={{ backgroundColor: "var(--mantine-color-cyan-filled)", color: "white", fontWeight: "bold" }}>{teamData.team}</Pill>
             </Box></Table.Td>
             <Table.Td><Box className="center-flex" style={{ fontWeight: "bolder" }}>{teamData.score.toFixed(2)}</Box></Table.Td>
-            {services.map((service, i) => <Table.Td key={i}><ServiceScoreData score={teamData.services.find(ele => ele.service == service)} /></Table.Td>)}
+            {services.map((service, i) => <Table.Td key={i}><ServiceScoreData score={teamData.services.find(ele => ele.service == service.name)} /></Table.Td>)}
         </Table.Tr>
     });
     
@@ -118,9 +118,9 @@ export const ScoreboardPage = () => {
                                 <ImTarget size={20} /><Space w="xs" />Score
                             </Box>
                         </Table.Th>
-                        {services.map(service => <Table.Th key={service}>
+                        {services.map(service => <Table.Th key={service.name}>
                             <Box className="center-flex" style={{width: "100%"}}>
-                                <FaServer size={20} /><Space w="xs" />{service}
+                                <FaServer size={20} /><Space w="xs" />{service.name}
                             </Box>
                         </Table.Th>)}
                     </Table.Tr>

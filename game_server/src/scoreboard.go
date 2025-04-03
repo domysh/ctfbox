@@ -241,26 +241,31 @@ func handleTeam(w http.ResponseWriter, r *http.Request) {
 
 }
 
-type TeamConfig struct {
-	Id    uint   `json:"id"`
-	Name  string `json:"name"`
-	Host  string `json:"host"`
-	Image string `json:"image"`
-	Nop   bool   `json:"nop"`
+type TeamStatus struct {
+	Id        uint   `json:"id"`
+	Name      string `json:"name"`
+	ShortName string `json:"shortname"`
+	Host      string `json:"host"`
+	Image     string `json:"image"`
+	Nop       bool   `json:"nop"`
 }
 
-type ConfigAPIResponse struct {
-	Teams               []TeamConfig `json:"teams"`
-	Services            []string     `json:"services"`
-	StartTime           string       `json:"start_time"`
-	EndTime             *string      `json:"end_time"`
-	RoundLen            uint         `json:"round_len"`
-	FlagExpireTicks     uint         `json:"flag_expire_ticks"`
-	SubmitterFlagsLimit uint         `json:"submitter_flags_limit"`
-	SubmitterRateLimit  uint         `json:"submitter_rate_limit"`
-	CurrentRound        int          `json:"current_round"`
-	FlagRegex           string       `json:"flag_regex"`
-	InitServicePoints   float64      `json:"init_service_points"`
+type ServiceStatus struct {
+	Name string `json:"name"`
+}
+
+type StatusAPIResponse struct {
+	Teams               []TeamStatus    `json:"teams"`
+	Services            []ServiceStatus `json:"services"`
+	StartTime           string          `json:"start"`
+	EndTime             *string         `json:"end"`
+	RoundLen            uint            `json:"roundTime"`
+	FlagExpireTicks     uint            `json:"flag_expire_ticks"`
+	SubmitterFlagsLimit uint            `json:"submitter_flags_limit"`
+	SubmitterRateLimit  uint            `json:"submitter_rate_limit"`
+	CurrentRound        int             `json:"current_round"`
+	FlagRegex           string          `json:"flag_regex"`
+	InitServicePoints   float64         `json:"init_service_points"`
 }
 
 func extractTeamID(ip string) uint {
@@ -272,15 +277,16 @@ func extractTeamID(ip string) uint {
 	return uint(teamID)
 }
 
-func handleConfig(w http.ResponseWriter, r *http.Request) {
-	teams := make([]TeamConfig, 0, len(conf.Teams))
+func handleStatus(w http.ResponseWriter, r *http.Request) {
+	teams := make([]TeamStatus, 0, len(conf.Teams))
 	for ip, team := range conf.Teams {
-		teams = append(teams, TeamConfig{
-			Id:    extractTeamID(ip),
-			Name:  conf.Teams[ip].Name,
-			Host:  ip,
-			Image: conf.Teams[ip].Image,
-			Nop:   team == conf.Teams[conf.Nop],
+		teams = append(teams, TeamStatus{
+			Id:        extractTeamID(ip),
+			Name:      conf.Teams[ip].Name,
+			Host:      ip,
+			ShortName: strings.ToLower(strings.ReplaceAll(conf.Teams[ip].Name, " ", "_")),
+			Image:     conf.Teams[ip].Image,
+			Nop:       team == conf.Teams[conf.Nop],
 		})
 	}
 
@@ -291,12 +297,16 @@ func handleConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(ConfigAPIResponse{
+	services := make([]ServiceStatus, 0, len(conf.Services))
+	for _, service := range conf.Services {
+		services = append(services, ServiceStatus{Name: service})
+	}
+	if err := json.NewEncoder(w).Encode(StatusAPIResponse{
 		Teams:               teams,
-		Services:            conf.Services,
+		Services:            services,
 		StartTime:           conf.GameStartTime.Format(time.RFC3339),
 		EndTime:             endTime,
-		RoundLen:            uint(conf.RoundLen / time.Millisecond),
+		RoundLen:            uint(conf.RoundLen / time.Second),
 		FlagExpireTicks:     uint(conf.FlagExpireTicks),
 		SubmitterFlagsLimit: uint(conf.MaxFlagsPerRequest),
 		SubmitterRateLimit:  uint(*conf.SubmitterLimit),
@@ -344,7 +354,7 @@ func serveScoreboard() {
 	router.HandleFunc("/api/scoreboard", handleScoreboard).Methods("GET")
 	router.HandleFunc("/api/chart", handleChart).Methods("GET")
 	router.HandleFunc("/api/team/{team_id}", handleTeam).Methods("GET")
-	router.HandleFunc("/api/config", handleConfig).Methods("GET")
+	router.HandleFunc("/api/status", handleStatus).Methods("GET")
 
 	log.Noticef("Starting flag_ids server on :80")
 	spa := spaHandler{staticPath: "frontend", indexPath: "index.html"}
