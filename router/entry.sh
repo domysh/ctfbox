@@ -19,7 +19,7 @@ fi
 iptables -o eth+ -t nat -A POSTROUTING -j MASQUERADE
 
 # Reset TTL
-iptables -t mangle -A POSTROUTING -j TTL --ttl-set 60
+iptables -o eth+ -t mangle -A POSTROUTING -j TTL --ttl-set 60
 
 # Set up network rules (if network close policy will be set to DROP)
 # Here are setted the always allowed connections
