@@ -160,7 +160,7 @@ def composecmd(cmd, composefile=None):
     if composefile:
         cmd = f"-f {composefile} {cmd}"
     if not cmd_check("docker --version"):
-        return puts("Podman not found! please install docker!", color=colors.red)
+        return puts("docker not found! please install docker!", color=colors.red)
     elif not cmd_check("docker ps"):
         return puts("Cannot use docker, the user hasn't the permission or docker isn't running", color=colors.red)
     elif cmd_check("docker compose --version"):
@@ -168,7 +168,7 @@ def composecmd(cmd, composefile=None):
     elif cmd_check("docker-compose --version"):
         return os.system(f"docker-compose -p {g.compose_project_name} {cmd}")
     else:
-        return puts("Podman compose not found! please install docker compose!", color=colors.red)
+        return puts("docker compose not found! please install docker compose!", color=colors.red)
 
 def check_already_running():
     return g.container_name in cmd_check(f'docker ps --filter "name=^{g.container_name}$"', get_output=True)
@@ -593,12 +593,12 @@ def write_gameserver_config(data):
 
 def main():
     if not cmd_check("docker --version"):
-        puts("Podman not found! please install docker!", color=colors.red)
+        puts("docker not found! please install docker!", color=colors.red)
     if not cmd_check("docker ps"):
-        puts("Podman is not running, please install docker and docker compose!", color=colors.red)
+        puts("docker is not running, please install docker and docker compose!", color=colors.red)
         exit()
     elif not cmd_check("docker-compose --version") and not cmd_check("docker compose --version"):
-        puts("Podman compose not found! please install docker compose!", color=colors.red)
+        puts("docker compose not found! please install docker compose!", color=colors.red)
         exit()
     
     if args.command:
