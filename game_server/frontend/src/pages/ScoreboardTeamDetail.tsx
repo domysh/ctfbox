@@ -1,5 +1,5 @@
 import { Box, Image, Pill, ScrollAreaAutosize, Space, Table, Text, Title } from "@mantine/core"
-import { useConfigQuery, useTeamQuery, useTeamSolver } from "../scripts/query"
+import { useStatusQuery, useTeamQuery, useTeamSolver } from "../scripts/query"
 import { LineChart } from "@mantine/charts"
 import { hashedColor } from "../scripts/utils"
 import { MdGroups } from "react-icons/md";
@@ -17,13 +17,13 @@ export const ScoreboardTeamDetail = () => {
     const { teamId } = useParams()
 
     const teamData = useTeamQuery(teamId??"")
-    const configData = useConfigQuery()
+    const configData = useStatusQuery()
     const teamSolver = useTeamSolver()
     const services = configData.data?.services.sort()??[]
 
     const currentTeam = teamSolver(`10.60.${teamId}.1`)
 
-    const series = configData.data?.services.map(service => ({ name: service, color: hashedColor(service) }))??[]
+    const series = configData.data?.services.map(service => ({ name: service.name, color: hashedColor(service.name) }))??[]
     
     const dataLoaded = teamData.isSuccess && configData.isSuccess
     const rows = teamData.data?.sort((a,b)=>b.round-a.round).map((teamData) => {
@@ -43,7 +43,7 @@ export const ScoreboardTeamDetail = () => {
                 <Pill style={{ backgroundColor: "var(--mantine-color-cyan-filled)", color: "white", fontWeight: "bold" }}>{teamData.score.team}</Pill>
             </Box></Table.Td>
             <Table.Td><Box className="center-flex" style={{ fontWeight: "bolder" }}>{teamData.score.score.toFixed(2)}</Box></Table.Td>
-            {services.map((service, i) => <Table.Td key={i}><ServiceScoreData score={teamData.score.services.find(ele => ele.service == service)} /></Table.Td>)}
+            {services.map((service, i) => <Table.Td key={i}><ServiceScoreData score={teamData.score.services.find(ele => ele.service == service.name)} /></Table.Td>)}
         </Table.Tr>
     });
     
@@ -89,9 +89,9 @@ export const ScoreboardTeamDetail = () => {
                                 <ImTarget size={20} /><Space w="xs" />Score
                             </Box>
                         </Table.Th>
-                        {services.map(service => <Table.Th key={service}>
+                        {services.map(service => <Table.Th key={service.name}>
                             <Box className="center-flex" style={{width: "100%"}}>
-                                <FaServer size={20} /><Space w="xs" />{service}
+                                <FaServer size={20} /><Space w="xs" />{service.name}
                             </Box>
                         </Table.Th>)}
                     </Table.Tr>

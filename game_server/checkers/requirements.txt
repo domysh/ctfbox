@@ -1,6 +1,6 @@
-beautifulsoup4
-soupsieve
-requests
+beautifulsoup4==4.12.2
+soupsieve==2.4.1
+requests==2.28.2
 pwntools
 pycryptodome
-capstone==5.0.5
+capstone<6

@@ -1,12 +1,12 @@
 import { Box, Code, Image, List, Space, Text, Title } from "@mantine/core"
 import { Link } from "react-router-dom"
-import { useConfigQuery } from "../scripts/query"
+import { useStatusQuery } from "../scripts/query"
 import { secondDurationToString } from "../scripts/time"
 
 
 export const RulesContent = () => {
 
-    const config = useConfigQuery()
+    const config = useStatusQuery()
     const nopTeam = config.data?.teams.find(team => team.nop)
 
     return config.isSuccess?<Box>
@@ -30,7 +30,7 @@ export const RulesContent = () => {
         <Text mt="md"><u>The data in the VM is not persistent: Rebooting the VM = Reset!</u></Text>
         <Text mt="md">Default SSH user for the VM is root and the password is your team token and will be sent to the teams before the competition start.</Text>
         <Title order={2} mt="lg">Scoring</Title>
-        <Text mt="lg">The game is divided in rounds (also called ticks) with the duration of <u>{secondDurationToString(config.data.round_len/1000)}</u>. During each round, a bot will add new flags to your vulnerable machine. Moreover it will check the integrity of services by interacting with them and by retrieving the flags through legitimate accesses.</Text>
+        <Text mt="lg">The game is divided in rounds (also called ticks) with the duration of <u>{secondDurationToString(config.data.roundTime)}</u>. During each round, a bot will add new flags to your vulnerable machine. Moreover it will check the integrity of services by interacting with them and by retrieving the flags through legitimate accesses.</Text>
         <Text mt="md">Your team gains points by attacking other teams and by keeping services up and running. The total score is the sum of the individual scores for each service. The score per service is made of two components:</Text>
         <List mt="md">
             <List.Item>Offense: Points for flags captured from other teams and submitted to the Game System within their validity period</List.Item>
@@ -117,7 +117,7 @@ print(requests.put('http://10.10.0.1:8080/flags', headers={
             <List.Item>Denied: flag already claimed</List.Item>
         </List>
         <Text mt="md">Please note that the request status code != 200 means that the request is malformed, team token header is not valid or the game is ended. In any case there is going to be a description of the problem in the response body.</Text>
-        <Text mt="md">Flags are considered expired after {config.data.flag_expire_ticks} rounds. It means that teams have up to {secondDurationToString(config.data.round_len*config.data.flag_expire_ticks/1000)} to steal a flag and submit it. At the same time, the check bot will try to retrieve one of the last {config.data.flag_expire_ticks} flags from a service to check if the intended functionalities have been preserved and mark it as up.</Text>
+        <Text mt="md">Flags are considered expired after {config.data.flag_expire_ticks} rounds. It means that teams have up to {secondDurationToString(config.data.roundTime*config.data.flag_expire_ticks)} to steal a flag and submit it. At the same time, the check bot will try to retrieve one of the last {config.data.flag_expire_ticks} flags from a service to check if the intended functionalities have been preserved and mark it as up.</Text>
         <Title order={2} mt="lg">Flag IDs</Title>
         <Text mt="lg">Some services have "Flag ID"s, additional information that you might need for an exploit. Usually this is the username of the Game System's account that stores the flag. The flag ids are only given for flags that are still valid.</Text>
         <Text mt="md">FlagIds can be retrieved by performing an HTTP GET request to the Game System at <Link to="http://10.10.0.1:8081/flagIds">http://10.10.0.1:8081/flagIds?team=10.60.0.1&service=ServiceName</Link>. The request query parameters are optional and can be used to filter the results.</Text>

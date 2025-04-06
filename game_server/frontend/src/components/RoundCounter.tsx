@@ -1,12 +1,12 @@
 import { Progress } from "@mantine/core"
-import { useConfigQuery } from "../scripts/query"
+import { useStatusQuery } from "../scripts/query"
 import { useInterval } from "@mantine/hooks"
 import { useEffect, useState } from "react"
 import { secondDurationToString } from "../scripts/time"
 
 
 export const RoundCounter = () => {
-    const config = useConfigQuery()
+    const config = useStatusQuery()
     
     const [roundInfo, setRoundInfo] = useState({
         startTime: new Date(0),
@@ -20,16 +20,16 @@ export const RoundCounter = () => {
 
     const updateRoundInfo = () => {
         if (config.data == null || config.isFetching) return
-        const startGame = new Date(config.data.start_time)
-        const endGame = config.data.end_time != null ? new Date(config.data.end_time) : null
+        const startGame = new Date(config.data.start)
+        const endGame = config.data.end != null ? new Date(config.data.end) : null
         const now = new Date()
-        const roundLen = config.data.round_len
+        const roundLen = config.data.roundTime * 1000
         const nextRoundAt = new Date(startGame.getTime() + (config.data.current_round+2)*roundLen)
         const timeForNextRound = nextRoundAt.getTime() - now.getTime()
         const nextRoundPercent = Math.min(100, 100 - ((timeForNextRound / roundLen) * 100))
         setRoundInfo({
-            startTime: new Date(config.data.start_time),
-            roundLen: config.data.round_len,
+            startTime: new Date(config.data.start),
+            roundLen: config.data.roundTime,
             currentRound: config.data.current_round,
             currentRoundPercent: nextRoundPercent,
             hasStarted: startGame < now,

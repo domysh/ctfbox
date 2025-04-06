@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 import { RulesContent } from "../pages/RulesContent"
 import { ScoreboardPage } from "../pages/ScoreboardPage"
 import { ScoreboardTeamDetail } from "../pages/ScoreboardTeamDetail"
-import { useConfigQuery } from "../scripts/query"
+import { useStatusQuery } from "../scripts/query"
 import { useEffect, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { NotFoundContent } from "./NotFoundContent"
@@ -11,7 +11,7 @@ import { NotFoundContent } from "./NotFoundContent"
 type Pages = "rules" | "scoreboard" | "scoreboard-team" | "not-found" | "loading"
 
 export const MainLayout = ({ page }: { page:Pages }) => {
-    const config = useConfigQuery()
+    const config = useStatusQuery()
     const [oldRound, setOldRound] = useState(-1)
     const queryClient = useQueryClient()
 

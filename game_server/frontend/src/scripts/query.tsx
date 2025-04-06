@@ -4,12 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 const baseUrl = import.meta.env.DEV?"http://127.0.0.1:8888":""
 
 
-type Config = {
-    teams: {id: number, name: string, host: string, image: string, nop: boolean}[],
-    services: string[],
-    start_time: string,
-    end_time?: string,
-    round_len: number,
+type Status = {
+    teams: {id: number, name: string, shortname:string, host: string, image: string, nop: boolean}[],
+    services: {name: string}[],
+    start: string,
+    end?: string,
+    roundTime: number,
     flag_expire_ticks: number,
     submitter_flags_limit: number,
     submitter_rate_limit: number
@@ -61,9 +61,9 @@ type ChartInfo = {
 
 
 
-export const useConfigQuery = () => useQuery({
-    queryKey: ["config"],
-    queryFn: async () => await fetch(baseUrl+"/api/config").then(c => c.json()) as Config,
+export const useStatusQuery = () => useQuery({
+    queryKey: ["status"],
+    queryFn: async () => await fetch(baseUrl+"/api/status").then(c => c.json()) as Status,
     refetchInterval: 1000*3,
     refetchIntervalInBackground: true,
     staleTime: 1000*3,
@@ -85,7 +85,7 @@ export const useChartQuery = () => useQuery({
 })
 
 export const useTeamSolver = () => {
-    const configData = useConfigQuery()
+    const configData = useStatusQuery()
     return (host:string) => {
         return configData.data?.teams.find(t => t.host == host)
     }

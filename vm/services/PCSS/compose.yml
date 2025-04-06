@@ -1,0 +1,11 @@
+
+services:
+  pcss:
+    build: .
+    volumes:
+      - ./data:/service/data
+    ports:
+      - "0.0.0.0:3000:3000"
+    environment:
+      - SECRET_KEY
+    restart: unless-stopped
