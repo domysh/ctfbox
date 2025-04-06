@@ -629,7 +629,7 @@ def main():
                     if not build_prebuilt():
                         puts("Error building prebuilt image", color=colors.red)
                         exit(1)
-                    puts("Creating base VM image (this action can take a while and produces no output)", color=colors.yellow)
+                    puts("Saving base VM container as image to be used to build the CTF services\n(this action can take a while and produces no output)", color=colors.yellow)
                     if not commit_prebuilt():
                         puts("Error commiting prebuilt image", color=colors.red)
                         exit(1)
