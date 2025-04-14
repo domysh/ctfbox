@@ -103,7 +103,7 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_start.add_argument('--submission-timeout', type=float, default=0.03, help='Submission timeout rate limit') # 30 req/s
     parser_start.add_argument('--flag-expire-ticks', type=int, default=5, help='Flag expire ticks')
     parser_start.add_argument('--initial-service-score', type=int, default=5000, help='Initial service score')
-    parser_start.add_argument('--max-flags-per-request', type=int, default=2000, help='Max flags per request')
+    parser_start.add_argument('--max-flags-per-request', type=int, default=3000, help='Max flags per request')
     parser_start.add_argument('--start-time', type=str, help='Start time (ISO 8601)')
     parser_start.add_argument('--end-time', type=str, help='End time (ISO 8601)')
     parser_start.add_argument('--max-disk-size', type=str, default="30G", help='Max disk size for VMs')
@@ -148,6 +148,9 @@ def gen_args(args_to_parse: list[str]|None = None):
         
     if "expose_gameserver" not in args:
         args.expose_gameserver = False
+    
+    if "config_only" not in args:
+        args.config_only = False
         
     if "gameserver_port" not in args:
         args.gameserver_port = "127.0.0.1:8888"
@@ -200,8 +203,8 @@ def remove_database_volume():
 def build_prebuilder():
     return cmd_check(f'docker build -t {g.prebuild_image} -f ./vm/Dockerfile.prebuilder ./vm/', print_output=True)
 
-def build_prebuilt():
-    return cmd_check(f'docker run -it {"--privileged" if args.privileged else "--runtime=sysbox-runc"} --name {g.prebuilded_container} {g.prebuild_image}', print_output=True)
+def build_prebuilt(privileged):
+    return cmd_check(f'docker run -it {"--privileged" if privileged else "--runtime=sysbox-runc"} --name {g.prebuilded_container} {g.prebuild_image}', print_output=True)
 
 def kill_builder():
     return cmd_check(f'docker kill {g.prebuilded_container}', no_stderr=True)
@@ -286,9 +289,9 @@ def write_compose(data):
                     ],
                     **({
                         "ports": [
-                            f"{args.gameserver_port}:80"
+                            f"{data['gameserver_exposed_port']}:80"
                         ]
-                    } if args.expose_gameserver else {}),
+                    } if data['gameserver_exposed_port'] is not None else {}),
                     "depends_on": [
                         "router",
                         "database",
@@ -319,8 +322,8 @@ def write_compose(data):
                                 "TOKEN": team['token'],
                             }
                         },
-                        **({ "storage_opt": {"size":data['max_disk_size']} } if args.disk_limit else {}),
-                        **({"privileged": "true"} if args.privileged else { "runtime": "sysbox-runc" }),
+                        **({ "storage_opt": {"size":data['max_disk_size']} } if data['enable_disk_limit'] else {}),
+                        **({"privileged": "true"} if data['unsafe_privileged'] else { "runtime": "sysbox-runc" }),
                         "restart": "unless-stopped",
                         "networks": {
                             f"vm-team{team['id']}": {
@@ -521,8 +524,6 @@ def get_input(prompt: str, default = None, is_required: bool = False, default_pr
 
 def config_input():
     data = {}
-    if args.privileged:
-        puts("Privileged mode enabled (DO NOT USE THIS IN PRODUCTION)", color=colors.yellow)
 
     # abs() put for consistency with the other options
     default_number_of_teams = args.number_of_teams
@@ -547,17 +548,20 @@ def config_input():
 
     args.initial_service_score   = abs(int(get_input('Initial service score', args.initial_service_score)))
     args.max_flags_per_request   = abs(int(get_input('Max flags per request', args.max_flags_per_request)))
-    args.submission_timeout      = abs(int(get_input('Submission timeout', args.submission_timeout)))
+    args.submission_timeout      = abs(float(get_input('Submission timeout', args.submission_timeout)))
     args.network_limit_bandwidth = get_input('Network limit bandwidth', args.network_limit_bandwidth)
 
     args.max_vm_cpus             = get_input('Max VM CPUs', args.max_vm_cpus)
     args.max_vm_mem              = get_input('Max VM Memory', args.max_vm_mem)
-    args.max_disk_size           = get_input('Max VM disk size', args.max_disk_size)
-
+    args.disk_limit              = get_input('Enable disk limit? (REQUIRES XFS FILESYSTEM)', 'yes').lower().startswith('y')
+    if args.disk_limit:
+        args.max_disk_size       = get_input('Max VM disk size', args.max_disk_size)
+    
     args.gameserver_token        = get_input('Gameserver token', default_prompt='randomly generated')
     args.enable_nop_team         = get_input('Enable NOP team?', 'yes').lower().startswith('y')
-
-    data['teams'] = generate_teams_array(args.number_of_teams, args.enable_nop_team, args.wireguard_start_port)
+    args.privileged              = not get_input('Use sysbox to run VMs? (Without sysbox VM could escape from the conatiner they are)', 'yes').lower().startswith('y')
+    if args.privileged:
+        puts("Privileged mode enabled (DO NOT USE THIS IN PRODUCTION)", color=colors.yellow)
 
     data['wireguard_start_port'] = args.wireguard_start_port
 
@@ -581,9 +585,16 @@ def config_input():
 
     data['gameserver_token'] = args.gameserver_token if args.gameserver_token else secrets.token_hex(32)
     # asking for NOP team here
-    data['gameserver_log_level'] = args.gameserver_log_level # not asked
+    data['unsafe_privileged'] = args.privileged
+    data['enable_disk_limit'] = args.disk_limit
+    if args.expose_gameserver:
+        data['gameserver_exposed_port'] = args.gameserver_port
+    else:
+        data['gameserver_exposed_port'] = None
 
     data['debug'] = False
+    
+    data['teams'] = generate_teams_array(args.number_of_teams, args.enable_nop_team, args.wireguard_start_port)
 
     return data
 
@@ -641,7 +652,7 @@ def main():
                         puts("Error building prebuilder image", color=colors.red)
                         exit(1)
                     puts("Executing prebuilder to create VMs' base image", color=colors.yellow)
-                    if not build_prebuilt():
+                    if not build_prebuilt(config['unsafe_privileged']):
                         puts("Error building prebuilt image", color=colors.red)
                         exit(1)
                     puts("Saving base VM container as image to be used to build the CTF services\n(this action can take a while and produces no output)", color=colors.yellow)
