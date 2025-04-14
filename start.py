@@ -96,10 +96,12 @@ def gen_args(args_to_parse: list[str]|None = None):
     #Gameserve options
     parser_start.add_argument('--wireguard-start-port', type=int, default=51000, help='Wireguard start port')
     parser_start.add_argument('--gameserver-log-level', default="info", help='Log level for game server')
+    parser_start.add_argument('--gameserver-token', type=str, help='Gameserver token')
     parser_start.add_argument('--max-vm-mem', type=str, default="2G", help='Max memory for VMs')
     parser_start.add_argument('--max-vm-cpus', type=str, default="1", help='Max CPUs for VMs')
     parser_start.add_argument('--wireguard-profiles', type=int, default=30, help='Number of wireguard profiles')
     parser_start.add_argument('--dns', type=str, default="1.1.1.1", help='DNS server')
+    parser_start.add_argument('--server-addr', type=str, help='DNS server')
     parser_start.add_argument('--submission-timeout', type=int, default=10, help='Submission timeout rate limit')
     parser_start.add_argument('--flag-expire-ticks', type=int, default=5, help='Flag expire ticks')
     parser_start.add_argument('--initial-service-score', type=int, default=5000, help='Initial service score')
@@ -109,6 +111,8 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_start.add_argument('--max-disk-size', type=str, default="30G", help='Max disk size for VMs')
     parser_start.add_argument('--network-limit-bandwidth', type=str, default="20mbit", help='Network limit bandwidth')
     parser_start.add_argument('--tick-time', type=int, default=120, help='Tick time in seconds')
+    parser_start.add_argument('--number-of-teams', type=int, default=4, help='Number of teams')
+    parser_start.add_argument('--enable-nop-team', action='store_true', help='Enable NOP team')
     #init options
     parser_start.add_argument('--privileged', '-P', action='store_true', help='Use privileged mode for VMs')
     parser_start.add_argument('--expose-gameserver', '-E', action='store_true', help='Expose gameserver port')
