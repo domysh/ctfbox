@@ -101,7 +101,7 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_start.add_argument('--max-vm-cpus', type=str, default="1", help='Max CPUs for VMs')
     parser_start.add_argument('--wireguard-profiles', type=int, default=30, help='Number of wireguard profiles')
     parser_start.add_argument('--dns', type=str, default="1.1.1.1", help='DNS server')
-    parser_start.add_argument('--server-addr', type=str, help='DNS server')
+    parser_start.add_argument('--server-addr', type=str, help='Oasis public ip address')
     parser_start.add_argument('--submission-timeout', type=int, default=10, help='Submission timeout rate limit')
     parser_start.add_argument('--flag-expire-ticks', type=int, default=5, help='Flag expire ticks')
     parser_start.add_argument('--initial-service-score', type=int, default=5000, help='Initial service score')
