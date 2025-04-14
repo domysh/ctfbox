@@ -93,7 +93,7 @@ def gen_args(args_to_parse: list[str]|None = None):
     #Start Command
     parser_start = subcommands.add_parser('start', help=f'Start {g.name}')
     parser_start.add_argument('--logs', required=False, action="store_true", help=f'Show {g.name} logs', default=False)
-    #Gameserve options
+    #Gameserver options
     parser_start.add_argument('--wireguard-start-port', type=int, default=51000, help='Wireguard start port')
     parser_start.add_argument('--gameserver-log-level', default="info", help='Log level for game server')
     parser_start.add_argument('--gameserver-token', type=str, help='Gameserver token')
