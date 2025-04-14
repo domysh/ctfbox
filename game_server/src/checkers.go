@@ -181,7 +181,8 @@ func checkerRoutine() {
 	)
 
 	realIPs := make([]net.IP, 0, len(conf.Teams))
-	for ip := range conf.Teams {
+	for _, teamInfo := range conf.Teams {
+		ip := teamIDToIP(teamInfo.ID)
 		realIPs = append(realIPs, net.ParseIP(ip))
 	}
 	sort.Slice(realIPs, func(i, j int) bool {
@@ -340,7 +341,7 @@ func checkerRoutine() {
 							log.Criticalf("Error calculating sla %v:%v on %v: %v", team, teamId, service, err)
 							return err
 						}
-						if err := conn.NewSelect().ColumnExpr("score").Model((*db.ServiceScore)(nil)).Where("team = ? and service = ?", team, service).Scan(dbctx, &statusData.Score); err != nil {
+						if err := conn.NewSelect().ColumnExpr("score, offense, defense").Model((*db.ServiceScore)(nil)).Where("team = ? and service = ?", team, service).Scan(dbctx, &statusData.Score, &statusData.OffensePoints, &statusData.DefensePoints); err != nil {
 							log.Criticalf("Error fetching score %v:%v on %v: %v", team, teamId, service, err)
 							return err
 						}

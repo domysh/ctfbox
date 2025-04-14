@@ -1,6 +1,6 @@
 __pycache__/
 
-/oasis-setup-config.json
+/config.json
 
 volumes/**
 

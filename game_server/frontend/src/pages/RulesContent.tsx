@@ -120,7 +120,7 @@ print(requests.put('http://10.10.0.1:8080/flags', headers={
         <Text mt="md">Flags are considered expired after {config.data.flag_expire_ticks} rounds. It means that teams have up to {secondDurationToString(config.data.roundTime*config.data.flag_expire_ticks)} to steal a flag and submit it. At the same time, the check bot will try to retrieve one of the last {config.data.flag_expire_ticks} flags from a service to check if the intended functionalities have been preserved and mark it as up.</Text>
         <Title order={2} mt="lg">Flag IDs</Title>
         <Text mt="lg">Some services have "Flag ID"s, additional information that you might need for an exploit. Usually this is the username of the Game System's account that stores the flag. The flag ids are only given for flags that are still valid.</Text>
-        <Text mt="md">FlagIds can be retrieved by performing an HTTP GET request to the Game System at <Link to="http://10.10.0.1:8081/flagIds">http://10.10.0.1:8081/flagIds?team=10.60.0.1&service=ServiceName</Link>. The request query parameters are optional and can be used to filter the results.</Text>
+        <Text mt="md">FlagIds can be retrieved by performing an HTTP GET request to the Game System at <Link to="http://10.10.0.1:8081/flagIds">http://10.10.0.1:8081/flagIds?team=0&service=ServiceName&round=1</Link>. The request query parameters are optional and can be used to filter the results.</Text>
         <Text mt="md">The request will return a json array, you will receive a json format like this:</Text>
         <Code block mt="md">
 {`{

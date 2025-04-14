@@ -18,8 +18,7 @@ class g:
     container_name = "oasis_gameserver"
     compose_project_name = "oasis"
     name = "Oasis"
-    config_file = "oasis-setup-config.json"
-    gammeserver_config_file = "game_server/config.yml"
+    config_file = "config.json"
     prebuild_image = "oasis-prebuilder"
     prebuilded_container = "oasis-prebuilded"
     prebuilt_image = "oasis-vm-base"
@@ -95,14 +94,13 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_start.add_argument('--logs', required=False, action="store_true", help=f'Show {g.name} logs', default=False)
     #Gameserver options
     parser_start.add_argument('--wireguard-start-port', type=int, default=51000, help='Wireguard start port')
-    parser_start.add_argument('--gameserver-log-level', default="info", help='Log level for game server')
     parser_start.add_argument('--gameserver-token', type=str, help='Gameserver token')
     parser_start.add_argument('--max-vm-mem', type=str, default="2G", help='Max memory for VMs')
     parser_start.add_argument('--max-vm-cpus', type=str, default="1", help='Max CPUs for VMs')
     parser_start.add_argument('--wireguard-profiles', type=int, default=30, help='Number of wireguard profiles')
     parser_start.add_argument('--dns', type=str, default="1.1.1.1", help='DNS server')
     parser_start.add_argument('--server-addr', type=str, help='Oasis public ip address')
-    parser_start.add_argument('--submission-timeout', type=int, default=10, help='Submission timeout rate limit')
+    parser_start.add_argument('--submission-timeout', type=float, default=0.03, help='Submission timeout rate limit') # 30 req/s
     parser_start.add_argument('--flag-expire-ticks', type=int, default=5, help='Flag expire ticks')
     parser_start.add_argument('--initial-service-score', type=int, default=5000, help='Initial service score')
     parser_start.add_argument('--max-flags-per-request', type=int, default=2000, help='Max flags per request')
@@ -174,6 +172,9 @@ def composecmd(cmd, composefile=None):
         return os.system(f"docker-compose -p {g.compose_project_name} {cmd}")
     else:
         return puts("docker compose not found! please install docker compose!", color=colors.red)
+
+def image_ls():
+    return json.loads(cmd_check("docker image ls --format json", get_output=True))
 
 def check_already_running():
     return g.container_name in cmd_check(f'docker ps --filter "name=^{g.container_name}$"', get_output=True)
@@ -305,7 +306,7 @@ def write_compose(data):
                     "volumes": [
                         "./game_server/checkers/:/app/checkers/:z",
                         "unixsk:/unixsk/:z",
-                        "./game_server/config.yml:/app/config.yml:z"
+                        f"./{g.config_file}:/app/{g.config_file}:z"
                     ]
                 },
                 **{
@@ -440,7 +441,6 @@ def clear_data(
     remove_prebuilt_image=True,
     remove_wireguard=True,
     remove_checkers_data=True,
-    remove_gameserver_config=True,
     remove_gameserver_data=True  
 ):
     if remove_gameserver_data:
@@ -451,8 +451,6 @@ def clear_data(
                 shutil.rmtree(f"./wireguard/{file}", ignore_errors=True)
     if remove_config:
         try_to_remove(g.config_file)
-    if remove_gameserver_config:
-        try_to_remove(g.gammeserver_config_file)
     if remove_prebuilded_container:
         remove_prebuilded()
     if remove_prebuilder_image:
@@ -470,7 +468,6 @@ def clear_data_only(
     remove_prebuilt_image=False,
     remove_wireguard=False,
     remove_checkers_data=False,
-    remove_gameserver_config=False,
     remove_gameserver_data=False
 ):
     clear_data(
@@ -480,7 +477,6 @@ def clear_data_only(
         remove_prebuilt_image=remove_prebuilt_image,
         remove_wireguard=remove_wireguard,
         remove_checkers_data=remove_checkers_data,
-        remove_gameserver_config=remove_gameserver_config,
         remove_gameserver_data=remove_gameserver_data
     )
 
@@ -499,7 +495,7 @@ def generate_teams_array(number_of_teams: int, enable_nop_team: bool, wireguard_
             'token': secrets.token_hex(32),
             'wireguard_port': wireguard_start_port+i,
             'nop': False,
-            'image': "null"
+            'image': ""
         }
         if i == 0 and enable_nop_team:
             team['nop'] = True
@@ -603,35 +599,7 @@ def read_config():
     with open(g.config_file) as f:
         return json.load(f)
 
-def write_gameserver_config(data):
-    nop_team = list(filter(lambda x: x['nop'], data['teams']))
-    nop_team = nop_team[0]['id'] if nop_team else None
-    gameserver_config = {
-        "log_level": data['gameserver_log_level'],
-        "round_len": data['tick_time']*1000,
-        "token": data['gameserver_token'],
-        "nop": f"10.60.{nop_team}.1" if nop_team is not None else "null",
-        "submitter_limit": data['submission_timeout']*1000,
-        "teams": {
-            **{
-                f"10.60.{team['id']}.1": {
-                    "token": team['token'],
-                    "name": team['name'],
-                    "image": team['image']
-                } for team in data['teams']
-            },
-        },
-        "flag_expire_ticks": data['flag_expire_ticks'],
-        "initial_service_score": data['initial_service_score'],
-        "max_flags_per_request": data['max_flags_per_request'],
-        "start_time": data['start_time'] if data['start_time'] else "null",
-        "end_time": data['end_time'] if data['end_time'] else "null",
-        "debug": "false",
-    }
 
-    with open(g.gammeserver_config_file, 'w') as f:
-        f.write(dict_to_yaml(gameserver_config))
-    
 
 def main():
     if args.config_only:
@@ -662,7 +630,6 @@ def main():
                 if args.config_only:
                     puts(f"Config file generated!, you can customize it by editing {g.config_file}", color=colors.green)
                     return
-                write_gameserver_config(config)
                 if not prebuilt_exists():
                     puts("Prebuilt image not found!", color=colors.yellow)
                     puts("Clearing old setup images...", color=colors.yellow)
@@ -742,8 +709,6 @@ def main():
                     clear_data_only(remove_wireguard=True)
                 if args.checkers_data:
                     clear_data_only(remove_checkers_data=True)
-                if args.gameserver_config:
-                    clear_data_only(remove_gameserver_config=True)
                 if args.gameserver_data:
                     clear_data_only(remove_gameserver_data=True)
                 puts("Whatever you specified has been cleared!", color=colors.green, is_bold=True)

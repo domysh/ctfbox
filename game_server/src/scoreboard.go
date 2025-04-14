@@ -17,20 +17,22 @@ import (
 )
 
 type ServiceRoundStatus struct {
-	Service     string  `json:"service"`
-	StolenFlags uint    `json:"stolen_flags"`
-	LostFlags   uint    `json:"lost_flags"`
-	Sla         float64 `json:"sla"`
-	Score       float64 `json:"score"`
-	TicksUp     uint    `json:"ticks_up"`
-	TicksDown   uint    `json:"ticks_down"`
-	PutFlag     int     `json:"put_flag"`
-	PutFlagMsg  string  `json:"put_flag_msg"`
-	GetFlag     int     `json:"get_flag"`
-	GetFlagMsg  string  `json:"get_flag_msg"`
-	SlaCheck    int     `json:"sla_check"`
-	SlaCheckMsg string  `json:"sla_check_msg"`
-	FinalScore  float64 `json:"final_score"`
+	Service         string  `json:"service"`
+	StolenFlags     uint    `json:"stolen_flags"`
+	OffensivePoints float64 `json:"offensive_points"`
+	DefensePoints   float64 `json:"defensive_points"`
+	LostFlags       uint    `json:"lost_flags"`
+	Sla             float64 `json:"sla"`
+	Score           float64 `json:"score"`
+	TicksUp         uint    `json:"ticks_up"`
+	TicksDown       uint    `json:"ticks_down"`
+	PutFlag         int     `json:"put_flag"`
+	PutFlagMsg      string  `json:"put_flag_msg"`
+	GetFlag         int     `json:"get_flag"`
+	GetFlagMsg      string  `json:"get_flag_msg"`
+	SlaCheck        int     `json:"sla_check"`
+	SlaCheckMsg     string  `json:"sla_check_msg"`
+	FinalScore      float64 `json:"final_score"`
 }
 
 type TeamRoundStatusShort struct {
@@ -127,7 +129,8 @@ func handleScoreboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	for team := range conf.Teams {
+	for _, teamInfo := range conf.Teams {
+		team := teamIDToIP(teamInfo.ID)
 		scoreData := new([]db.StatusHistory)
 		if err := conn.NewSelect().Model(scoreData).Where("team = ? and round = ?", team, round).Scan(ctx); err != nil {
 			log.Errorf("Error fetching scores for team %s: %v", team, err)
@@ -138,20 +141,22 @@ func handleScoreboard(w http.ResponseWriter, r *http.Request) {
 		totScore := 0.0
 		for _, service := range *scoreData {
 			services = append(services, ServiceRoundStatus{
-				Service:     service.Service,
-				StolenFlags: service.StolenFlags,
-				LostFlags:   service.LostFlags,
-				Sla:         service.Sla,
-				Score:       service.Score,
-				TicksUp:     service.SlaUpTimes,
-				TicksDown:   service.SlaTotTimes - service.SlaUpTimes,
-				PutFlag:     service.PutFlagStatus,
-				PutFlagMsg:  service.PutFlagMessage,
-				GetFlag:     service.GetFlagStatus,
-				GetFlagMsg:  service.GetFlagMessage,
-				SlaCheck:    service.CheckStatus,
-				SlaCheckMsg: service.CheckMessage,
-				FinalScore:  service.Score * service.Sla,
+				Service:         service.Service,
+				StolenFlags:     service.StolenFlags,
+				OffensivePoints: service.OffensePoints,
+				DefensePoints:   service.DefensePoints,
+				LostFlags:       service.LostFlags,
+				Sla:             service.Sla,
+				Score:           service.Score,
+				TicksUp:         service.SlaUpTimes,
+				TicksDown:       service.SlaTotTimes - service.SlaUpTimes,
+				PutFlag:         service.PutFlagStatus,
+				PutFlagMsg:      service.PutFlagMessage,
+				GetFlag:         service.GetFlagStatus,
+				GetFlagMsg:      service.GetFlagMessage,
+				SlaCheck:        service.CheckStatus,
+				SlaCheckMsg:     service.CheckMessage,
+				FinalScore:      service.Score * service.Sla,
 			})
 			totScore += service.Score * service.Sla
 		}
@@ -176,10 +181,16 @@ type TeamAPIResponse struct {
 }
 
 func handleTeam(w http.ResponseWriter, r *http.Request) {
-	team := "10.60." + mux.Vars(r)["team_id"] + ".1"
-	if _, ok := conf.Teams[team]; !ok {
-		http.Error(w, "Invalid team", http.StatusBadRequest)
-		log.Errorf("Error: invalid team %v", team)
+	teamId, err := strconv.Atoi(mux.Vars(r)["team_id"])
+	if err != nil {
+		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		log.Errorf("Error: invalid team ID %v", mux.Vars(r)["team_id"])
+		return
+	}
+	teamInfo := conf.getTeamByID(teamId)
+	if teamInfo == nil {
+		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		log.Errorf("Error: invalid team ID %v", mux.Vars(r)["team_id"])
 		return
 	}
 	round := db.GetExposedRound()
@@ -191,6 +202,7 @@ func handleTeam(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	team := teamIDToIP(teamInfo.ID)
 	response := make([]TeamAPIResponse, round+1)
 	ctx := context.Background()
 	for i := 0; i <= int(round); i++ {
@@ -204,20 +216,22 @@ func handleTeam(w http.ResponseWriter, r *http.Request) {
 		totalScore := 0.0
 		for _, service := range *scoreData {
 			services = append(services, ServiceRoundStatus{
-				Service:     service.Service,
-				StolenFlags: service.StolenFlags,
-				LostFlags:   service.LostFlags,
-				Sla:         service.Sla,
-				Score:       service.Score,
-				TicksUp:     service.SlaUpTimes,
-				TicksDown:   service.SlaTotTimes - service.SlaUpTimes,
-				PutFlag:     service.PutFlagStatus,
-				PutFlagMsg:  service.PutFlagMessage,
-				GetFlag:     service.GetFlagStatus,
-				GetFlagMsg:  service.GetFlagMessage,
-				SlaCheck:    service.CheckStatus,
-				SlaCheckMsg: service.CheckMessage,
-				FinalScore:  service.Score * service.Sla,
+				Service:         service.Service,
+				StolenFlags:     service.StolenFlags,
+				OffensivePoints: service.OffensePoints,
+				DefensePoints:   service.DefensePoints,
+				LostFlags:       service.LostFlags,
+				Sla:             service.Sla,
+				Score:           service.Score,
+				TicksUp:         service.SlaUpTimes,
+				TicksDown:       service.SlaTotTimes - service.SlaUpTimes,
+				PutFlag:         service.PutFlagStatus,
+				PutFlagMsg:      service.PutFlagMessage,
+				GetFlag:         service.GetFlagStatus,
+				GetFlagMsg:      service.GetFlagMessage,
+				SlaCheck:        service.CheckStatus,
+				SlaCheckMsg:     service.CheckMessage,
+				FinalScore:      service.Score * service.Sla,
 			})
 			totalScore += service.Score * service.Sla
 		}
@@ -242,7 +256,7 @@ func handleTeam(w http.ResponseWriter, r *http.Request) {
 }
 
 type TeamStatus struct {
-	Id        uint   `json:"id"`
+	Id        int    `json:"id"`
 	Name      string `json:"name"`
 	ShortName string `json:"shortname"`
 	Host      string `json:"host"`
@@ -268,25 +282,16 @@ type StatusAPIResponse struct {
 	InitServicePoints   float64         `json:"init_service_points"`
 }
 
-func extractTeamID(ip string) uint {
-	teamID := 0
-	splitted := strings.Split(ip, ".")
-	if len(splitted) == 4 {
-		teamID, _ = strconv.Atoi(splitted[2])
-	}
-	return uint(teamID)
-}
-
 func handleStatus(w http.ResponseWriter, r *http.Request) {
 	teams := make([]TeamStatus, 0, len(conf.Teams))
-	for ip, team := range conf.Teams {
+	for _, team := range conf.Teams {
 		teams = append(teams, TeamStatus{
-			Id:        extractTeamID(ip),
-			Name:      conf.Teams[ip].Name,
-			Host:      ip,
-			ShortName: strings.ToLower(strings.ReplaceAll(conf.Teams[ip].Name, " ", "_")),
-			Image:     conf.Teams[ip].Image,
-			Nop:       team == conf.Teams[conf.Nop],
+			Id:        team.ID,
+			Name:      team.Name,
+			Host:      teamIDToIP(team.ID),
+			ShortName: strings.ToLower(strings.ReplaceAll(team.Name, " ", "_")),
+			Image:     team.Image,
+			Nop:       team.Nop,
 		})
 	}
 
@@ -309,7 +314,7 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 		RoundLen:            uint(conf.RoundLen / time.Second),
 		FlagExpireTicks:     uint(conf.FlagExpireTicks),
 		SubmitterFlagsLimit: uint(conf.MaxFlagsPerRequest),
-		SubmitterRateLimit:  uint(*conf.SubmitterLimit),
+		SubmitterRateLimit:  uint(*conf.SubmitterTimeout),
 		CurrentRound:        db.GetExposedRound(),
 		FlagRegex:           conf.FlagRegex,
 		InitServicePoints:   conf.InitialServiceScore,

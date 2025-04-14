@@ -3,19 +3,24 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"game/db"
 	"game/log"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/uptrace/bun"
-	"gopkg.in/yaml.v3"
 )
 
 type TeamInfo struct {
-	Token string `yaml:"token"`
-	Name  string `yaml:"name"`
-	Image string `yaml:"image"`
+	ID    int     `json:"id"`
+	Token *string `json:"token"`
+	Name  string  `json:"name"`
+	Image string  `json:"image"`
+	Nop   bool    `json:"nop"`
 }
 
 type Config struct {
@@ -25,29 +30,59 @@ type Config struct {
 	GameEndTime         *time.Time
 	FlagRegex           string
 	Services            []string
-	LogLevel            string              `yaml:"log_level"`
-	Round               int64               `yaml:"round_len"`
-	Token               string              `yaml:"token"`
-	Nop                 string              `yaml:"nop"`
-	Teams               map[string]TeamInfo `yaml:"teams"`
-	CheckerDir          string              `yaml:"checker_dir"`
-	FlagExpireTicks     int64               `yaml:"flag_expire_ticks"`
-	InitialServiceScore float64             `yaml:"initial_service_score"`
-	SubmitterLimit      *int64              `yaml:"submitter_limit,omitempty"`
-	MaxFlagsPerRequest  int                 `yaml:"max_flags_per_request"`
-	Debug               bool                `yaml:"debug"`
-	StartTime           *string             `yaml:"start_time"`
-	EndTime             *string             `yaml:"end_time"`
+	Round               int64      `json:"tick_time"`
+	Token               string     `json:"gameserver_token"`
+	Teams               []TeamInfo `json:"teams"`
+	CheckerDir          string
+	FlagExpireTicks     int64    `json:"flag_expire_ticks"`
+	InitialServiceScore float64  `json:"initial_service_score"`
+	SubmitterTimeout    *float64 `json:"submission_timeout"`
+	MaxFlagsPerRequest  int      `json:"max_flags_per_request"`
+	Debug               bool     `json:"debug"`
+	StartTime           *string  `json:"start_time"`
+	EndTime             *string  `json:"end_time"`
 }
 
 var conf *Config
 var conn *bun.DB
 
+func extractTeamID(ip string) int {
+	teamID := 0
+	splitted := strings.Split(ip, ".")
+	if len(splitted) == 4 {
+		teamID, _ = strconv.Atoi(splitted[2])
+	}
+	return teamID
+}
+
+func teamIDToIP(teamID int) string {
+	return fmt.Sprintf("10.60.%d.1", teamID)
+}
+
+func (c *Config) getTeamByID(teamID int) *TeamInfo {
+	for _, teamInfo := range c.Teams {
+		if teamID == teamInfo.ID {
+			return &teamInfo
+		}
+	}
+	return nil
+}
+
+func (c *Config) getTeamByToken(token string) *TeamInfo {
+	for _, teamInfo := range c.Teams {
+		if teamInfo.Token != nil && *teamInfo.Token == token {
+			return &teamInfo
+		}
+	}
+	return nil
+}
+
 func initScoreboard() {
 	var ctx context.Context = context.Background()
 	log.Debugf("Initializing scoreboard")
 
-	for team := range conf.Teams {
+	for _, teamInfo := range conf.Teams {
+		team := teamIDToIP(teamInfo.ID)
 		for _, service := range conf.Services {
 			fetchedScore := new(db.ServiceScore)
 			err := conn.NewSelect().Model(fetchedScore).Where("team = ? and service = ?", team, service).Scan(ctx)
@@ -57,6 +92,8 @@ func initScoreboard() {
 						Team:    team,
 						Service: service,
 						Score:   conf.InitialServiceScore,
+						Offense: 0.0,
+						Defense: 0.0,
 					}).Exec(ctx)
 					if err != nil {
 						log.Panicf("Error inserting service score %v", err)
@@ -82,17 +119,17 @@ func LoadConfig(path string) (*Config, error) {
 	}
 	defer file.Close()
 
-	dec := yaml.NewDecoder(file)
+	dec := json.NewDecoder(file)
 	if err = dec.Decode(c); err != nil {
 		return c, err
 	}
-	conf = c
 
+	conf = c
 	conf.FlagRegex = "[A-Z0-9]{31}="
 
-	conf.RoundLen = time.Duration(conf.Round) * time.Millisecond
-	if conf.SubmitterLimit != nil {
-		conf.SubmitterLimitTime = time.Duration(*conf.SubmitterLimit) * time.Millisecond
+	conf.RoundLen = time.Duration(conf.Round) * time.Second
+	if conf.SubmitterTimeout != nil {
+		conf.SubmitterLimitTime = time.Duration(*conf.SubmitterTimeout) * time.Second
 	}
 
 	// Init services data
@@ -107,7 +144,12 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
-	log.SetLogLevel(conf.LogLevel)
+	if conf.Debug {
+		log.SetLogLevel("debug")
+	} else {
+		log.SetLogLevel("info")
+	}
+
 	initRand()
 	db.InitDB()
 	conn = db.ConnectDB()

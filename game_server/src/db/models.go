@@ -56,7 +56,9 @@ type StatusHistory struct {
 	Sla            float64   `bun:""`
 	Score          float64   `bun:""`
 	LostFlags      uint      `bun:""`
+	DefensePoints  float64   `bun:""`
 	StolenFlags    uint      `bun:""`
+	OffensePoints  float64   `bun:""`
 	SlaUpTimes     uint      `bun:""`
 	SlaTotTimes    uint      `bun:""`
 }
@@ -66,6 +68,8 @@ type ServiceScore struct {
 	ID            int64   `bun:",pk,autoincrement"`
 	Team          string  `bun:",notnull"`
 	Service       string  `bun:",notnull"`
+	Offense       float64 `bun:",notnull"`
+	Defense       float64 `bun:",notnull"`
 	Score         float64 `bun:",notnull"`
 }
 

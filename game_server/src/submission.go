@@ -20,7 +20,7 @@ import (
 type SubResp struct {
 	Msg    string `json:"msg"`
 	Flag   string `json:"flag"`
-	Status bool   `json:"status"`
+	Status string `json:"status"`
 }
 
 // Crate a map of lock for each team
@@ -32,38 +32,52 @@ var scoreMutex sync.Mutex
 var scale float64 = 15 * math.Sqrt(5.0)
 var norm float64 = math.Log(math.Log(5.0)) / 12.0
 
-func elaborateFlag(team string, flag string, resp *SubResp, round uint) {
+func elaborateFlag(team *TeamInfo, flag string, resp *SubResp, round uint) {
 	var ctx context.Context = context.Background()
 	info := new(db.Flag)
 	err := conn.NewSelect().Model(info).Where("id = ?", strings.Trim(flag, " \n\t\r")).Scan(ctx)
 	if err != nil {
-		resp.Msg += "Denied: invalid flag"
+		resp.Msg = fmt.Sprintf("[%s] Denied: invalid flag", flag)
+		resp.Status = "DENIED"
 		log.Debugf("Flag %s from %s: invalid", flag, team)
 		return
 	}
-	if info.Team == conf.Nop {
-		resp.Msg += "Denied: flag from nop team"
+	if team == nil {
+		resp.Msg = fmt.Sprintf("[%s] Denied: invalid team", flag)
+		resp.Status = "DENIED"
+		log.Debugf("Flag %s from %s: invalid team", flag, team)
+		return
+	}
+	if team.Nop {
+		resp.Msg = fmt.Sprintf("[%s] Denied: flag from nop team", flag)
+		resp.Status = "DENIED"
 		log.Debugf("Flag %s from %s: from nop team", flag, team)
 		return
 	}
-	if info.Team == team {
-		resp.Msg += "Denied: flag is your own"
+	teamIP := teamIDToIP(team.ID)
+	if info.Team == teamIP {
+		resp.Msg = fmt.Sprintf("[%s] Denied: flag is your own", flag)
+		resp.Status = "DENIED"
 		log.Debugf("Flag %s from %s: is your own", flag, team)
 		return
 	}
 	if int64(round)-int64(info.Round) >= int64(conf.FlagExpireTicks) {
-		resp.Msg += "Denied: flag too old"
+		resp.Msg = fmt.Sprintf("[%s] Denied: flag too old", flag)
+		resp.Status = "DENIED"
 		log.Debugf("Flag %s from %s: too old", flag, team)
 		return
 	}
-
 	flagSubmission := new(db.FlagSubmission)
-	if err = conn.NewSelect().Model(flagSubmission).Where("team = ? and flag_id = ?", team, info.ID).Scan(ctx); err != nil {
+	if err = conn.NewSelect().Model(flagSubmission).Where("team = ? and flag_id = ?", teamIP, info.ID).Scan(ctx); err != nil {
 		if err != sql.ErrNoRows {
 			log.Panicf("Error fetching flag submission: %v", err)
+			resp.Msg = fmt.Sprintf("[%s] Error: notify the organizers and retry later", flag)
+			resp.Status = "ERROR"
+			return
 		}
 	} else {
-		resp.Msg += "Denied: flag already submitted"
+		resp.Msg = fmt.Sprintf("[%s] Denied: flag already submitted", flag)
+		resp.Status = "DENIED"
 		log.Debugf("Flag %s from %s: already submitted", flag, team)
 		return
 	}
@@ -74,7 +88,7 @@ func elaborateFlag(team string, flag string, resp *SubResp, round uint) {
 	err = conn.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
 		attackerScore := new(db.ServiceScore)
 		victimScore := new(db.ServiceScore)
-		if err := conn.NewSelect().Model(attackerScore).Where("team = ? and service = ?", team, info.Service).Scan(ctx); err != nil {
+		if err := conn.NewSelect().Model(attackerScore).Where("team = ? and service = ?", teamIP, info.Service).Scan(ctx); err != nil {
 			return err
 		}
 		if err := conn.NewSelect().Model(victimScore).Where("team = ? and service = ?", info.Team, info.Service).Scan(ctx); err != nil {
@@ -85,17 +99,17 @@ func elaborateFlag(team string, flag string, resp *SubResp, round uint) {
 
 		_, err = conn.NewInsert().Model(&db.FlagSubmission{
 			FlagID:          info.ID,
-			Team:            team,
+			Team:            teamIP,
 			OffensivePoints: offensePoints,
 			DefensivePoints: defensePoints,
 		}).Exec(ctx)
 		if err != nil {
 			return err
 		}
-		if _, err := conn.NewUpdate().Model(attackerScore).WherePK().Set("score = score + ?", offensePoints).Exec(ctx); err != nil {
+		if _, err := conn.NewUpdate().Model(attackerScore).WherePK().Set("score = score + ?", offensePoints).Set("offense = offense + ?", offensePoints).Exec(ctx); err != nil {
 			return err
 		}
-		if _, err := conn.NewUpdate().Model(victimScore).WherePK().Set("score = score - ?", defensePoints).Exec(ctx); err != nil {
+		if _, err := conn.NewUpdate().Model(victimScore).WherePK().Set("score = score - ?", defensePoints).Set("defense = defense - ?", defensePoints).Exec(ctx); err != nil {
 			return err
 		}
 
@@ -104,23 +118,24 @@ func elaborateFlag(team string, flag string, resp *SubResp, round uint) {
 	scoreMutex.Unlock()
 
 	if err != nil {
-		resp.Msg += "Denied: internal error"
+		resp.Msg = fmt.Sprintf("[%s] Error: notify the organizers and retry later", flag)
+		resp.Status = "ERROR"
 		log.Errorf("Error submitting flag: %v", err)
 		return
 	}
 
-	resp.Status = true
-	resp.Msg += fmt.Sprintf("Accepted: %f flag points", offensePoints)
+	resp.Status = "ACCEPTED"
+	resp.Msg = fmt.Sprintf("[%s] Accepted: %f flag points", flag, offensePoints)
 	log.Debugf("Flag %s from %s: %.02f flag points", flag, team, offensePoints)
 }
 
-func elaborateFlags(team string, submittedFlags []string, round uint) []SubResp {
+func elaborateFlags(team *TeamInfo, submittedFlags []string, round uint) []SubResp {
 	responses := make([]SubResp, 0, len(submittedFlags))
 	for _, flag := range submittedFlags {
 		resp := SubResp{
 			Flag:   flag,
-			Status: false,
-			Msg:    fmt.Sprintf("[%s] ", flag),
+			Status: "RESUBMIT", // Default status
+			Msg:    fmt.Sprintf("[%s] Unexpected Error, retry to send later", flag),
 		}
 		elaborateFlag(team, flag, &resp, round)
 		responses = append(responses, resp)
@@ -143,19 +158,16 @@ func submitFlags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	team := ""
-	for ip, t := range conf.Teams {
-		if t.Token == teamToken {
-			team = ip
-			break
-		}
-	}
-
-	if team == "" || team == conf.Nop {
+	teamInfo := conf.getTeamByToken(teamToken)
+	if teamInfo == nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-
+	if teamInfo.Nop {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	team := teamIDToIP(teamInfo.ID)
 	// Checking if team lock exists, if not create it
 	lockMappingMutex.Lock()
 	if lockMap[team] == nil {
@@ -166,7 +178,7 @@ func submitFlags(w http.ResponseWriter, r *http.Request) {
 	lockMap[team].Lock()
 	defer lockMap[team].Unlock()
 
-	if conf.SubmitterLimit != nil {
+	if conf.SubmitterTimeout != nil {
 		//Get last time
 		lastSubmitTime, ok := lastSubmissionTime[team]
 		if ok {
@@ -188,7 +200,7 @@ func submitFlags(w http.ResponseWriter, r *http.Request) {
 	}
 
 	submittedFlags = submittedFlags[:min(len(submittedFlags), conf.MaxFlagsPerRequest)]
-	responses := elaborateFlags(team, submittedFlags, uint(currentTick))
+	responses := elaborateFlags(teamInfo, submittedFlags, uint(currentTick))
 
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)

@@ -7,6 +7,7 @@ import (
 	"game/db"
 	"game/log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -38,13 +39,17 @@ func submitFlagID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var team string
-	_, ok := conf.Teams[sub.TeamID]
-	if !ok {
-		team = fmt.Sprintf("10.60.%s.1", sub.TeamID)
-	} else {
-		team = sub.TeamID
+	teamId, err := strconv.Atoi(sub.TeamID)
+	if err != nil {
+		teamId = extractTeamID(sub.TeamID)
 	}
+	teamInfo := conf.getTeamByID(teamId)
+	if teamInfo == nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		log.Errorf("Error: invalid team id %v", sub.TeamID)
+		return
+	}
+	team := teamIDToIP(teamInfo.ID)
 
 	var associatedFlag = new(db.Flag)
 	if err := conn.NewSelect().Model(associatedFlag).Where("team = ? and round = ? and service = ?", team, sub.Round, sub.ServiceID).Scan(ctx); err != nil {
@@ -90,29 +95,59 @@ func retriveFlagIDs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	team, ok_team := query["team"]
+	teamList, ok_team := query["team"]
+	teamId := 0
 	if ok_team {
-		if len(team) < 1 {
-			ok_team = false
-		} else {
-			_, ok := conf.Teams[team[0]]
-			if !ok {
+		if len(teamList) == 1 {
+			teamParsedId, err := strconv.Atoi(teamList[0])
+			teamId = teamParsedId
+			if err != nil {
 				http.Error(w, "Invalid request", http.StatusBadRequest)
-				log.Errorf("Error: invalid team %v", team[0])
+				log.Errorf("Error: invalid team id %v", teamList[0])
 				return
 			}
+			teamExists := false
+			for _, t := range conf.Teams {
+				if teamId == t.ID {
+					teamExists = true
+					break
+				}
+			}
+			if !teamExists {
+				http.Error(w, "Invalid request", http.StatusBadRequest)
+				log.Errorf("Error: invalid team id %v", teamId)
+				return
+			}
+		} else {
+			ok_team = false
 		}
 	}
+	team := teamIDToIP(teamId)
+	roundList, ok_round := query["round"]
+	var round *uint = nil
+	if ok_round {
+		if len(roundList) == 1 {
+			parsedRound, err := strconv.Atoi(roundList[0])
+			if err != nil {
+				http.Error(w, "Invalid request", http.StatusBadRequest)
+				log.Errorf("Error: invalid round %v", roundList[0])
+				return
+			}
+			round = new(uint)
+			*round = uint(parsedRound)
+		}
+	}
+
 	validFlags := make([]db.Flag, 0)
 	var err error = nil
 	if !ok_service && !ok_team {
 		err = conn.NewSelect().Model(&validFlags).Where("? - round < ? and round <= ?", currentRound, conf.FlagExpireTicks, currentRound).Scan(ctx)
 	} else if !ok_service {
-		err = conn.NewSelect().Model(&validFlags).Where("team = ? and ? - round < ? and round <= ?", team[0], currentRound, conf.FlagExpireTicks, currentRound).Scan(ctx)
+		err = conn.NewSelect().Model(&validFlags).Where("team = ? and ? - round < ? and round <= ?", team, currentRound, conf.FlagExpireTicks, currentRound).Scan(ctx)
 	} else if !ok_team {
 		err = conn.NewSelect().Model(&validFlags).Where("service = ? and ? - round < ? and round <= ?", services[0], currentRound, conf.FlagExpireTicks, currentRound).Scan(ctx)
 	} else {
-		err = conn.NewSelect().Model(&validFlags).Where("team = ? and service = ? and ? - round < ? and round <= ?", team[0], services[0], currentRound, conf.FlagExpireTicks, currentRound).Scan(ctx)
+		err = conn.NewSelect().Model(&validFlags).Where("team = ? and service = ? and ? - round < ? and round <= ?", team, services[0], currentRound, conf.FlagExpireTicks, currentRound).Scan(ctx)
 	}
 
 	if err != nil {
@@ -121,18 +156,23 @@ func retriveFlagIDs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	flagIDs := make(map[string]map[string][]interface{})
+	flagIDs := make(map[string]map[string]map[string]interface{})
 	for _, flag := range validFlags {
-		if _, ok := flagIDs[flag.Service]; !ok {
-			flagIDs[flag.Service] = make(map[string][]interface{})
-		}
-		if _, ok := flagIDs[flag.Service][flag.Team]; !ok {
-			flagIDs[flag.Service][flag.Team] = make([]interface{}, 0)
+		if round != nil && flag.Round != *round {
+			continue
 		}
 		if flag.ExternalFlagId.K == nil {
 			continue
 		}
-		flagIDs[flag.Service][flag.Team] = append(flagIDs[flag.Service][flag.Team], flag.ExternalFlagId.K)
+		if _, ok := flagIDs[flag.Service]; !ok {
+			flagIDs[flag.Service] = make(map[string]map[string]interface{})
+		}
+		flagTeamId := fmt.Sprintf("%d", extractTeamID(flag.Team))
+		if _, ok := flagIDs[flag.Service][flagTeamId]; !ok {
+			flagIDs[flag.Service][flagTeamId] = make(map[string]interface{}, 0)
+		}
+
+		flagIDs[flag.Service][flagTeamId][fmt.Sprintf("%d", flag.Round)] = flag.ExternalFlagId.K
 	}
 
 	w.Header().Set("Content-Type", "application/json")
