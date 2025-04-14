@@ -634,6 +634,12 @@ def write_gameserver_config(data):
     
 
 def main():
+    if args.config_only:
+        config = config_input()
+        create_config(config)
+        puts(f"Config file generated!, you can customize it by editing {g.config_file}", color=colors.green)
+        return
+
     if not cmd_check("docker --version"):
         puts("docker not found! please install docker!", color=colors.red)
     if not cmd_check("docker ps"):
@@ -648,7 +654,7 @@ def main():
             case "start":
                 if check_already_running():
                     puts(f"{g.name} is already running!", color=colors.yellow)
-                if not config_exists() or args.config_only:
+                if not config_exists():
                     config = config_input()
                     create_config(config)
                 else:
