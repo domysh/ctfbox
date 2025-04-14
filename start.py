@@ -507,66 +507,88 @@ def generate_teams_array(number_of_teams: int, enable_nop_team: bool, wireguard_
         teams.append(team)
     return teams
 
+def get_input(prompt: str, default = None, is_required: bool = False, default_prompt: str = None):
+    if is_required:
+        prompt += " (REQUIRED, no default): "
+    elif default_prompt:
+        prompt += f" (default={default_prompt}): "
+    else:
+        prompt += f" (default={default}): "
+    value = input(prompt).strip()
+    if value != "":
+        return value
+    if is_required:
+        while value == "":
+            value = input(prompt).strip()
+        return value
+    return default
+
 def config_input():
     data = {}
     if args.privileged:
         puts("Privileged mode enabled (DO NOT USE THIS IN PRODUCTION)", color=colors.yellow)
 
-    while True:
-        number_of_teams = int(input('Number of teams: '))
-        if number_of_teams < 1:
-            print('Number of teams must be greater than 0')
-        elif number_of_teams > 250:
-            print('Number of teams must be less or equal than 250')
-        else:
-            break
+    # abs() put for consistency with the other options
+    default_number_of_teams = args.number_of_teams
+    args.number_of_teams = abs(int(get_input('Number of teams, >= 1 and < 250', default_number_of_teams)))
+    while args.number_of_teams < 1 or args.number_of_teams >= 250:
+        args.number_of_teams = abs(int(get_input('Number of teams, >= 1 and < 250', default_number_of_teams)))
 
-    try:
-        args.wireguard_start_port    = int(input('Wireguard start port (default={}): '   .format(args.wireguard_start_port)))
-        args.dns                     =     input("DNS (default={}): "                    .format(args.dns))
-        args.wireguard_profiles      = int(input('Wireguard profiles (default={}): '     .format(args.wireguard_profiles)))
-        args.max_vm_cpus             =     input('Max VM CPUs (default={}): '            .format(args.max_vm_cpus))
-        args.max_vm_mem              =     input('Max VM Memory (default={}): '          .format(args.max_vm_mem))
-        token                        =     input('Gameserver token (default is randomly generated): ')
-        args.flag_expire_ticks       = int(input('Flag expire ticks (default={}): '      .format(args.flag_expire_ticks)))
-        args.initial_service_score   = int(input('Initial service score (default={}): '  .format(args.initial_service_score)))
-        args.max_flags_per_request   = int(input('Max flags per request (default={}): '  .format(args.max_flags_per_request)))
-        args.submission_timeout      = int(input('Submission timeout (default={}): '     .format(args.submission_timeout)))
-        args.start_time              =     input('Start time (default=null): ')
-        args.end_time                =     input('End time (default=null): ')
-        args.network_limit_bandwidth =     input('Network limit bandwidth (default={}): '.format(args.network_limit_bandwidth))
-        args.max_disk_size           =     input('Max disk size (default={}): '          .format(args.max_disk_size))
-        args.tick_time               = int(input('Tick time (default={}): '              .format(args.tick_time)))
-    except ValueError:
-        pass
+    # abs() put for consistency with the other options
+    default_wireguard_start_port = args.wireguard_start_port
+    args.wireguard_start_port = abs(int(get_input(f'Wireguard start port, >= 1 and <= {65535-args.number_of_teams}', default_wireguard_start_port)))
+    while args.wireguard_start_port < 1 or args.wireguard_start_port > 65535-args.number_of_teams:
+        args.wireguard_start_port = abs(int(get_input(f'Wireguard start port, >= 1 and <= {65535-args.number_of_teams}', default_wireguard_start_port)))
 
-    if args.wireguard_start_port <= 0:
-        print('Wireguard start port must be greater than 0')
-        exit(1)
-    elif args.wireguard_start_port+number_of_teams > 65535:
-        print(f'Wireguard start port must be less or equal than {args.wireguard_start_port+number_of_teams}')
-        exit(1)
+    args.wireguard_profiles      = abs(int(get_input('Number of wireguard profiles for each team', args.wireguard_profiles)))
+    args.server_addr             = get_input('Server address', is_required=True)
+    args.dns                     = get_input('DNS', args.dns)
 
-    data['wireguard_start_port'] = abs(args.wireguard_start_port)
+    args.start_time              = get_input('Start time, in ISO 8601 (YYYY-mm-dd HH:MM:SS +/-zzzz)')
+    args.end_time                = get_input('End time, in ISO 8601 (YYYY-mm-dd HH:MM:SS +/-zzzz)')
+    args.tick_time               = abs(int(get_input('Tick time in seconds', args.tick_time)))
+    args.flag_expire_ticks       = abs(int(get_input('Number of ticks after which each flag expires', args.flag_expire_ticks)))
+
+    args.initial_service_score   = abs(int(get_input('Initial service score', args.initial_service_score)))
+    args.max_flags_per_request   = abs(int(get_input('Max flags per request', args.max_flags_per_request)))
+    args.submission_timeout      = abs(int(get_input('Submission timeout', args.submission_timeout)))
+    args.network_limit_bandwidth = get_input('Network limit bandwidth', args.network_limit_bandwidth)
+
+    args.max_vm_cpus             = get_input('Max VM CPUs', args.max_vm_cpus)
+    args.max_vm_mem              = get_input('Max VM Memory', args.max_vm_mem)
+    args.max_disk_size           = get_input('Max VM disk size', args.max_disk_size)
+
+    args.gameserver_token        = get_input('Gameserver token', default_prompt='randomly generated')
+    args.enable_nop_team         = get_input('Enable NOP team?', 'yes').lower().startswith('y')
+
+    data['teams'] = generate_teams_array(args.number_of_teams, args.enable_nop_team, args.wireguard_start_port)
+
+    data['wireguard_start_port'] = args.wireguard_start_port
+
+    data['wireguard_profiles'] = args.wireguard_profiles
+    data['server_addr'] = args.server_addr
     data['dns'] = args.dns
-    data['wireguard_profiles'] = abs(args.wireguard_profiles)
-    data['max_vm_cpus'] = abs(args.max_vm_cpus)
-    data['max_vm_mem'] = abs(args.max_vm_mem)
-    data['gameserver_token'] = token if token else secrets.token_hex(32)
-    data['gameserver_log_level'] = args.gameserver_log_level
-    data['flag_expire_ticks'] = abs(args.flag_expire_ticks)
-    data['initial_service_score'] = abs(args.initial_service_score)
-    data['max_flags_per_request'] = abs(args.max_flags_per_request)
-    data['submission_timeout'] = abs(args.submission_timeout)
+
     data['start_time'] = datetime.fromisoformat(args.start_time).isoformat() if args.start_time else None
     data['end_time'] = datetime.fromisoformat(args.end_time).isoformat() if args.end_time else None
-    enable_nop_team = input('Enable NOP team? (Y/n): ').lower() != 'n'
-    data['server_addr'] = input('Server address: ')
+    data['tick_time'] = args.tick_time
+    data['flag_expire_ticks'] = args.flag_expire_ticks
+
+    data['initial_service_score'] = args.initial_service_score
+    data['max_flags_per_request'] = args.max_flags_per_request
+    data['submission_timeout'] = args.submission_timeout
     data['network_limit_bandwidth'] = args.network_limit_bandwidth
+
+    data['max_vm_cpus'] = args.max_vm_cpus
+    data['max_vm_mem'] = args.max_vm_mem
     data['max_disk_size'] = args.max_disk_size
+
+    data['gameserver_token'] = args.gameserver_token if args.gameserver_token else secrets.token_hex(32)
+    # asking for NOP team here
+    data['gameserver_log_level'] = args.gameserver_log_level # not asked
+
     data['debug'] = False
-    data['tick_time'] = abs(args.tick_time)
-    data['teams'] = generate_teams_array(number_of_teams, enable_nop_team, args.wireguard_start_port)
+
     return data
 
 def create_config(data):
