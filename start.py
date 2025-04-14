@@ -93,13 +93,15 @@ def gen_args(args_to_parse: list[str]|None = None):
     #Start Command
     parser_start = subcommands.add_parser('start', help=f'Start {g.name}')
     parser_start.add_argument('--logs', required=False, action="store_true", help=f'Show {g.name} logs', default=False)
-    #Gameserve options
+    #Gameserver options
     parser_start.add_argument('--wireguard-start-port', type=int, default=51000, help='Wireguard start port')
     parser_start.add_argument('--gameserver-log-level', default="info", help='Log level for game server')
+    parser_start.add_argument('--gameserver-token', type=str, help='Gameserver token')
     parser_start.add_argument('--max-vm-mem', type=str, default="2G", help='Max memory for VMs')
     parser_start.add_argument('--max-vm-cpus', type=str, default="1", help='Max CPUs for VMs')
     parser_start.add_argument('--wireguard-profiles', type=int, default=30, help='Number of wireguard profiles')
     parser_start.add_argument('--dns', type=str, default="1.1.1.1", help='DNS server')
+    parser_start.add_argument('--server-addr', type=str, help='Oasis public ip address')
     parser_start.add_argument('--submission-timeout', type=int, default=10, help='Submission timeout rate limit')
     parser_start.add_argument('--flag-expire-ticks', type=int, default=5, help='Flag expire ticks')
     parser_start.add_argument('--initial-service-score', type=int, default=5000, help='Initial service score')
@@ -108,6 +110,9 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_start.add_argument('--end-time', type=str, help='End time (ISO 8601)')
     parser_start.add_argument('--max-disk-size', type=str, default="30G", help='Max disk size for VMs')
     parser_start.add_argument('--network-limit-bandwidth', type=str, default="20mbit", help='Network limit bandwidth')
+    parser_start.add_argument('--tick-time', type=int, default=120, help='Tick time in seconds')
+    parser_start.add_argument('--number-of-teams', type=int, default=4, help='Number of teams')
+    parser_start.add_argument('--enable-nop-team', action='store_true', help='Enable NOP team')
     #init options
     parser_start.add_argument('--privileged', '-P', action='store_true', help='Use privileged mode for VMs')
     parser_start.add_argument('--expose-gameserver', '-E', action='store_true', help='Expose gameserver port')
@@ -502,51 +507,88 @@ def generate_teams_array(number_of_teams: int, enable_nop_team: bool, wireguard_
         teams.append(team)
     return teams
 
+def get_input(prompt: str, default = None, is_required: bool = False, default_prompt: str = None):
+    if is_required:
+        prompt += " (REQUIRED, no default): "
+    elif default_prompt:
+        prompt += f" (default={default_prompt}): "
+    else:
+        prompt += f" (default={default}): "
+    value = input(prompt).strip()
+    if value != "":
+        return value
+    if is_required:
+        while value == "":
+            value = input(prompt).strip()
+        return value
+    return default
+
 def config_input():
     data = {}
     if args.privileged:
         puts("Privileged mode enabled (DO NOT USE THIS IN PRODUCTION)", color=colors.yellow)
-    while True:
-        number_of_teams = int(input('Number of teams: '))
-        if number_of_teams < 1:
-            print('Number of teams must be greater than 0')
-        elif number_of_teams > 250:
-            print('Number of teams must be less or equal than 250')
-        else:
-            break
-    if args.wireguard_start_port <= 0:
-        print('Wireguard start port must be greater than 0')
-        exit(1)
-    elif args.wireguard_start_port+number_of_teams > 65535:
-        print(f'Wireguard start port must be less or equal than {args.wireguard_start_port+number_of_teams}')
-        exit(1)
+
+    # abs() put for consistency with the other options
+    default_number_of_teams = args.number_of_teams
+    args.number_of_teams = abs(int(get_input('Number of teams, >= 1 and < 250', default_number_of_teams)))
+    while args.number_of_teams < 1 or args.number_of_teams >= 250:
+        args.number_of_teams = abs(int(get_input('Number of teams, >= 1 and < 250', default_number_of_teams)))
+
+    # abs() put for consistency with the other options
+    default_wireguard_start_port = args.wireguard_start_port
+    args.wireguard_start_port = abs(int(get_input(f'Wireguard start port, >= 1 and <= {65535-args.number_of_teams}', default_wireguard_start_port)))
+    while args.wireguard_start_port < 1 or args.wireguard_start_port > 65535-args.number_of_teams:
+        args.wireguard_start_port = abs(int(get_input(f'Wireguard start port, >= 1 and <= {65535-args.number_of_teams}', default_wireguard_start_port)))
+
+    args.wireguard_profiles      = abs(int(get_input('Number of wireguard profiles for each team', args.wireguard_profiles)))
+    args.server_addr             = get_input('Server address', is_required=True)
+    args.dns                     = get_input('DNS', args.dns)
+
+    args.start_time              = get_input('Start time, in ISO 8601 (YYYY-mm-dd HH:MM:SS +/-zzzz)')
+    args.end_time                = get_input('End time, in ISO 8601 (YYYY-mm-dd HH:MM:SS +/-zzzz)')
+    args.tick_time               = abs(int(get_input('Tick time in seconds', args.tick_time)))
+    args.flag_expire_ticks       = abs(int(get_input('Number of ticks after which each flag expires', args.flag_expire_ticks)))
+
+    args.initial_service_score   = abs(int(get_input('Initial service score', args.initial_service_score)))
+    args.max_flags_per_request   = abs(int(get_input('Max flags per request', args.max_flags_per_request)))
+    args.submission_timeout      = abs(int(get_input('Submission timeout', args.submission_timeout)))
+    args.network_limit_bandwidth = get_input('Network limit bandwidth', args.network_limit_bandwidth)
+
+    args.max_vm_cpus             = get_input('Max VM CPUs', args.max_vm_cpus)
+    args.max_vm_mem              = get_input('Max VM Memory', args.max_vm_mem)
+    args.max_disk_size           = get_input('Max VM disk size', args.max_disk_size)
+
+    args.gameserver_token        = get_input('Gameserver token', default_prompt='randomly generated')
+    args.enable_nop_team         = get_input('Enable NOP team?', 'yes').lower().startswith('y')
+
+    data['teams'] = generate_teams_array(args.number_of_teams, args.enable_nop_team, args.wireguard_start_port)
+
     data['wireguard_start_port'] = args.wireguard_start_port
-    data['dns'] = args.dns
+
     data['wireguard_profiles'] = args.wireguard_profiles
-    data['max_vm_cpus'] = args.max_vm_cpus
-    data['max_vm_mem'] = args.max_vm_mem
-    data['gameserver_token'] = secrets.token_hex(32)
-    data['gameserver_log_level'] = args.gameserver_log_level
-    data['flag_expire_ticks'] = args.flag_expire_ticks
-    data['initial_service_score'] = args.initial_service_score
-    data['max_flags_per_request'] = args.max_flags_per_request
+    data['server_addr'] = args.server_addr
+    data['dns'] = args.dns
+
     data['start_time'] = datetime.fromisoformat(args.start_time).isoformat() if args.start_time else None
     data['end_time'] = datetime.fromisoformat(args.end_time).isoformat() if args.end_time else None
+    data['tick_time'] = args.tick_time
+    data['flag_expire_ticks'] = args.flag_expire_ticks
+
+    data['initial_service_score'] = args.initial_service_score
+    data['max_flags_per_request'] = args.max_flags_per_request
     data['submission_timeout'] = args.submission_timeout
-    enable_nop_team = input('Enable NOP team? (Y/n): ').lower() != 'n'
-    data['server_addr'] = input('Server address: ')
     data['network_limit_bandwidth'] = args.network_limit_bandwidth
+
+    data['max_vm_cpus'] = args.max_vm_cpus
+    data['max_vm_mem'] = args.max_vm_mem
     data['max_disk_size'] = args.max_disk_size
+
+    data['gameserver_token'] = args.gameserver_token if args.gameserver_token else secrets.token_hex(32)
+    # asking for NOP team here
+    data['gameserver_log_level'] = args.gameserver_log_level # not asked
+
     data['debug'] = False
-    
-    while True:
-        try:
-            data['tick_time'] = abs(int(input('Tick time (s): ')))
-            break
-        except Exception:
-            print('Invalid tick time')
-            pass
-    data['teams'] = generate_teams_array(number_of_teams, enable_nop_team, args.wireguard_start_port)
+
     return data
 
 def create_config(data):
@@ -592,6 +634,12 @@ def write_gameserver_config(data):
     
 
 def main():
+    if args.config_only:
+        config = config_input()
+        create_config(config)
+        puts(f"Config file generated!, you can customize it by editing {g.config_file}", color=colors.green)
+        return
+
     if not cmd_check("docker --version"):
         puts("docker not found! please install docker!", color=colors.red)
     if not cmd_check("docker ps"):
@@ -606,7 +654,7 @@ def main():
             case "start":
                 if check_already_running():
                     puts(f"{g.name} is already running!", color=colors.yellow)
-                if not config_exists() or args.config_only:
+                if not config_exists():
                     config = config_input()
                     create_config(config)
                 else:
