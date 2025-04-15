@@ -626,6 +626,9 @@ func serveScoreboard() {
 		finalHandler = corsPolicy.Handler(router)
 	}
 
+	// Applica middleware di compressione
+	finalHandler = compressMiddleware(finalHandler)
+
 	srv := &http.Server{
 		Handler:      finalHandler,
 		Addr:         "0.0.0.0:80",

@@ -6,7 +6,7 @@
 - Infrastructure
 - System
 
-![Screenshot 2025-04-15 alle 3 49 46 PM](https://github.com/user-attachments/assets/4d7eb5be-0246-432d-8039-6d0aa6b55fed)
+![Screenshot 2025-04-15 alle 5 34 24 PM](https://github.com/user-attachments/assets/be003001-f780-47ed-b038-273c404b1f2e)
 
 
 ## Introduction
@@ -82,15 +82,17 @@ python3 start.py stop
 python3 start.py clear --all # Only if you want remove all the volumes and configs
 ```
 
-Before run the competition, you can customize additional settings in the `oasis-setup-config.json` file:
+Before run the competition, you can customize additional settings in the `config.json` file:
 
 - `wireguard_start_port`: The starting port for WireGuard connections.
 - `dns`: The DNS server to be used internally in the network.
 - `wireguard_profiles`: The number of WireGuard profiles to be created for each team.
 - `max_vm_cpus`: The maximum number of CPUs allocated to each VM.
 - `max_vm_mem`: The maximum amount of memory allocated to each VM.
+- `max_disk_size`: The maximum disk size for each VM (e.g., "30G"). (enable_disk_limit must be true, otherwise it has no effect)
+- `enable_disk_limit`: Enable disk size limitations for VMs (requires XFS filesystem).
 - `gameserver_token`: The token used for the game server. (It's also the password login for the credential server)
-- `gameserver_log_level`: The log level for the game server. (info, debug, error)
+- `gameserver_exposed_port`: The port on which the game server will be exposed.
 - `flag_expire_ticks`: The number of ticks after which a flag expires.
 - `initial_service_score`: The initial score for each service.
 - `max_flags_per_request`: The maximum number of flags that can be submitted in a single request.
@@ -99,7 +101,7 @@ Before run the competition, you can customize additional settings in the `oasis-
 - `submission_timeout`: The timeout for flag submissions in seconds.
 - `server_addr`: The public address of the server (used for the wireguard config).
 - `network_limit_bandwidth`: The bandwidth limit for each server (e.g., "20mbit").
-- `max_disk_size`: The maximum disk size for each VM (e.g., "30G"). (YOU NEED TO HAVE XFS FILESYSTEM and -D flag in the start.py command)
+- `unsafe_privileged`: If true, runs containers in privileged mode instead of using sysbox.
 - `debug`: Enable debug mode for the game server.
 - `tick_time`: The time in seconds for each tick.
 - `teams`: A list of teams with their respective configurations:

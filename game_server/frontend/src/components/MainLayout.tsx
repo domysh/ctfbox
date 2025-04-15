@@ -1,10 +1,10 @@
-import { AppShell, Box, Button, Container, Image, Loader, Space, Title } from "@mantine/core"
+import { AppShell, Box, Button, Container, Image, Loader, LoadingOverlay, Space, Title } from "@mantine/core"
 import { Link } from "react-router-dom"
 import { RulesContent } from "../pages/RulesContent"
 import { ScoreboardPage } from "../pages/ScoreboardPage"
 import { ScoreboardTeamDetail } from "../pages/ScoreboardTeamDetail"
 import { useStatusQuery } from "../scripts/query"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { NotFoundContent } from "./NotFoundContent"
 import { useGlobalState } from "../scripts/utils"
@@ -17,7 +17,7 @@ export const MainLayout = ({ page }: { page:Pages }) => {
     const queryClient = useQueryClient()
     const [firstLoading, setFirstLoading] = useState(false)
 
-    const { headerComponents, setHeaderComponents } = useGlobalState()
+    const { headerComponents, setHeaderComponents, loading } = useGlobalState()
 
     useEffect(()=>{
         if (!config.isFetching && oldRound != config.data?.current_round) {
@@ -34,6 +34,14 @@ export const MainLayout = ({ page }: { page:Pages }) => {
         return
       }
       setHeaderComponents(null)
+    }, [page])
+
+    const renderedPage = useMemo(() => {
+        if (page == "not-found") return <NotFoundContent key="not-found" />
+        if (page == "rules") return <RulesContent key="rules" />
+        if (page == "scoreboard") return <ScoreboardPage key="scoreboard" />
+        if (page == "scoreboard-team") return <ScoreboardTeamDetail key="scoreboard-team" />
+        return <Loader size={40} />
     }, [page])
 
     return <AppShell
@@ -69,19 +77,15 @@ export const MainLayout = ({ page }: { page:Pages }) => {
         </Box>
       </Box>
     </AppShell.Header>
-    <AppShell.Main>
+    <AppShell.Main style={{ position: 'relative' }}>
+        <LoadingOverlay 
+            visible={loading} 
+            zIndex={1000}
+            overlayProps={{ blur: 2 }}
+            loaderProps={{ size: 'xl', color: 'cyan' }}
+        />
         <Container fluid>
-            {
-                page == "not-found" ? <NotFoundContent />:
-                page == "rules" ? <RulesContent /> :
-                page == "scoreboard" ? <ScoreboardPage /> :
-                page == "scoreboard-team" ? <ScoreboardTeamDetail /> :
-                <Box className="center-flex-col" style={{ minHeight: "300px" }}>
-                    <Title order={1}>Loading...</Title>
-                    <Space h="lg" />
-                    <Loader size={40} />
-                </Box> 
-            }
+            {renderedPage}
         </Container>
     </AppShell.Main>
   </AppShell> 

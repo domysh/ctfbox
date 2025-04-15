@@ -1,7 +1,7 @@
 import { Box, Image, Paper, Pill, ScrollAreaAutosize, Space, Table, Text, Title } from "@mantine/core"
 import { useChartQuery, useStatusQuery, useScoreboardQuery, useTeamSolver, TeamStatusInfo, TeamScores } from "../scripts/query"
 import { ChartTooltipProps, LineChart } from "@mantine/charts"
-import { hashedColor, scoreBoardSortFunction } from "../scripts/utils"
+import { hashedColor, scoreBoardSortFunction, useGlobalState } from "../scripts/utils"
 import { MdGroups } from "react-icons/md";
 import { FaHashtag } from "react-icons/fa6";
 import { ImTarget } from "react-icons/im";
@@ -11,7 +11,7 @@ import { RoundCounter } from "../components/RoundCounter";
 import { useNavigate } from "react-router-dom";
 import { DiffArrow } from "../components/DiffArrow";
 import { FiExternalLink } from "react-icons/fi";
-import { useMemo, memo } from "react";
+import { useMemo, memo, useEffect } from "react";
 
 const ChartTooltip = memo(({ label, payload }: ChartTooltipProps) => {
     if (!payload) return null;
@@ -40,14 +40,18 @@ const TeamRow = memo(({ teamData, pos, services, teamInfo }: {
     teamInfo?: TeamStatusInfo
 }) => {
     const navigate = useNavigate()
+    const setLoading = useGlobalState(state => state.setLoading)
     const redirectProps = {
-        onClick: () => navigate(`/scoreboard/team/${teamInfo?.id}`),
+        onClick: () => {
+            setLoading(true)
+            navigate(`/scoreboard/team/${teamInfo?.id}`)
+        },
         style: { cursor: "pointer" }
     };
 
     return (
         <Table.Tr>
-            <Table.Td {...redirectProps}><Box className="center-flex"><Text>{pos + 1}</Text></Box></Table.Td>
+            <Table.Td {...redirectProps} px="lg"><Box className="center-flex"><Text>{pos + 1}</Text></Box></Table.Td>
             <Table.Td {...redirectProps}><Box className="center-flex" style={{ width: "100%"}}>
                 <Image
                     src={"/images/teams/"+(teamInfo?.image == "" || teamInfo == null ?"oasis-player.png":teamInfo.image)}
@@ -78,6 +82,7 @@ export const ScoreboardPage = () => {
     const configData = useStatusQuery()
     const teamSolver = useTeamSolver()
     const navigate = useNavigate()
+    const setLoading = useGlobalState(state => state.setLoading)
     
     const services = useMemo(() => 
         configData.data?.services.sort() ?? [], 
@@ -95,6 +100,14 @@ export const ScoreboardPage = () => {
     );
 
     const dataLoaded = chartData.isSuccess && scoreboardData.isSuccess && configData.isSuccess;
+
+    useEffect(() => {
+        if (!dataLoaded){
+            setLoading(true)
+        }else{
+            setLoading(false)
+        }
+    }, [dataLoaded, setLoading])
 
     const processedChartData = useMemo(() => 
         chartData.data?.map((round, i) => ({
@@ -148,10 +161,8 @@ export const ScoreboardPage = () => {
         return <Box>Error loading scoreboard data. Please try again.</Box>;
     }
 
-    if (!dataLoaded) {
-        return <Box>Loading...</Box>;
-    }
 
+    if (!dataLoaded) return <></>;
     return (
         <Box>
             <Title order={1} mb="60px" mt="xs">Scoreboard</Title>
@@ -176,7 +187,7 @@ export const ScoreboardPage = () => {
             <Space h="lg" />
             <ScrollAreaAutosize>
                 <Table highlightOnHover striped>
-                    <Table.Thead h={60}>
+                    <Table.Thead h={60} style={{ backgroundColor: "var(--mantine-color-dark-8)" }}>
                         <Table.Tr>
                             <Table.Th style={{ width: "10px"}}>
                                 <Box className="center-flex"><FaHashtag size={20} /></Box>

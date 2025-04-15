@@ -38,7 +38,7 @@ export const RoundCounter = () => {
         })
     }
 
-    const timerScheduler = useInterval(updateRoundInfo, 400, { autoInvoke: true })
+    const timerScheduler = useInterval(updateRoundInfo, 1000, { autoInvoke: true })
     
     useEffect(() => {
         timerScheduler.start()

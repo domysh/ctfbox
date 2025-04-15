@@ -2,12 +2,24 @@ import { Box, Code, Image, List, Space, Text, Title } from "@mantine/core"
 import { Link } from "react-router-dom"
 import { useStatusQuery } from "../scripts/query"
 import { secondDurationToString } from "../scripts/time"
+import { useEffect } from "react"
+import { useGlobalState } from "../scripts/utils"
 
 
 export const RulesContent = () => {
 
     const config = useStatusQuery()
     const nopTeam = config.data?.teams.find(team => team.nop)
+
+    const setLoading = useGlobalState(state => state.setLoading)
+
+    useEffect(() => {
+        if (config.isFetching && !config.isSuccess){
+            setLoading(true)
+        }else {
+            setLoading(false)
+        }
+    }, [config.isFetching, setLoading])
 
     return config.isSuccess?<Box>
         <Title order={1} mt="lg">Rules</Title>
@@ -93,6 +105,7 @@ for service in services:
 {`import requests
 
 TEAM_TOKEN = '4242424242424242'
+
 flags = ['AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=', 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=']
 
 print(requests.put('http://10.10.0.1:8080/flags', headers={
@@ -102,9 +115,9 @@ print(requests.put('http://10.10.0.1:8080/flags', headers={
         <Text mt="md">The request will return a json array, for each sent flag you will receive an object in the form of:</Text>
         <Code block mt="md">
 {`{
-    'msg': f'[{flag}] {message}',
-    'flag': flag,
-    'status': true/false    
+    "msg": f"[{flag}] {message}",
+    "flag": flag,
+    "status": "ACCEPTED"/"DENIED"/"RESUBMIT"/"ERROR"
 }`}
         </Code>
         <Text mt="md">Where message can be:</Text>
@@ -124,25 +137,15 @@ print(requests.put('http://10.10.0.1:8080/flags', headers={
         <Text mt="md">The request will return a json array, you will receive a json format like this:</Text>
         <Code block mt="md">
 {`{
-    "service1": {
-        "10.60.0.1":[
-            "flagid1",
-            "flagid2",
-            ...
-        ],
-        ...
-    },
-    "service2": {
-        "10.60.0.1":[
-            {
-                "content_id": 2,
-                "username": "username1"
-            },
-            ...
-        ],
-        ...
+  "foobar": {
+    "1": {
+      "5" : {
+        "flag_id_description": "flag_id_service_foobar_team_1_round_5"
+      }
     },
     ...
+  },
+  ...
 }`}
         </Code>
         <Text mt="md">The flag id format depends on the service, and could also not exist for a particular service</Text>
@@ -157,5 +160,5 @@ print(requests.put('http://10.10.0.1:8080/flags', headers={
             <List.Item>When in doubt, ask to the organizers</List.Item>
         </List>
         <Space h="xl" />
-    </Box>:<Box>Loading...</Box>
+    </Box>:null
 }

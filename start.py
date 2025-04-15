@@ -175,9 +175,6 @@ def composecmd(cmd, composefile=None):
     else:
         return puts("docker compose not found! please install docker compose!", color=colors.red)
 
-def image_ls():
-    return json.loads(cmd_check("docker image ls --format json", get_output=True))
-
 def check_already_running():
     return g.container_name in cmd_check(f'docker ps --filter "name=^{g.container_name}$"', get_output=True)
 

@@ -214,8 +214,12 @@ func serveSubmission() {
 	router.HandleFunc("/flags", submitFlags).Methods("PUT")
 
 	log.Noticef("Starting flag_submission on :8080")
+
+	// Applica middleware di compressione
+	compressedRouter := compressMiddleware(router)
+
 	srv := &http.Server{
-		Handler:      router,
+		Handler:      compressedRouter,
 		Addr:         "0.0.0.0:8080",
 		WriteTimeout: 30 * time.Second,
 		ReadTimeout:  30 * time.Second,

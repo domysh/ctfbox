@@ -30,12 +30,16 @@ export const scoreBoardSortFunction = (a: {score: number, team: string}, b: {sco
 }
 
 type GlobalState = {
-    headerComponents: React.ReactNode[]|null|React.ReactNode
-    setHeaderComponents: (components: React.ReactNode[]|null|React.ReactNode) => void
+    headerComponents: React.ReactNode[]|null|React.ReactNode,
+    setHeaderComponents: (components: React.ReactNode[]|null|React.ReactNode) => void,
+    loading: boolean,
+    setLoading: (loading: boolean) => void,
 }
 
 export const useGlobalState = create<GlobalState>()((set) => ({
     headerComponents: null,
     setHeaderComponents: (components) => set(() => ({ headerComponents: components })),
+    loading: false,
+    setLoading: (loading) => set(() => ({ loading }))
 }))
 

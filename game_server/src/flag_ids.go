@@ -420,8 +420,11 @@ func serveFlagIDs() {
 
 	log.Noticef("Starting flag_ids server on :8081")
 
+	// Applica middleware di compressione
+	compressedRouter := compressMiddleware(router)
+
 	srv := &http.Server{
-		Handler:      router,
+		Handler:      compressedRouter,
 		Addr:         "0.0.0.0:8081",
 		WriteTimeout: 30 * time.Second,
 		ReadTimeout:  30 * time.Second,

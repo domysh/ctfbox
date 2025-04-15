@@ -1,4 +1,4 @@
-import { ActionIcon, Box, Pill, Space, Table, Text, Title } from "@mantine/core"
+import { ActionIcon, Box, Pill, ScrollAreaAutosize, Space, Table, Text, Title } from "@mantine/core"
 import { TeamScores, useScoreboardQuery, useStatusQuery, useTeamQuery, useTeamSolver } from "../scripts/query"
 import { LineChart } from "@mantine/charts"
 import { hashedColor, scoreBoardSortFunction, useGlobalState } from "../scripts/utils"
@@ -11,7 +11,7 @@ import { RoundCounter } from "../components/RoundCounter";
 import { useNavigate, useParams } from "react-router-dom";
 import { NotFoundContent } from "../components/NotFoundContent";
 import { DiffArrow } from "../components/DiffArrow";
-import { useEffect, useMemo, memo } from "react";
+import { useEffect, useMemo, memo, useState, useRef } from "react";
 import { IoMdArrowRoundBack } from "react-icons/io";
 
 const TeamRoundRow = memo(({ round, currentTeam, services }:{
@@ -21,7 +21,7 @@ const TeamRoundRow = memo(({ round, currentTeam, services }:{
 }) => {
     return (
         <Table.Tr>
-            <Table.Td><Box className="center-flex"><Text>{round.round}</Text></Box></Table.Td>
+            <Table.Td px="lg"><Box className="center-flex"><Text>{round.round}</Text></Box></Table.Td>
             <Table.Td><Box className="center-flex-col">
                 <Text>{currentTeam?.name ?? "Unknown Team"}</Text>
                 <Space h="3px" />
@@ -44,7 +44,7 @@ const TeamRoundRow = memo(({ round, currentTeam, services }:{
 
 const TableHeader = memo(({ services }:{ services: {name:string}[]}) => (
     <Table.Thead h={60}>
-        <Table.Tr>
+        <Table.Tr style={{ backgroundColor: "var(--mantine-color-dark-8)"}}>
             <Table.Th style={{ width: "10px"}}>
                 <Box className="center-flex"><FaHashtag size={20} /></Box>
             </Table.Th>
@@ -106,7 +106,11 @@ export const ScoreboardTeamDetail = () => {
     const scoreboardData = useScoreboardQuery();
     const navigate = useNavigate();
     const setHeaderComponents = useGlobalState(ele => ele.setHeaderComponents);
-
+    
+    // State per lo scrolling incrementale
+    const [visibleItems, setVisibleItems] = useState<number>(20);
+    const loaderRef = useRef<HTMLDivElement>(null);
+    
     // Memoize services with proper dependency
     const services = useMemo(() => 
         configData.data?.services.sort() ?? [], 
@@ -114,17 +118,20 @@ export const ScoreboardTeamDetail = () => {
     );
 
     // Memoize position with proper dependency
-    const position = useMemo(() => 
-        scoreboardData.data?.scores
+    const position = useMemo(() => {
+        const score = scoreboardData.data?.scores
             .sort(scoreBoardSortFunction)
-            .findIndex(item => item.team === teamIp)??0 + 1,
-        [scoreboardData.data?.scores, teamIp]
-    );
+        if (!score) return undefined;
+        const pos = score.findIndex(item => item.team === teamIp)
+        return pos !== -1 ? pos + 1 : undefined;
+    },[scoreboardData.isFetching, teamIp]);
 
     const currentTeam = useMemo(() => 
         teamSolver(teamIp),
         [teamSolver, teamIp]
     );
+
+    const setLoading = useGlobalState(state => state.setLoading)
 
     // Better error handling for sorting
     const sortedTeamData = useMemo(() => 
@@ -132,9 +139,9 @@ export const ScoreboardTeamDetail = () => {
         [teamData.data]
     );
 
-    // Memoize rows with proper dependencies
+    // Memoize rows with proper dependencies e applica paginazione
     const rows = useMemo(() => 
-        sortedTeamData.map(round => (
+        sortedTeamData.slice(0, visibleItems).map(round => (
             <TeamRoundRow 
                 key={round.round} 
                 round={round} 
@@ -142,7 +149,7 @@ export const ScoreboardTeamDetail = () => {
                 services={services} 
             />
         )),
-        [sortedTeamData, currentTeam, services]
+        [sortedTeamData, currentTeam, services, visibleItems]
     );
 
     // Calculate chart data points with proper dependencies
@@ -178,32 +185,59 @@ export const ScoreboardTeamDetail = () => {
         };
     }, [teamData.data]);
 
-    const navigateBack = () => navigate('/scoreboard/');
+    const navigateBack = () => {
+        setLoading(true)
+        navigate('/scoreboard/');
+    }
 
     // Set header component with proper dependencies
     useEffect(() => {
-        if (currentTeam && typeof position === 'number') {
-            setHeaderComponents(
-                <HeaderComponent 
-                    position={position} 
-                    teamName={currentTeam.name} 
-                    navigateBack={navigateBack} 
-                />
-            );
-        }
-        
-        return () => setHeaderComponents(null);
+        setHeaderComponents(
+            <HeaderComponent 
+                position={position} 
+                teamName={currentTeam?.name??"..."} 
+                navigateBack={navigateBack} 
+            />
+        );
     }, [position, currentTeam, setHeaderComponents]);
 
     const dataLoaded = teamData.isSuccess && configData.isSuccess;
+
+    useEffect(() => {
+        if (!dataLoaded){
+            setLoading(true)
+        }else{
+            setLoading(false)
+        }
+    }, [dataLoaded, setLoading])
+
+    useEffect(() => {
+        const currentLoaderRef = loaderRef.current;
+        
+        if (!currentLoaderRef || visibleItems >= sortedTeamData.length) return;
+        
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const first = entries[0];
+                if (first.isIntersecting) {
+                    setVisibleItems(prev => Math.min(prev + 20, sortedTeamData.length));
+                }
+            },
+            { threshold: 0 }
+        );
+        
+        observer.observe(currentLoaderRef);
+        
+        return () => {
+            observer.disconnect();
+        };
+    }, [loaderRef, visibleItems, sortedTeamData.length]);
 
     if (teamData.isError || configData.isError) {
         return <Box>Error loading team data. Please try again.</Box>;
     }
 
-    if (!dataLoaded) {
-        return <Box>Loading...</Box>;
-    }
+    if (!dataLoaded) return <></>
 
     if (currentTeam == null && configData.isSuccess) {
         return <NotFoundContent />;
@@ -233,12 +267,22 @@ export const ScoreboardTeamDetail = () => {
 
             <RoundCounter />
             <Space h="lg" />
-            <Box style={{ overflow: 'auto', width: '100%' }}>
-                <Table striped>
+            
+            <ScrollAreaAutosize>
+                <Table striped highlightOnHover>
                     <TableHeader services={services} />
                     <Table.Tbody>{rows}</Table.Tbody>
                 </Table>
-            </Box>
+                {visibleItems < sortedTeamData.length && (
+                    <Box 
+                        py="md" 
+                        ta="center"
+                        ref={loaderRef}
+                    >
+                        <Text size="sm" c="dimmed">Loading more rounds...</Text>
+                    </Box>
+                )}
+            </ScrollAreaAutosize>
         </Box>
     );
 };
