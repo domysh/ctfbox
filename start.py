@@ -428,20 +428,27 @@ def clear_data(
     remove_gameserver_data=True  
 ):
     if remove_gameserver_data:
+        puts("Removing databse volume", color=colors.yellow)
         remove_database_volume()
     if remove_wireguard:
+        puts("Removing wireguard configs", color=colors.yellow)
         for file in os.listdir("./wireguard"):
             if file.startswith("conf"):
                 shutil.rmtree(f"./wireguard/{file}", ignore_errors=True)
     if remove_config:
+        puts("Removing config.json", color=colors.yellow)
         try_to_remove(g.config_file)
     if remove_prebuilded_container:
+        puts("Removing prebuilded image", color=colors.yellow)
         remove_prebuilded()
     if remove_prebuilder_image:
+        puts("Removing prebuilder image", color=colors.yellow)
         remove_prebuilder()
     if remove_prebuilt_image:
+        puts("Removing prebuilt image", color=colors.yellow)
         remove_prebuilt()
     if remove_checkers_data:
+        puts("Removing checkers data", color=colors.yellow)
         for service in os.listdir("./game_server/checkers"):
             shutil.rmtree(f"./game_server/checkers/{service}/flag_ids", ignore_errors=True)
 
