@@ -15,8 +15,6 @@ import { MainLayout } from './components/MainLayout';
 const queryClient = new QueryClient()
 
 export default function App() {
-
-
   return <MantineProvider defaultColorScheme='dark'>
     <ModalsProvider>
       <QueryClientProvider client={queryClient}>

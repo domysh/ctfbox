@@ -3,9 +3,17 @@ import { useQuery } from "@tanstack/react-query";
 
 const baseUrl = import.meta.env.DEV?"http://127.0.0.1:8888":""
 
+export type TeamStatusInfo = {
+    id: number,
+    name: string,
+    shortname: string,
+    host: string,
+    image: string,
+    nop: boolean,
+}
 
 type Status = {
-    teams: {id: number, name: string, shortname:string, host: string, image: string, nop: boolean}[],
+    teams: TeamStatusInfo[],
     services: {name: string}[],
     start: string,
     end?: string,
@@ -30,12 +38,22 @@ export type TeamServiceScore = {
     put_flag_msg: string,
     get_flag: number,
     get_flag_msg: string,
+    offensive_points: number,
+    defensive_points: number,
     sla_check: number,
     sla_check_msg: string,
-    final_score: number
+    final_score: number,
+    diff_stolen_flags: number,
+    diff_lost_flags: number,
+    diff_offensive_points: number,
+    diff_defense_points: number,
+    diff_sla: number,
+    diff_score: number,
+    diff_final_score: number,
+
 }
 
-type TeamScores = {
+export type TeamScores = {
     team: string,
     score: number,
     services: TeamServiceScore[]

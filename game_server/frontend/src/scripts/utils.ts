@@ -1,4 +1,4 @@
-
+import { create } from 'zustand'
 
 export function stringToHash(string:string) {
 
@@ -22,3 +22,20 @@ export const hashedColor = (string:string) => {
 export const GRAPH_COLOR_PALETTE = [
     "red", "pink", "grape", "violet", "indigo", "blue", "cyan", "teal", "green", "lime", "yellow", "orange"
 ]
+
+export const scoreBoardSortFunction = (a: {score: number, team: string}, b: {score: number, team: string}) => {
+    const scoreDiff = b.score-a.score
+    if (scoreDiff !== 0) return scoreDiff
+    return a.team.localeCompare(b.team)
+}
+
+type GlobalState = {
+    headerComponents: React.ReactNode[]|null|React.ReactNode
+    setHeaderComponents: (components: React.ReactNode[]|null|React.ReactNode) => void
+}
+
+export const useGlobalState = create<GlobalState>()((set) => ({
+    headerComponents: null,
+    setHeaderComponents: (components) => set(() => ({ headerComponents: components })),
+}))
+

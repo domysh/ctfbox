@@ -1,10 +1,12 @@
-import { Box, Code, Space, Tooltip } from "@mantine/core";
+import { Box, Code, Divider, Space, Tooltip, Text } from "@mantine/core";
 import { TeamServiceScore } from "../scripts/query";
 import { ImTarget } from "react-icons/im";
 import { FaCircle, FaGlobe, FaPlug, FaPlus, FaWrench } from "react-icons/fa6";
 import { FaSearch, FaShieldAlt } from "react-icons/fa";
 import { IoSpeedometer } from "react-icons/io5";
 import { modals } from "@mantine/modals";
+import { FaStar } from "react-icons/fa";
+import { DiffArrow } from "./DiffArrow";
 
 
 export const ServiceScoreData = ({ score }: { score?: TeamServiceScore }) => {
@@ -23,51 +25,77 @@ export const ServiceScoreData = ({ score }: { score?: TeamServiceScore }) => {
     }
 
     return <>
-        <Box display="flex" style={{ alignItems: "center" }}>
-            <FaGlobe size={16} /><Space w="xs" />{score.final_score.toFixed(2)}
+        <Box display="flex" style={{ alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <Box display="flex" style={{ alignItems: "center", textWrap: "nowrap" }} pr="xl">
+                <FaGlobe size={16} /><Space w="xs" /><Text>{score.final_score.toFixed(2)}</Text>
+            </Box>
+            <DiffArrow diff={score.diff_final_score} />
         </Box>
-        <Box display="flex" style={{ alignItems: "center" }}>
-            <ImTarget size={16} /><Space w="xs" />{score.stolen_flags==0?"":"+"}{score.stolen_flags}
+        <Divider my={6} />
+        <Box display="flex" style={{ alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <Box display="flex" style={{ alignItems: "center", textWrap: "nowrap" }} pr="xl">
+                <FaStar size={16} /><Space w="xs" /><Text>{score.score.toFixed(2)}</Text>
+            </Box>
+            <DiffArrow diff={score.diff_score} />
         </Box>
-        <Box display="flex" style={{ alignItems: "center" }}>
-            <FaShieldAlt size={16} /><Space w="xs" />{score.lost_flags==0?"":"-"}{score.lost_flags}
+        <Box display="flex" style={{ alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <Box display="flex" style={{ alignItems: "center", textWrap: "nowrap" }} pr="xl">
+                <ImTarget size={16} /><Space w="xs" /> <Text>{score.offensive_points==0?"":"+"}{score.offensive_points.toFixed(2)} ({score.stolen_flags==0?"":"+"}{score.stolen_flags})</Text>
+            </Box>
+            <DiffArrow diff={score.diff_offensive_points} text={`${score.diff_offensive_points==0?"":"+"}${score.diff_offensive_points.toFixed(2)} (${score.diff_stolen_flags==0?"":"+"}${score.diff_stolen_flags})`} />
         </Box>
-        <Box display="flex" style={{ alignItems: "center" }}>
-            <IoSpeedometer size={16} /><Space w="xs" />{(score.sla*100).toFixed(2)}%<Space w="xs" />
-            <FaCircle size={16} style={{ color: slaOk ? "green" : "red" }} />
+        <Box display="flex" style={{ alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <Box display="flex" style={{ alignItems: "center", textWrap: "nowrap" }} pr="xl">
+                <FaShieldAlt size={16} /><Space w="xs" /> <Text>{score.defensive_points.toFixed(2)} ({score.lost_flags==0?"":"-"}{score.lost_flags})</Text>
+            </Box>
+            <DiffArrow diff={score.diff_defense_points} text={`${score.diff_defense_points.toFixed(2)} (${score.diff_lost_flags==0?"":"-"}${score.diff_lost_flags})`} />
         </Box>
-        <Box display="flex" style={{ alignItems: "center" }}>
-            <FaWrench size={16} /><Space w="xs" /><Box p={3} className="center-flex" style={{ borderRadius: "100px" }}>
-                <Tooltip label={"SLA CHECK: "+score.sla_check_msg.substring(0,150)} position="top" withArrow color={score.sla_check == 101 ? "green": "red"}>
-                    <Box
-                        py={4} px={10}
-                        style={{ backgroundColor: score.sla_check == 101 ? "green": "red", borderTopLeftRadius: 6, borderBottomLeftRadius: 6 }}
-                        className="center-flex"
-                        onClick={()=>showDetailModal(`SLA CHECK on ${score.service}`, score.sla_check_msg)}
-                    >
-                        <FaPlug size={14}/>
+        <Box display="flex" style={{ alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <Box display="flex" style={{ alignItems: "center", textWrap: "nowrap" }} pr="xl">
+                <IoSpeedometer size={16} /><Space w="xs" /><Text>{(score.sla*100).toFixed(2)}%</Text><Space w="xs" />
+                <Tooltip label={`Rounds up ${score.ticks_up}/${score.ticks_down+score.ticks_up}`} position="top" withArrow>
+                    <Box>
+                        <FaCircle size={16} style={{ color: slaOk ? "green" : "red" }} />
                     </Box>
                 </Tooltip>
-                <Tooltip label={"PUT FLAG: "+score.put_flag_msg.substring(0,150)} position="top" withArrow color={score.put_flag == 101 ? "green": "red"}>
-                    <Box
-                        py={4} px={10}
-                        style={{ backgroundColor: score.put_flag == 101 ? "green": "red"}}
-                        className="center-flex"
-                        onClick={()=>showDetailModal(`PUT FLAG on ${score.service}`, score.put_flag_msg)}
-                    >
-                        <FaPlus size={14} />
-                    </Box> 
-                </Tooltip>
-                <Tooltip label={"GET FLAG: "+score.get_flag_msg.substring(0,150)} position="top" withArrow color={score.get_flag == 101 ? "green": "red"}>
-                    <Box
-                        py={4} px={12}
-                        style={{ backgroundColor: score.get_flag == 101 ? "green": "red", borderTopRightRadius: 6, borderBottomRightRadius: 6 }}
-                        className="center-flex"
-                        onClick={()=>showDetailModal(`GET FLAG on ${score.service}`, score.get_flag_msg)}
-                    >
-                        <FaSearch size={14} />
-                    </Box>
-                </Tooltip>
+            </Box>
+            <DiffArrow diff={Math.round(score.diff_sla*10000)/100} />
+        </Box>
+        <Box display="flex" style={{ alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <Box display="flex" style={{ alignItems: "center", textWrap: "nowrap" }}>
+                <FaWrench size={16} /><Space w="xs" />
+                <Box p={3} className="center-flex" style={{ borderRadius: "100px" }}>
+                    <Tooltip label={"SLA CHECK: "+score.sla_check_msg.substring(0,150)} position="top" withArrow color={score.sla_check == 101 ? "green": "red"}>
+                        <Box
+                            py={4} px={10}
+                            style={{ backgroundColor: score.sla_check == 101 ? "green": "red", borderTopLeftRadius: 6, borderBottomLeftRadius: 6 }}
+                            className="center-flex"
+                            onClick={()=>showDetailModal(`SLA CHECK on ${score.service}`, score.sla_check_msg)}
+                        >
+                            <FaPlug size={14}/>
+                        </Box>
+                    </Tooltip>
+                    <Tooltip label={"PUT FLAG: "+score.put_flag_msg.substring(0,150)} position="top" withArrow color={score.put_flag == 101 ? "green": "red"}>
+                        <Box
+                            py={4} px={10}
+                            style={{ backgroundColor: score.put_flag == 101 ? "green": "red"}}
+                            className="center-flex"
+                            onClick={()=>showDetailModal(`PUT FLAG on ${score.service}`, score.put_flag_msg)}
+                        >
+                            <FaPlus size={14} />
+                        </Box> 
+                    </Tooltip>
+                    <Tooltip label={"GET FLAG: "+score.get_flag_msg.substring(0,150)} position="top" withArrow color={score.get_flag == 101 ? "green": "red"}>
+                        <Box
+                            py={4} px={12}
+                            style={{ backgroundColor: score.get_flag == 101 ? "green": "red", borderTopRightRadius: 6, borderBottomRightRadius: 6 }}
+                            className="center-flex"
+                            onClick={()=>showDetailModal(`GET FLAG on ${score.service}`, score.get_flag_msg)}
+                        >
+                            <FaSearch size={14} />
+                        </Box>
+                    </Tooltip>
+                </Box>
             </Box>
         </Box>
     </>

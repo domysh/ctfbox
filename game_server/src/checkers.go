@@ -382,5 +382,8 @@ func checkerRoutine() {
 		currentRound++
 		waitForRound(currentRound)
 		db.SetExposedRound(int64(currentRound - 1))
+
+		// Invalida tutte le cache dopo l'aggiornamento del round
+		invalidateAllCaches()
 	}
 }

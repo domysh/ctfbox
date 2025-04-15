@@ -119,7 +119,7 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_start.add_argument('--disk-limit', '-D', action='store_true', help='Limit disk size for VMs (NEED TO ENABLE QUOTAS)')
 
     #Stop Command
-    parser_stop = subcommands.add_parser('stop', help=f'Stop {g.name}')
+    subcommands.add_parser('stop', help=f'Stop {g.name}')
     
     #Restart Command
     parser_restart = subcommands.add_parser('restart', help=f'Restart {g.name}')
@@ -138,7 +138,6 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_clear.add_argument('--prebuilt-image', '-I', action='store_true', help='Clear prebuilt image')
     parser_clear.add_argument('--wireguard', '-W', action='store_true', help='Clear wireguard data')
     parser_clear.add_argument('--checkers-data', '-C', action='store_true', help='Clear checkers data')
-    parser_clear.add_argument('--gameserver-config', '-S', action='store_true', help='Clear gameserver config')
     parser_clear.add_argument('--gameserver-data', '-G', action='store_true', help='Clear gameserver data')
     
     args = parser.parse_args(args=args_to_parse)

@@ -7,6 +7,7 @@ import { useStatusQuery } from "../scripts/query"
 import { useEffect, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { NotFoundContent } from "./NotFoundContent"
+import { useGlobalState } from "../scripts/utils"
 
 type Pages = "rules" | "scoreboard" | "scoreboard-team" | "not-found" | "loading"
 
@@ -14,6 +15,9 @@ export const MainLayout = ({ page }: { page:Pages }) => {
     const config = useStatusQuery()
     const [oldRound, setOldRound] = useState(-1)
     const queryClient = useQueryClient()
+    const [firstLoading, setFirstLoading] = useState(false)
+
+    const { headerComponents, setHeaderComponents } = useGlobalState()
 
     useEffect(()=>{
         if (!config.isFetching && oldRound != config.data?.current_round) {
@@ -23,6 +27,14 @@ export const MainLayout = ({ page }: { page:Pages }) => {
             })
         }
     }, [config.isFetching])
+
+    useEffect(()=>{
+      if (!firstLoading){
+        setFirstLoading(true)
+        return
+      }
+      setHeaderComponents(null)
+    }, [page])
 
     return <AppShell
         header={{ height: 60 }}
@@ -36,6 +48,7 @@ export const MainLayout = ({ page }: { page:Pages }) => {
           Oasis
         </Title>
         <Box flex={1} />
+        {headerComponents}
         <Box className="center-flex">
           <Title order={5}>
             <Link to="/rules">
@@ -57,7 +70,7 @@ export const MainLayout = ({ page }: { page:Pages }) => {
       </Box>
     </AppShell.Header>
     <AppShell.Main>
-        <Container size="xl">
+        <Container fluid>
             {
                 page == "not-found" ? <NotFoundContent />:
                 page == "rules" ? <RulesContent /> :

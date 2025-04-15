@@ -1,4 +1,4 @@
-import { Progress } from "@mantine/core"
+import { Progress, Text } from "@mantine/core"
 import { useStatusQuery } from "../scripts/query"
 import { useInterval } from "@mantine/hooks"
 import { useEffect, useState } from "react"
@@ -38,9 +38,8 @@ export const RoundCounter = () => {
         })
     }
 
-    const timerScheduler = useInterval(updateRoundInfo, 1000, { autoInvoke: true })
+    const timerScheduler = useInterval(updateRoundInfo, 400, { autoInvoke: true })
     
-
     useEffect(() => {
         timerScheduler.start()
         return () => timerScheduler.stop()
@@ -50,7 +49,7 @@ export const RoundCounter = () => {
     useEffect(updateRoundInfo, [config.isFetching])
 
     return config.isSuccess?<>
-        <small>{ !roundInfo.hasStarted ? "Game has not started yet" :roundInfo.hasEnded ? "Game has ended!" : roundInfo.currentRound==-1 ? "Game has started!" : `Round: ${config.data.current_round} - next round: ${secondDurationToString(roundInfo.timeForNextRound)}` }</small>
+        <Text size="sm">{ !roundInfo.hasStarted ? "Game has not started yet" :roundInfo.hasEnded ? "Game has ended!" : roundInfo.currentRound==-1 ? "Game has started!" : `Round: ${config.data.current_round} - next round: ${secondDurationToString(roundInfo.timeForNextRound)}` }</Text>
         <Progress size="lg" value={roundInfo.hasEnded ? 100 : config.data.current_round >= 0?roundInfo.currentRoundPercent:0} color="red"/>
     </>:<Progress size="lg" color="red" value={0}/>
 }
