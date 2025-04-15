@@ -141,21 +141,6 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_clear.add_argument('--gameserver-data', '-G', action='store_true', help='Clear gameserver data')
     
     args = parser.parse_args(args=args_to_parse)
-    
-    if "privileged" not in args:
-        args.privileged = False
-        
-    if "expose_gameserver" not in args:
-        args.expose_gameserver = False
-    
-    if "config_only" not in args:
-        args.config_only = False
-        
-    if "gameserver_port" not in args:
-        args.gameserver_port = "127.0.0.1:8888"
-    
-    if "disk_limit" not in args:
-        args.disk_limit = False
 
     return args
 
@@ -609,11 +594,12 @@ def read_config():
 
 
 def main():
-    if args.config_only:
-        config = config_input()
-        create_config(config)
-        puts(f"Config file generated!, you can customize it by editing {g.config_file}", color=colors.green)
-        return
+    if args.command == "start":
+        if args.config_only:
+            config = config_input()
+            create_config(config)
+            puts(f"Config file generated!, you can customize it by editing {g.config_file}", color=colors.green)
+            return
 
     if not cmd_check("docker --version"):
         puts("docker not found! please install docker!", color=colors.red)
@@ -696,7 +682,7 @@ def main():
                 if check_already_running():
                     puts(f"{g.name} is running! please stop it before clearing the data", color=colors.red)
                     exit(1)
-                if not any(vars(args).values()):
+                if True not in vars(args).values():
                     clear_data(remove_config=False)
                 if args.all:
                     puts("This will clear everything, EVEN THE CONFIG JSON, are you sure? (y/N): ", end="")
