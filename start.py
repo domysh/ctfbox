@@ -603,6 +603,9 @@ def read_config():
 def main():
     if args.command == "start":
         if args.config_only:
+            if config_exists():
+                puts(f"Config file already exists! please edit {g.config_file}", color=colors.red)
+                return
             config = config_input()
             create_config(config)
             puts(f"Config file generated!, you can customize it by editing {g.config_file}", color=colors.green)
