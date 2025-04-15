@@ -139,6 +139,9 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_clear.add_argument('--wireguard', '-W', action='store_true', help='Clear wireguard data')
     parser_clear.add_argument('--checkers-data', '-C', action='store_true', help='Clear checkers data')
     parser_clear.add_argument('--gameserver-data', '-G', action='store_true', help='Clear gameserver data')
+
+    #Status Command
+    subcommands.add_parser('status', help='Show status')
     
     args = parser.parse_args(args=args_to_parse)
 
@@ -715,6 +718,9 @@ def main():
                 if args.gameserver_data:
                     clear_data_only(remove_gameserver_data=True)
                 puts("Whatever you specified has been cleared!", color=colors.green, is_bold=True)
+            case "status":
+                if check_already_running():
+                    puts(f"{g.name} is running!", color=colors.green)
 
     
     if "logs" in args and args.logs:
