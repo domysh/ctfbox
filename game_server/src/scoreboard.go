@@ -54,7 +54,7 @@ func invalidateAllCaches() {
 		cache.mutex.Unlock()
 	}
 	teamCachesMutex.Unlock()
-
+	invalidateFlagIDsCache()
 	log.Debugf("All API caches invalidated")
 }
 

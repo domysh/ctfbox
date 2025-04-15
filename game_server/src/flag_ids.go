@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,10 +9,58 @@ import (
 	"game/log"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
 )
+
+// Struttura per la cache completa dei flag ID
+var (
+	// Mantiene la cache completa come struttura dati
+	flagIDsCompleteCache struct {
+		sync.RWMutex
+		data      map[string]map[string]map[string]interface{} // struttura dati in memoria
+		jsonData  []byte                                       // rappresentazione JSON per risposta rapida
+		timestamp time.Time                                    // per tracciare l'ultimo aggiornamento
+	}
+
+	// Cache per risposte filtrate già generate
+	flagIDsFilteredCache struct {
+		sync.RWMutex
+		cache map[string][]byte
+	}
+)
+
+// Funzione per inizializzare le cache
+func init() {
+	flagIDsCompleteCache.data = make(map[string]map[string]map[string]interface{})
+	flagIDsFilteredCache.cache = make(map[string][]byte)
+}
+
+// Funzione per generare la chiave di cache basata sui parametri di query
+func getFlagIDsCacheKey(service, team string, round *uint) string {
+	if round == nil {
+		return fmt.Sprintf("%s:%s:nil", service, team)
+	}
+	return fmt.Sprintf("%s:%s:%d", service, team, *round)
+}
+
+// Funzione per invalidare la cache dei flag IDs
+func invalidateFlagIDsCache() {
+	// Azzera la cache completa
+	flagIDsCompleteCache.Lock()
+	flagIDsCompleteCache.data = make(map[string]map[string]map[string]interface{})
+	flagIDsCompleteCache.jsonData = nil
+	flagIDsCompleteCache.Unlock()
+
+	// Azzera la cache filtrata
+	flagIDsFilteredCache.Lock()
+	flagIDsFilteredCache.cache = make(map[string][]byte)
+	flagIDsFilteredCache.Unlock()
+
+	log.Debugf("Flag IDs cache invalidated")
+}
 
 type FlagIDSub struct {
 	Token     string      `json:"token"`
@@ -64,16 +113,178 @@ func submitFlagID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Invalida la cache quando viene aggiunto un nuovo flag ID
+	invalidateFlagIDsCache()
+
 	log.Debugf("Received flag_id %v from %v:%v (%v) in round %v",
 		sub.FlagID, sub.TeamID, team, sub.ServiceID, sub.Round)
+}
+
+// Funzione per ottenere o aggiornare la cache completa
+func getOrUpdateCompleteCache(ctx context.Context, currentRound int) (map[string]map[string]map[string]interface{}, []byte, error) {
+	flagIDsCompleteCache.RLock()
+	// Verifica se la cache è già popolata
+	if flagIDsCompleteCache.jsonData != nil {
+		data := flagIDsCompleteCache.data
+		jsonData := flagIDsCompleteCache.jsonData
+		flagIDsCompleteCache.RUnlock()
+		return data, jsonData, nil
+	}
+	flagIDsCompleteCache.RUnlock()
+
+	// Dobbiamo ricostruire la cache
+	flagIDsCompleteCache.Lock()
+	defer flagIDsCompleteCache.Unlock()
+
+	// Controlla nuovamente dopo aver ottenuto il lock esclusivo
+	if flagIDsCompleteCache.jsonData != nil {
+		return flagIDsCompleteCache.data, flagIDsCompleteCache.jsonData, nil
+	}
+
+	// Recupera tutti i flag validi dal database
+	validFlags := make([]db.Flag, 0)
+	if err := conn.NewSelect().Model(&validFlags).Where("? - round < ? and round <= ?", currentRound, conf.FlagExpireTicks, currentRound).Scan(ctx); err != nil {
+		return nil, nil, err
+	}
+
+	// Costruisci la struttura dati in memoria
+	flagIDs := make(map[string]map[string]map[string]interface{})
+	for _, flag := range validFlags {
+		if flag.ExternalFlagId.K == nil {
+			continue
+		}
+		if _, ok := flagIDs[flag.Service]; !ok {
+			flagIDs[flag.Service] = make(map[string]map[string]interface{})
+		}
+		flagTeamId := fmt.Sprintf("%d", extractTeamID(flag.Team))
+		if _, ok := flagIDs[flag.Service][flagTeamId]; !ok {
+			flagIDs[flag.Service][flagTeamId] = make(map[string]interface{}, 0)
+		}
+
+		flagIDs[flag.Service][flagTeamId][fmt.Sprintf("%d", flag.Round)] = flag.ExternalFlagId.K
+	}
+
+	// Genera la rappresentazione JSON
+	var responseBuffer bytes.Buffer
+	enc := json.NewEncoder(&responseBuffer)
+	if err := enc.Encode(flagIDs); err != nil {
+		return nil, nil, err
+	}
+
+	// Aggiorna la cache
+	flagIDsCompleteCache.data = flagIDs
+	flagIDsCompleteCache.jsonData = responseBuffer.Bytes()
+	flagIDsCompleteCache.timestamp = time.Now()
+
+	return flagIDs, flagIDsCompleteCache.jsonData, nil
+}
+
+// Funzione per filtrare i dati dalla cache completa
+func filterCacheData(completeData map[string]map[string]map[string]interface{},
+	serviceFilter string, teamFilter string, roundFilter *uint) map[string]map[string]map[string]interface{} {
+
+	result := make(map[string]map[string]map[string]interface{})
+
+	// Filtra per servizio se specificato
+	if serviceFilter != "" {
+		if serviceData, ok := completeData[serviceFilter]; ok {
+			result[serviceFilter] = make(map[string]map[string]interface{})
+
+			// Filtra per team se specificato
+			if teamFilter != "" {
+				teamID := fmt.Sprintf("%d", extractTeamID(teamFilter))
+				if teamData, ok := serviceData[teamID]; ok {
+					result[serviceFilter][teamID] = make(map[string]interface{})
+
+					// Filtra per round se specificato
+					if roundFilter != nil {
+						roundStr := fmt.Sprintf("%d", *roundFilter)
+						if flagValue, ok := teamData[roundStr]; ok {
+							result[serviceFilter][teamID][roundStr] = flagValue
+						}
+					} else {
+						// Copia tutti i round
+						for round, flagValue := range teamData {
+							result[serviceFilter][teamID][round] = flagValue
+						}
+					}
+				}
+			} else {
+				// Nessun filtro team, copia tutti i team per questo servizio
+				for teamID, teamData := range serviceData {
+					result[serviceFilter][teamID] = make(map[string]interface{})
+
+					// Filtra per round se specificato
+					if roundFilter != nil {
+						roundStr := fmt.Sprintf("%d", *roundFilter)
+						if flagValue, ok := teamData[roundStr]; ok {
+							result[serviceFilter][teamID][roundStr] = flagValue
+						}
+					} else {
+						// Copia tutti i round
+						for round, flagValue := range teamData {
+							result[serviceFilter][teamID][round] = flagValue
+						}
+					}
+				}
+			}
+		}
+	} else if teamFilter != "" {
+		// Filtro solo per team
+		teamID := fmt.Sprintf("%d", extractTeamID(teamFilter))
+
+		// Cerca in tutti i servizi
+		for serviceName, serviceData := range completeData {
+			if teamData, ok := serviceData[teamID]; ok {
+				if _, ok := result[serviceName]; !ok {
+					result[serviceName] = make(map[string]map[string]interface{})
+				}
+				result[serviceName][teamID] = make(map[string]interface{})
+
+				// Filtra per round se specificato
+				if roundFilter != nil {
+					roundStr := fmt.Sprintf("%d", *roundFilter)
+					if flagValue, ok := teamData[roundStr]; ok {
+						result[serviceName][teamID][roundStr] = flagValue
+					}
+				} else {
+					// Copia tutti i round
+					for round, flagValue := range teamData {
+						result[serviceName][teamID][round] = flagValue
+					}
+				}
+			}
+		}
+	} else if roundFilter != nil {
+		// Filtro solo per round
+		roundStr := fmt.Sprintf("%d", *roundFilter)
+
+		// Cerca in tutti i servizi e team
+		for serviceName, serviceData := range completeData {
+			for teamID, teamData := range serviceData {
+				if flagValue, ok := teamData[roundStr]; ok {
+					if _, ok := result[serviceName]; !ok {
+						result[serviceName] = make(map[string]map[string]interface{})
+					}
+					if _, ok := result[serviceName][teamID]; !ok {
+						result[serviceName][teamID] = make(map[string]interface{})
+					}
+					result[serviceName][teamID][roundStr] = flagValue
+				}
+			}
+		}
+	} else {
+		// Nessun filtro, ritorna tutto
+		return completeData
+	}
+
+	return result
 }
 
 func retriveFlagIDs(w http.ResponseWriter, r *http.Request) {
 	var ctx context.Context = context.Background()
 	currentRound := db.GetExposedRound()
 	query := r.URL.Query()
-
-	enc := json.NewEncoder(w)
 
 	services, ok_service := query["service"]
 	if ok_service {
@@ -138,51 +349,67 @@ func retriveFlagIDs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	validFlags := make([]db.Flag, 0)
-	var err error = nil
-	if !ok_service && !ok_team {
-		err = conn.NewSelect().Model(&validFlags).Where("? - round < ? and round <= ?", currentRound, conf.FlagExpireTicks, currentRound).Scan(ctx)
-	} else if !ok_service {
-		err = conn.NewSelect().Model(&validFlags).Where("team = ? and ? - round < ? and round <= ?", team, currentRound, conf.FlagExpireTicks, currentRound).Scan(ctx)
-	} else if !ok_team {
-		err = conn.NewSelect().Model(&validFlags).Where("service = ? and ? - round < ? and round <= ?", services[0], currentRound, conf.FlagExpireTicks, currentRound).Scan(ctx)
-	} else {
-		err = conn.NewSelect().Model(&validFlags).Where("team = ? and service = ? and ? - round < ? and round <= ?", team, services[0], currentRound, conf.FlagExpireTicks, currentRound).Scan(ctx)
+	// Genero la chiave di cache per la risposta filtrata
+	serviceKey := ""
+	if ok_service {
+		serviceKey = services[0]
+	}
+	teamKey := ""
+	if ok_team {
+		teamKey = team
+	}
+	cacheKey := getFlagIDsCacheKey(serviceKey, teamKey, round)
+
+	// Controllo se ho la risposta già filtrata in cache
+	flagIDsFilteredCache.RLock()
+	cachedResponse, found := flagIDsFilteredCache.cache[cacheKey]
+	flagIDsFilteredCache.RUnlock()
+
+	if found {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(cachedResponse)
+		log.Debugf("Serving flag_ids request from filtered cache %v", query)
+		return
 	}
 
+	// Ottieni o aggiorna la cache completa
+	completeData, completeJSON, err := getOrUpdateCompleteCache(ctx, currentRound)
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		log.Errorf("Error fetching flag_ids: %v", err)
 		return
 	}
 
-	flagIDs := make(map[string]map[string]map[string]interface{})
-	for _, flag := range validFlags {
-		if round != nil && flag.Round != *round {
-			continue
-		}
-		if flag.ExternalFlagId.K == nil {
-			continue
-		}
-		if _, ok := flagIDs[flag.Service]; !ok {
-			flagIDs[flag.Service] = make(map[string]map[string]interface{})
-		}
-		flagTeamId := fmt.Sprintf("%d", extractTeamID(flag.Team))
-		if _, ok := flagIDs[flag.Service][flagTeamId]; !ok {
-			flagIDs[flag.Service][flagTeamId] = make(map[string]interface{}, 0)
-		}
-
-		flagIDs[flag.Service][flagTeamId][fmt.Sprintf("%d", flag.Round)] = flag.ExternalFlagId.K
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := enc.Encode(flagIDs); err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		log.Errorf("Error encoding flag_ids: %v", err)
+	// Se non ci sono filtri, servi la cache completa
+	if !ok_service && !ok_team && round == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(completeJSON)
+		log.Debugf("Serving flag_ids request from complete cache %v", query)
 		return
 	}
 
-	log.Debugf("Received flag_ids request %v", query)
+	// Applica i filtri ai dati in cache
+	filteredData := filterCacheData(completeData, serviceKey, teamKey, round)
+
+	// Serializza i dati filtrati
+	var responseBuffer bytes.Buffer
+	enc := json.NewEncoder(&responseBuffer)
+	if err := enc.Encode(filteredData); err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		log.Errorf("Error encoding filtered flag_ids: %v", err)
+		return
+	}
+
+	// Salva i dati filtrati in cache
+	responseBytes := responseBuffer.Bytes()
+	flagIDsFilteredCache.Lock()
+	flagIDsFilteredCache.cache[cacheKey] = responseBytes
+	flagIDsFilteredCache.Unlock()
+
+	// Invia la risposta
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(responseBytes)
+	log.Debugf("Serving flag_ids request from newly filtered cache %v", query)
 }
 
 func serveFlagIDs() {
