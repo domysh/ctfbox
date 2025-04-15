@@ -347,8 +347,8 @@ def write_compose(data):
                             f"{data['wireguard_start_port']+team['id']}:51820/udp"
                         ],
                         "environment": {
-                            "PUID": 0,
-                            "PGID": 0,
+                            "PUID": os.getuid(),
+                            "PGID": os.getgid(),
                             "TZ": "Etc/UTC",
                             "PEERS": data['wireguard_profiles'],
                             "PEERDNS": data['dns'],
