@@ -547,7 +547,7 @@ def config_input():
     
     args.gameserver_token        = get_input('Gameserver token', default_prompt='randomly generated')
     args.enable_nop_team         = get_input('Enable NOP team?', 'yes').lower().startswith('y')
-    args.privileged              = not get_input('Use sysbox to run VMs? (Without sysbox VM could escape from the conatiner they are)', 'yes').lower().startswith('y')
+    args.privileged              = not get_input('Use sysbox to run the VMs? (to prevent docker escape)', 'yes').lower().startswith('y')
     if args.privileged:
         puts("Privileged mode enabled (DO NOT USE THIS IN PRODUCTION)", color=colors.yellow)
 
