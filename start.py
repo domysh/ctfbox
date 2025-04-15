@@ -104,8 +104,8 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_start.add_argument('--flag-expire-ticks', type=int, default=5, help='Flag expire ticks')
     parser_start.add_argument('--initial-service-score', type=int, default=5000, help='Initial service score')
     parser_start.add_argument('--max-flags-per-request', type=int, default=3000, help='Max flags per request')
-    parser_start.add_argument('--start-time', type=str, help='Start time (ISO 8601)')
-    parser_start.add_argument('--end-time', type=str, help='End time (ISO 8601)')
+    parser_start.add_argument('--start-time', type=str, help='Start time (RFC 3339, see https://ijmacd.github.io/rfc3339-iso8601/)')
+    parser_start.add_argument('--end-time', type=str, help='End time (RFC 3339, see https://ijmacd.github.io/rfc3339-iso8601/)')
     parser_start.add_argument('--max-disk-size', type=str, default="30G", help='Max disk size for VMs')
     parser_start.add_argument('--network-limit-bandwidth', type=str, default="20mbit", help='Network limit bandwidth')
     parser_start.add_argument('--tick-time', type=int, default=120, help='Tick time in seconds')
@@ -532,8 +532,8 @@ def config_input():
     args.server_addr             = get_input('Server address', is_required=True)
     args.dns                     = get_input('DNS', args.dns)
 
-    args.start_time              = get_input('Start time, in ISO 8601 (YYYY-mm-dd HH:MM:SS +/-zzzz)')
-    args.end_time                = get_input('End time, in ISO 8601 (YYYY-mm-dd HH:MM:SS +/-zzzz)')
+    args.start_time              = get_input('Start time, in RFC 3339 (YYYY-mm-dd HH:MM:SS+/-zz:zz)')
+    args.end_time                = get_input('End time, in RFC 3339 (YYYY-mm-dd HH:MM:SS+/-zz:zz)')
     args.tick_time               = abs(int(get_input('Tick time in seconds', args.tick_time)))
     args.flag_expire_ticks       = abs(int(get_input('Number of ticks after which each flag expires', args.flag_expire_ticks)))
 
