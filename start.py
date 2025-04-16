@@ -104,8 +104,8 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_start.add_argument('--flag-expire-ticks', type=int, default=5, help='Flag expire ticks')
     parser_start.add_argument('--initial-service-score', type=int, default=5000, help='Initial service score')
     parser_start.add_argument('--max-flags-per-request', type=int, default=3000, help='Max flags per request')
-    parser_start.add_argument('--start-time', type=str, help='Start time (ISO 8601)')
-    parser_start.add_argument('--end-time', type=str, help='End time (ISO 8601)')
+    parser_start.add_argument('--start-time', type=str, help='Start time (RFC 3339, see https://ijmacd.github.io/rfc3339-iso8601/)')
+    parser_start.add_argument('--end-time', type=str, help='End time (RFC 3339, see https://ijmacd.github.io/rfc3339-iso8601/)')
     parser_start.add_argument('--max-disk-size', type=str, default="30G", help='Max disk size for VMs')
     parser_start.add_argument('--network-limit-bandwidth', type=str, default="20mbit", help='Network limit bandwidth')
     parser_start.add_argument('--tick-time', type=int, default=120, help='Tick time in seconds')
@@ -139,23 +139,11 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_clear.add_argument('--wireguard', '-W', action='store_true', help='Clear wireguard data')
     parser_clear.add_argument('--checkers-data', '-C', action='store_true', help='Clear checkers data')
     parser_clear.add_argument('--gameserver-data', '-G', action='store_true', help='Clear gameserver data')
+
+    #Status Command
+    subcommands.add_parser('status', help='Show status')
     
     args = parser.parse_args(args=args_to_parse)
-    
-    if "privileged" not in args:
-        args.privileged = False
-        
-    if "expose_gameserver" not in args:
-        args.expose_gameserver = False
-    
-    if "config_only" not in args:
-        args.config_only = False
-        
-    if "gameserver_port" not in args:
-        args.gameserver_port = "127.0.0.1:8888"
-    
-    if "disk_limit" not in args:
-        args.disk_limit = False
 
     return args
 
@@ -362,8 +350,8 @@ def write_compose(data):
                             f"{data['wireguard_start_port']+team['id']}:51820/udp"
                         ],
                         "environment": {
-                            "PUID": 0,
-                            "PGID": 0,
+                            "PUID": os.getuid(),
+                            "PGID": os.getgid(),
                             "TZ": "Etc/UTC",
                             "PEERS": data['wireguard_profiles'],
                             "PEERDNS": data['dns'],
@@ -443,20 +431,27 @@ def clear_data(
     remove_gameserver_data=True  
 ):
     if remove_gameserver_data:
+        puts("Removing databse volume", color=colors.yellow)
         remove_database_volume()
     if remove_wireguard:
+        puts("Removing wireguard configs", color=colors.yellow)
         for file in os.listdir("./wireguard"):
             if file.startswith("conf"):
                 shutil.rmtree(f"./wireguard/{file}", ignore_errors=True)
     if remove_config:
+        puts("Removing config.json", color=colors.yellow)
         try_to_remove(g.config_file)
     if remove_prebuilded_container:
+        puts("Removing prebuilded image", color=colors.yellow)
         remove_prebuilded()
     if remove_prebuilder_image:
+        puts("Removing prebuilder image", color=colors.yellow)
         remove_prebuilder()
     if remove_prebuilt_image:
+        puts("Removing prebuilt image", color=colors.yellow)
         remove_prebuilt()
     if remove_checkers_data:
+        puts("Removing checkers data", color=colors.yellow)
         for service in os.listdir("./game_server/checkers"):
             shutil.rmtree(f"./game_server/checkers/{service}/flag_ids", ignore_errors=True)
 
@@ -537,8 +532,8 @@ def config_input():
     args.server_addr             = get_input('Server address', is_required=True)
     args.dns                     = get_input('DNS', args.dns)
 
-    args.start_time              = get_input('Start time, in ISO 8601 (YYYY-mm-dd HH:MM:SS +/-zzzz)')
-    args.end_time                = get_input('End time, in ISO 8601 (YYYY-mm-dd HH:MM:SS +/-zzzz)')
+    args.start_time              = get_input('Start time, in RFC 3339 (YYYY-mm-dd HH:MM:SS+/-zz:zz)')
+    args.end_time                = get_input('End time, in RFC 3339 (YYYY-mm-dd HH:MM:SS+/-zz:zz)')
     args.tick_time               = abs(int(get_input('Tick time in seconds', args.tick_time)))
     args.flag_expire_ticks       = abs(int(get_input('Number of ticks after which each flag expires', args.flag_expire_ticks)))
 
@@ -555,7 +550,7 @@ def config_input():
     
     args.gameserver_token        = get_input('Gameserver token', default_prompt='randomly generated')
     args.enable_nop_team         = get_input('Enable NOP team?', 'yes').lower().startswith('y')
-    args.privileged              = not get_input('Use sysbox to run VMs? (Without sysbox VM could escape from the conatiner they are)', 'yes').lower().startswith('y')
+    args.privileged              = not get_input('Use sysbox to run the VMs? (to prevent docker escape)', 'yes').lower().startswith('y')
     if args.privileged:
         puts("Privileged mode enabled (DO NOT USE THIS IN PRODUCTION)", color=colors.yellow)
 
@@ -609,11 +604,15 @@ def read_config():
 
 
 def main():
-    if args.config_only:
-        config = config_input()
-        create_config(config)
-        puts(f"Config file generated!, you can customize it by editing {g.config_file}", color=colors.green)
-        return
+    if args.command == "start":
+        if args.config_only:
+            if config_exists():
+                puts(f"Config file already exists! please edit {g.config_file}", color=colors.red)
+                return
+            config = config_input()
+            create_config(config)
+            puts(f"Config file generated!, you can customize it by editing {g.config_file}", color=colors.green)
+            return
 
     if not cmd_check("docker --version"):
         puts("docker not found! please install docker!", color=colors.red)
@@ -696,7 +695,7 @@ def main():
                 if check_already_running():
                     puts(f"{g.name} is running! please stop it before clearing the data", color=colors.red)
                     exit(1)
-                if not any(vars(args).values()):
+                if True not in vars(args).values():
                     clear_data(remove_config=False)
                 if args.all:
                     puts("This will clear everything, EVEN THE CONFIG JSON, are you sure? (y/N): ", end="")
@@ -719,6 +718,9 @@ def main():
                 if args.gameserver_data:
                     clear_data_only(remove_gameserver_data=True)
                 puts("Whatever you specified has been cleared!", color=colors.green, is_bold=True)
+            case "status":
+                if check_already_running():
+                    puts(f"{g.name} is running!", color=colors.green)
 
     
     if "logs" in args and args.logs:
