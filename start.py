@@ -605,8 +605,9 @@ def config_input() -> Config:
         args.max_disk_size       = get_input('Max VM disk size', args.max_disk_size)
     else:
         args.max_disk_size = None
-    if get_input('Expose externally the gameserver scoreboard?', 'yes').lower().startswith('y'):
-        args.expose_gameserver = get_input('Insert with witch port or ip:port to expose the gameserver scoreboard', args.gameserver_port)
+    args.expose_gameserver = get_input('Expose externally the gameserver scoreboard?', 'yes').lower().startswith('y')
+    if args.expose_gameserver:
+        args.gameserver_port = get_input('Insert with witch port or ip:port to expose the gameserver scoreboard', args.gameserver_port)
     
     args.gameserver_token        = get_input('Gameserver token', default_prompt='randomly generated')
     args.enable_nop_team         = get_input('Enable NOP team?', 'yes').lower().startswith('y')
