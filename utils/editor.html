@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CTFBox Configuration Editor</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
             padding: 20px;
@@ -118,12 +118,100 @@
         }
         .aligned-controls {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
             gap: 15px;
         }
         .form-check.form-switch {
             display: flex;
             align-items: center;
+        }
+        .form-check.form-switch .form-check-input {
+            margin-right: 10px;
+        }
+        
+        /* Improved responsive styles */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            .section {
+                padding: 15px;
+            }
+            .team-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .preview-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .preview-actions {
+                flex-wrap: wrap;
+                margin-top: 10px;
+                width: 100%;
+            }
+            .aligned-controls {
+                flex-direction: column;
+                align-items: flex-start;
+                width: 100%;
+            }
+            .aligned-controls .form-floating {
+                width: 100% !important; /* Override any inline styles */
+            }
+            button {
+                margin-top: 5px;
+            }
+            
+            /* Fix wrapping buttons to follow logical order */
+            .btn-group, .preview-actions, .pins-container .row .col-md-2 {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                align-items: stretch;
+            }
+            
+            /* Make inputs full width on mobile */
+            .form-control, .form-floating, .form-check {
+                width: 100%;
+            }
+            
+            /* Improve pin container layout */
+            .pins-container .row {
+                flex-direction: column;
+            }
+            .pins-container .row > div {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            .pins-container .row > div:last-child {
+                margin-bottom: 0;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 10px;
+            }
+            .section {
+                padding: 10px;
+            }
+            
+            /* Ensure buttons and inputs are properly sized on very small screens */
+            .btn {
+                width: 100%;
+                margin-bottom: 8px;
+            }
+            
+            /* Improve form controls spacing on small screens */
+            .form-floating {
+                margin-bottom: 12px;
+            }
         }
     </style>
 </head>
@@ -778,6 +866,6 @@
     </script>
     
     <!-- Add compression library -->
-    <script src="https://cdn.jsdelivr.net/npm/pako@2.0.4/dist/pako.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 </body>
 </html>
