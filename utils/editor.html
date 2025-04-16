@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTFBox Configuration Editor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #212529;
+            color: #e9ecef;
+        }
+        .container {
+            max-width: 1200px;
+            background-color: #2c3034;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        .header {
+            margin-bottom: 30px;
+            border-bottom: 1px solid #495057;
+            padding-bottom: 20px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #495057;
+            border-radius: 5px;
+            background-color: #343a40;
+        }
+        .section-title {
+            margin-bottom: 20px;
+            color: #6ea8fe;
+        }
+        .team-card {
+            margin-bottom: 15px;
+            border: 1px solid #495057;
+            border-radius: 5px;
+            padding: 15px;
+            background-color: #2c3034;
+        }
+        .team-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .advanced-toggle {
+            cursor: pointer;
+            color: #6ea8fe;
+            user-select: none;
+        }
+        .advanced-settings {
+            display: none;
+            padding-top: 15px;
+            border-top: 1px dashed #495057;
+        }
+        .btn-action {
+            margin-top: 10px;
+        }
+        .form-floating {
+            margin-bottom: 15px;
+        }
+        .input-group-text {
+            background-color: #495057;
+            color: #e9ecef;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #495057;
+        }
+        .json-preview {
+            background-color: #212529;
+            border: 1px solid #495057;
+            border-radius: 5px;
+            padding: 15px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        pre {
+            margin: 0;
+            color: #e9ecef;
+        }
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .preview-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .key {
+            color: #6ea8fe;
+        }
+        .string {
+            color: #79c0ff;
+        }
+        .number {
+            color: #ffa657;
+        }
+        .boolean {
+            color: #ff7b72;
+        }
+        .null {
+            color: #f85149;
+        }
+        .time-note {
+            font-size: 0.85rem;
+            color: #adb5bd;
+            margin-top: 5px;
+        }
+        .aligned-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .form-check.form-switch {
+            display: flex;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="text-center">CTFBox Configuration Editor</h1>
+            <p class="text-center text-muted">Generate configuration file for CTFBox</p>
+        </div>
+        
+        <div class="section">
+            <h3 class="section-title">Basic Settings</h3>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input type="number" class="form-control" id="wireguardStartPort" value="51000" min="1">
+                        <label for="wireguardStartPort">Wireguard Start Port</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input type="number" class="form-control" id="wireguardProfiles" value="30" min="1">
+                        <label for="wireguardProfiles">Wireguard Profiles</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="serverAddr" required>
+                        <label for="serverAddr">Server Address (Required)</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="dns" value="1.1.1.1">
+                        <label for="dns">DNS Server</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3 class="section-title">Time Settings</h3>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-floating">
+                        <input type="datetime-local" class="form-control" id="startTime">
+                        <label for="startTime">Start Time (Optional)</label>
+                    </div>
+                    <div class="time-note">Uses your current time zone</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-floating">
+                        <input type="datetime-local" class="form-control" id="endTime">
+                        <label for="endTime">End Time (Optional)</label>
+                    </div>
+                    <div class="time-note">Uses your current time zone</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-floating">
+                        <input type="number" class="form-control" id="tickTime" value="120" min="1">
+                        <label for="tickTime">Tick Time (seconds)</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3 class="section-title">Game Settings</h3>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input type="number" class="form-control" id="flagExpireTicks" value="5" min="1">
+                        <label for="flagExpireTicks">Flag Expire Ticks</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input type="number" class="form-control" id="initialServiceScore" value="5000" min="0">
+                        <label for="initialServiceScore">Initial Service Score</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input type="number" class="form-control" id="maxFlagsPerRequest" value="3000" min="1">
+                        <label for="maxFlagsPerRequest">Max Flags Per Request</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input type="number" class="form-control" id="submissionTimeout" value="0.03" min="0" step="0.01">
+                        <label for="submissionTimeout">Submission Timeout</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3 class="section-title">Resource Settings</h3>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="networkLimitBandwidth" value="20mbit">
+                        <label for="networkLimitBandwidth">Network Limit Bandwidth</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="maxVmCpus" value="1">
+                        <label for="maxVmCpus">Max VM CPUs</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="maxVmMem" value="2G">
+                        <label for="maxVmMem">Max VM Memory</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check form-switch mt-4">
+                        <input class="form-check-input" type="checkbox" id="enableDiskLimit">
+                        <label class="form-check-label" for="enableDiskLimit">Enable Disk Limit</label>
+                    </div>
+                    <div id="diskLimitField" style="display: none;">
+                        <div class="form-floating mt-3">
+                            <input type="text" class="form-control" id="maxDiskSize" value="30G">
+                            <label for="maxDiskSize">Max Disk Size</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3 class="section-title">Server Settings</h3>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="gameserverToken" placeholder="Auto-generated if empty">
+                        <label for="gameserverToken">Gameserver Token (Optional)</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" id="unsafePrivileged">
+                        <label class="form-check-label" for="unsafePrivileged">Use Privileged Mode (Not Recommended)</label>
+                    </div>
+                    <div class="form-check form-switch mt-3">
+                        <input class="form-check-input" type="checkbox" id="exposeGameserver">
+                        <label class="form-check-label" for="exposeGameserver">Expose Gameserver</label>
+                    </div>
+                    <div id="gameserverPortField" style="display: none;">
+                        <div class="form-floating mt-3">
+                            <input type="text" class="form-control" id="gameserverExposedPort" value="127.0.0.1:8888">
+                            <label for="gameserverExposedPort">Gameserver Port</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-check form-switch mt-3">
+                <input class="form-check-input" type="checkbox" id="debugMode">
+                <label class="form-check-label" for="debugMode">Debug Mode</label>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3 class="section-title">Team Configuration</h3>
+            <div class="aligned-controls mb-3">
+                <div class="form-floating" style="width: 200px;">
+                    <input type="number" class="form-control" id="numberOfTeams" value="4" min="1" max="249">
+                    <label for="numberOfTeams">Number of Teams</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="enableNopTeam">
+                    <label class="form-check-label" for="enableNopTeam">Enable NOP Team</label>
+                </div>
+                <button class="btn btn-primary" id="generateTeams">Generate Teams</button>
+            </div>
+            
+            <div id="teamsContainer">
+                <!-- Teams will be generated here -->
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="preview-header">
+                <h3 class="section-title">Configuration Preview</h3>
+                <div class="preview-actions">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+                        <label class="form-check-label" for="autoRefresh">Auto-Refresh</label>
+                    </div>
+                    <button class="btn btn-outline-info" id="copyConfig">Copy to Clipboard</button>
+                    <button class="btn btn-outline-success" id="copyCompressedConfig">Copy Compressed Config</button>
+                </div>
+            </div>
+            <div class="json-preview">
+                <pre id="configPreview">// Configuration will be shown here when you modify settings</pre>
+            </div>
+        </div>
+        
+        <div class="d-grid gap-2">
+            <button class="btn btn-success btn-lg" id="generateConfig">Generate & Download Configuration</button>
+        </div>
+        
+        <div class="footer">
+            <p>CTFBox Configuration Editor</p>
+        </div>
+    </div>
+
+    <script>
+        // Add a debounce function to limit how often preview updates
+        function debounce(func, wait) {
+            let timeout;
+            return function() {
+                const context = this, args = arguments;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    func.apply(context, args);
+                }, wait);
+            };
+        }
+
+        let updatePreviewDebounced = debounce(function() {
+            if (document.getElementById('autoRefresh').checked) {
+                updatePreview();
+            }
+        }, 300);
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle disk limit toggle
+            document.getElementById('enableDiskLimit').addEventListener('change', function() {
+                document.getElementById('diskLimitField').style.display = this.checked ? 'block' : 'none';
+                updatePreviewDebounced();
+            });
+            
+            // Handle gameserver expose toggle
+            document.getElementById('exposeGameserver').addEventListener('change', function() {
+                document.getElementById('gameserverPortField').style.display = this.checked ? 'block' : 'none';
+                updatePreviewDebounced();
+            });
+            
+            // Generate team fields
+            document.getElementById('generateTeams').addEventListener('click', function() {
+                generateTeamFields();
+                updatePreviewDebounced();
+            });
+            
+            // Generate configuration
+            document.getElementById('generateConfig').addEventListener('click', generateConfiguration);
+            
+            // Copy config
+            document.getElementById('copyConfig').addEventListener('click', copyConfigToClipboard);
+            
+            // Copy compressed config
+            document.getElementById('copyCompressedConfig').addEventListener('click', copyCompressedConfigToClipboard);
+            
+            // Auto-refresh toggle
+            document.getElementById('autoRefresh').addEventListener('change', function() {
+                if (this.checked) {
+                    updatePreview();
+                }
+            });
+            
+            // Initialize with default teams
+            generateTeamFields();
+            
+            // Add mutation observer to detect when new form elements are added
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes.length) {
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.querySelectorAll) {
+                                setupFormListeners(node);
+                            }
+                        });
+                    }
+                });
+            });
+            
+            // Start observing the container for dynamic content
+            observer.observe(document.getElementById('teamsContainer'), {
+                childList: true,
+                subtree: true
+            });
+            
+            // Initial setup for existing form elements
+            setupFormListeners(document);
+            
+            // Initial preview update
+            updatePreview();
+        });
+        
+        function setupFormListeners(rootElement) {
+            // Add event listeners to all form controls for live preview updates
+            rootElement.querySelectorAll('input, select').forEach(element => {
+                // Remove existing listeners to prevent duplicates
+                element.removeEventListener('change', updatePreviewDebounced);
+                element.removeEventListener('input', updatePreviewDebounced);
+                
+                // Add new listeners
+                element.addEventListener('change', updatePreviewDebounced);
+                if (element.type === 'text' || element.type === 'number' || element.type === 'datetime-local') {
+                    element.addEventListener('input', updatePreviewDebounced);
+                }
+            });
+        }
+
+        function generateTeamFields() {
+            const numberOfTeams = parseInt(document.getElementById('numberOfTeams').value);
+            const enableNopTeam = document.getElementById('enableNopTeam').checked;
+            const teamsContainer = document.getElementById('teamsContainer');
+            teamsContainer.innerHTML = '';
+            
+            let startIndex = 0;
+            let totalTeams = numberOfTeams;
+            
+            if (enableNopTeam) {
+                // Add NOP team as team 0
+                const nopTeam = createTeamCard(0, 'Nop Team', true);
+                teamsContainer.appendChild(nopTeam);
+                startIndex = 1;
+                totalTeams += 1;
+            }
+            
+            // Add regular teams
+            for (let i = startIndex; i < totalTeams; i++) {
+                const team = createTeamCard(i, `Team ${i}`, false);
+                teamsContainer.appendChild(team);
+            }
+            
+            // Set up event listeners for advanced settings toggle
+            document.querySelectorAll('.advanced-toggle').forEach(toggle => {
+                toggle.addEventListener('click', function() {
+                    const settingsId = this.getAttribute('data-target');
+                    const settings = document.getElementById(settingsId);
+                    if (settings.style.display === 'none' || !settings.style.display) {
+                        settings.style.display = 'block';
+                        this.textContent = 'Hide Advanced Settings';
+                    } else {
+                        settings.style.display = 'none';
+                        this.textContent = 'Show Advanced Settings';
+                    }
+                });
+            });
+        }
+        
+        function createTeamCard(id, name, isNop) {
+            const card = document.createElement('div');
+            card.className = 'team-card';
+            card.innerHTML = `
+                <div class="team-header">
+                    <h5>Team ${id} Configuration</h5>
+                    <span class="advanced-toggle" data-target="advanced-settings-${id}">Show Advanced Settings</span>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="teamName-${id}" value="${name}">
+                            <label for="teamName-${id}">Team Name</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="teamToken-${id}" placeholder="Auto-generated if empty">
+                            <label for="teamToken-${id}">Team Token (Optional)</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="teamNop-${id}" ${isNop ? 'checked' : ''} ${isNop ? 'disabled' : ''}>
+                    <label class="form-check-label" for="teamNop-${id}">NOP Team</label>
+                </div>
+                <div class="advanced-settings" id="advanced-settings-${id}">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <input type="number" class="form-control" id="teamWireguardPort-${id}" value="${51000 + parseInt(id)}">
+                                <label for="teamWireguardPort-${id}">Wireguard Port</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="teamImage-${id}" value="">
+                                <label for="teamImage-${id}">Team Image (Optional)</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pins-section">
+                        <h6>Team Pins</h6>
+                        <div class="pins-container" id="pins-container-${id}">
+                            <!-- Pins will be added here -->
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addPin(${id})">Add Pin</button>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+        
+        function addPin(teamId) {
+            const pinsContainer = document.getElementById(`pins-container-${teamId}`);
+            const pinIndex = pinsContainer.children.length;
+            
+            const pinRow = document.createElement('div');
+            pinRow.className = 'row mb-3';
+            pinRow.innerHTML = `
+                <div class="col-md-5">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="teamPin-${teamId}-${pinIndex}">
+                        <label for="teamPin-${teamId}-${pinIndex}">Pin</label>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="form-floating">
+                        <input type="number" class="form-control" id="teamPinProfile-${teamId}-${pinIndex}" value="0">
+                        <label for="teamPinProfile-${teamId}-${pinIndex}">Profile</label>
+                    </div>
+                </div>
+                <div class="col-md-2 d-flex align-items-center">
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removePin(this)">Remove</button>
+                </div>
+            `;
+            pinsContainer.appendChild(pinRow);
+            updatePreviewDebounced();
+        }
+        
+        function removePin(button) {
+            const pinRow = button.closest('.row');
+            pinRow.remove();
+            updatePreviewDebounced();
+        }
+        
+        function updatePreview() {
+            try {
+                const config = buildConfigObject();
+                const jsonStr = JSON.stringify(config, null, 4);
+                const coloredJson = syntaxHighlight(jsonStr);
+                document.getElementById('configPreview').innerHTML = coloredJson;
+            } catch (error) {
+                document.getElementById('configPreview').innerHTML = `Error generating preview: ${error.message}`;
+            }
+        }
+        
+        function copyConfigToClipboard() {
+            try {
+                const config = buildConfigObject();
+                const jsonStr = JSON.stringify(config, null, 4);
+                navigator.clipboard.writeText(jsonStr).then(() => {
+                    const copyBtn = document.getElementById('copyConfig');
+                    const originalText = copyBtn.textContent;
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyBtn.textContent = originalText;
+                    }, 2000);
+                });
+            } catch (error) {
+                alert(`Failed to copy: ${error.message}`);
+            }
+        }
+        
+        function copyCompressedConfigToClipboard() {
+            try {
+                const config = buildConfigObject();
+                const jsonStr = JSON.stringify(config);
+                
+                // Use pako.js for compression if available, otherwise alert that we need to include it
+                if (typeof pako !== 'undefined') {
+                    const compressed = pako.deflate(jsonStr);
+                    const base64 = btoa(String.fromCharCode.apply(null, compressed));
+                    navigator.clipboard.writeText(base64).then(() => {
+                        const copyBtn = document.getElementById('copyCompressedConfig');
+                        const originalText = copyBtn.textContent;
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => {
+                            copyBtn.textContent = originalText;
+                        }, 2000);
+                    });
+                } else {
+                    // Fallback to simple base64 without compression
+                    const base64 = btoa(jsonStr);
+                    navigator.clipboard.writeText(base64).then(() => {
+                        const copyBtn = document.getElementById('copyCompressedConfig');
+                        const originalText = copyBtn.textContent;
+                        copyBtn.textContent = 'Copied! (Uncompressed)';
+                        setTimeout(() => {
+                            copyBtn.textContent = originalText;
+                        }, 2000);
+                    });
+                }
+            } catch (error) {
+                alert(`Failed to copy compressed config: ${error.message}`);
+            }
+        }
+        
+        function buildConfigObject() {
+            // Validate required fields
+            const serverAddr = document.getElementById('serverAddr').value.trim();
+            if (!serverAddr) {
+                throw new Error('Server Address is required');
+            }
+            
+            // Basic settings
+            const config = {
+                wireguard_start_port: parseInt(document.getElementById('wireguardStartPort').value),
+                wireguard_profiles: parseInt(document.getElementById('wireguardProfiles').value),
+                server_addr: serverAddr,
+                dns: document.getElementById('dns').value,
+                tick_time: parseInt(document.getElementById('tickTime').value),
+                flag_expire_ticks: parseInt(document.getElementById('flagExpireTicks').value),
+                initial_service_score: parseInt(document.getElementById('initialServiceScore').value),
+                max_flags_per_request: parseInt(document.getElementById('maxFlagsPerRequest').value),
+                submission_timeout: parseFloat(document.getElementById('submissionTimeout').value),
+                network_limit_bandwidth: document.getElementById('networkLimitBandwidth').value,
+                max_vm_cpus: document.getElementById('maxVmCpus').value,
+                max_vm_mem: document.getElementById('maxVmMem').value,
+                gameserver_token: document.getElementById('gameserverToken').value || generateRandomToken(),
+                unsafe_privileged: document.getElementById('unsafePrivileged').checked,
+                debug: document.getElementById('debugMode').checked
+            };
+            
+            // Time settings
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            
+            if (startTime) {
+                // Convert to ISO string but note it's in local timezone
+                const startDate = new Date(startTime);
+                config.start_time = startDate.toISOString();
+            }
+            
+            if (endTime) {
+                // Convert to ISO string but note it's in local timezone
+                const endDate = new Date(endTime);
+                config.end_time = endDate.toISOString();
+            }
+            
+            // Resource settings
+            if (document.getElementById('enableDiskLimit').checked) {
+                config.max_disk_size = document.getElementById('maxDiskSize').value;
+            }
+            
+            // Gameserver settings
+            if (document.getElementById('exposeGameserver').checked) {
+                config.gameserver_exposed_port = document.getElementById('gameserverExposedPort').value;
+            }
+            
+            // Team configuration
+            config.teams = [];
+            const numberOfTeams = parseInt(document.getElementById('numberOfTeams').value);
+            const enableNopTeam = document.getElementById('enableNopTeam').checked;
+            
+            let startIndex = 0;
+            let totalTeams = numberOfTeams;
+            
+            if (enableNopTeam) {
+                startIndex = 1;
+                totalTeams += 1;
+            }
+            
+            for (let i = 0; i < totalTeams; i++) {
+                if (i === 0 && !enableNopTeam) {
+                    continue;
+                }
+                
+                const teamNameElement = document.getElementById(`teamName-${i}`);
+                if (!teamNameElement) continue;
+                
+                const team = {
+                    id: i,
+                    name: teamNameElement.value,
+                    token: document.getElementById(`teamToken-${i}`).value || generateRandomToken(),
+                    wireguard_port: parseInt(document.getElementById(`teamWireguardPort-${i}`).value),
+                    nop: document.getElementById(`teamNop-${i}`).checked,
+                    image: document.getElementById(`teamImage-${i}`).value || "",
+                    pins: []
+                };
+                
+                // Add pins if they exist
+                const pinsContainer = document.getElementById(`pins-container-${i}`);
+                if (pinsContainer) {
+                    const pinRows = pinsContainer.children;
+                    for (let j = 0; j < pinRows.length; j++) {
+                        const pinElement = document.getElementById(`teamPin-${i}-${j}`);
+                        const profileElement = document.getElementById(`teamPinProfile-${i}-${j}`);
+                        
+                        if (pinElement && profileElement && pinElement.value) {
+                            team.pins.push({
+                                pin: pinElement.value,
+                                profile: parseInt(profileElement.value)
+                            });
+                        }
+                    }
+                }
+                
+                config.teams.push(team);
+            }
+            
+            return config;
+        }
+        
+        function syntaxHighlight(json) {
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'key';
+                        match = match.replace(/"/g, '').replace(/:$/, '');
+                        return `"<span class="${cls}">${match}</span>": `;
+                    } else {
+                        cls = 'string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'null';
+                }
+                return `<span class="${cls}">${match}</span>`;
+            });
+        }
+        
+        function generateConfiguration() {
+            try {
+                const config = buildConfigObject();
+                
+                // Generate and download the JSON
+                downloadJSON(config, 'config.json');
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+        
+        function generateRandomToken() {
+            const array = new Uint8Array(32);
+            window.crypto.getRandomValues(array);
+            return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+        }
+        
+        function downloadJSON(data, filename) {
+            const jsonStr = JSON.stringify(data, null, 4);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+    
+    <!-- Add compression library -->
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.0.4/dist/pako.min.js"></script>
+</body>
+</html>

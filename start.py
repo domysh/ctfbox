@@ -7,6 +7,8 @@ import subprocess
 import json
 import secrets
 import shutil
+import base64
+import zlib
 from datetime import datetime
 import platform
 from dataclasses import dataclass, field, asdict
@@ -604,6 +606,39 @@ def get_input(prompt: str, default = None, is_required: bool = False, default_pr
     return default
 
 def config_input() -> Config:
+    # Ask if user wants to use the web editor
+    use_web_editor = get_input('Do you want to use the web editor?', 'no').lower().startswith('y')
+    
+    if use_web_editor:
+        puts("Open the web editor at: https://domysh.github.io/ctfbox/", color=colors.green)
+        puts("Configure your settings and then click 'Generate & Download Configuration'", color=colors.green)
+        puts("After downloading, click the 'Copy to Clipboard' button to copy the config as JSON", color=colors.green)
+        puts("Paste the base64 compressed config below or paste a raw JSON config:", color=colors.yellow)
+        
+        config_input = input().strip()
+        
+        if config_input.startswith('{'):
+            # User provided raw JSON
+            try:
+                config_data = json.loads(config_input)
+                return Config.from_dict(config_data)
+            except json.JSONDecodeError:
+                puts("Invalid JSON format. Please try again.", color=colors.red)
+                return config_input()
+        else:
+            # User provided base64 compressed config
+            try:
+                # Decode base64 and decompress
+                decoded_bytes = base64.b64decode(config_input)
+                decompressed_bytes = zlib.decompress(decoded_bytes)
+                config_data = json.loads(decompressed_bytes.decode('utf-8'))
+                return Config.from_dict(config_data)
+            except Exception as e:
+                puts(f"Error decoding configuration: {e}", color=colors.red)
+                puts("Please try again with valid base64 compressed config or raw JSON", color=colors.red)
+                return config_input()
+    
+    # Original config input flow
     # abs() put for consistency with the other options
     default_number_of_teams = args.number_of_teams
     args.number_of_teams = abs(int(get_input('Number of teams, >= 0 and < 250', default_number_of_teams)))
