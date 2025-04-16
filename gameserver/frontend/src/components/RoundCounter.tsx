@@ -1,8 +1,8 @@
-import { Progress, Text } from "@mantine/core"
+import { Badge, Box, Chip, Progress, Text } from "@mantine/core"
 import { useStatusQuery } from "../scripts/query"
 import { useInterval } from "@mantine/hooks"
 import { useEffect, useState } from "react"
-import { secondDurationToString } from "../scripts/time"
+import { getDateFormatted, secondDurationToString } from "../scripts/time"
 
 
 export const RoundCounter = () => {
@@ -15,7 +15,8 @@ export const RoundCounter = () => {
         currentRoundPercent: 0,
         hasStarted: false,
         timeForNextRound: 0,
-        hasEnded: false
+        hasEnded: false,
+        endTime: null as Date | null
     })
 
     const updateRoundInfo = () => {
@@ -34,7 +35,8 @@ export const RoundCounter = () => {
             currentRoundPercent: nextRoundPercent,
             hasStarted: startGame < now,
             timeForNextRound: (timeForNextRound <1000?0:timeForNextRound)/1000,
-            hasEnded: endGame != null && endGame < now
+            hasEnded: endGame != null && endGame < now,
+            endTime: config.data.end?new Date(config.data.end??0):null
         })
     }
 
@@ -48,8 +50,15 @@ export const RoundCounter = () => {
 
     useEffect(updateRoundInfo, [config.isFetching])
 
-    return config.isSuccess?<>
-        <Text size="sm">{ !roundInfo.hasStarted ? "Game has not started yet" :roundInfo.hasEnded ? "Game has ended!" : roundInfo.currentRound==-1 ? "Game has started!" : `Round: ${config.data.current_round} - next round: ${secondDurationToString(roundInfo.timeForNextRound)}` }</Text>
-        <Progress size="lg" value={roundInfo.hasEnded ? 100 : config.data.current_round >= 0?roundInfo.currentRoundPercent:0} color="red"/>
-    </>:<Progress size="lg" color="red" value={0}/>
+    const lastsTimeString = secondDurationToString(roundInfo.timeForNextRound)
+
+    return config.isSuccess?<Box>
+        <Text size="md">{ !roundInfo.hasStarted ? "Game has not started yet" :roundInfo.hasEnded ? "Game has ended!" : roundInfo.currentRound==-1 ? "Game has started!" : `Round: ${config.data.current_round} - next round ${lastsTimeString?'in '+lastsTimeString:'soon...'}` }</Text>
+        <Progress size="lg" value={roundInfo.hasEnded ? 100 : config.data.current_round >= 0?roundInfo.currentRoundPercent:0} color="red" animated />
+        <Box className="center-flex" mt="sm">
+            <Text size="md"><Badge size="md" radius="md" color="teal" >Starts - {getDateFormatted(roundInfo.startTime.toISOString())}</Badge> </Text>
+            <Box style={{flex:1}}/>
+            <Text size="md"><Badge size="md" radius="md" color="teal" >Ends - {roundInfo.endTime?getDateFormatted(roundInfo.endTime?.toISOString()??""):"Will never End"}</Badge> </Text>
+        </Box>
+    </Box>:<Progress size="lg" color="red" value={0}/>
 }
