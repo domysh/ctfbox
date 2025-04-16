@@ -58,7 +58,7 @@ class Config:
     def from_dict(cls, data: Dict[str, Any]) -> Config:
         teams_data = data.pop('teams', [])
         teams = [
-            Team(**team, pins=[PinEntry(**pin) for pin in team.get('pins', [])])
+            Team(pins=[PinEntry(**pin) for pin in team.pop('pins', [])], **team)
         for team in teams_data]
         config = cls(**data, teams=teams)
         return config
