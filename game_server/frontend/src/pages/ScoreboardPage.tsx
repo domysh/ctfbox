@@ -185,23 +185,8 @@ export const ScoreboardPage = () => {
 
             <RoundCounter />
             <Space h="lg" />
-            <ScrollAreaAutosize 
-                h={500}
-                offsetScrollbars
-                scrollbarSize={8}
-                scrollHideDelay={500}
-                styles={{
-                    viewport: {
-                        '& thead': {
-                            position: 'sticky',
-                            top: 0,
-                            zIndex: 100,
-                            backgroundColor: "var(--mantine-color-dark-8)"
-                        }
-                    }
-                }}
-            >
-                <Table highlightOnHover striped stickyHeader>
+            <ScrollAreaAutosize>
+                <Table highlightOnHover striped>
                     <Table.Thead h={60} style={{ backgroundColor: "var(--mantine-color-dark-8)" }}>
                         <Table.Tr>
                             <Table.Th style={{ width: "10px"}}>
