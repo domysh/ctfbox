@@ -15,6 +15,12 @@ from typing import List, Optional, Dict, Any, Union
 pref = "\033["
 reset = f"{pref}0m"
 
+
+@dataclass
+class PinEntry:
+    pin: str
+    profile: int
+
 @dataclass
 class Team:
     id: int
@@ -23,6 +29,7 @@ class Team:
     wireguard_port: int
     nop: bool = False
     image: str = ""
+    pins: List[PinEntry] = field(default_factory=list)
 
 @dataclass
 class Config:
