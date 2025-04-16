@@ -64,14 +64,14 @@ const TeamRow = memo(({ teamData, pos, services, teamInfo }: {
                 />
             </Box></Table.Td>
             <Table.Td><Box className="center-flex-col">
-                <Text {...redirectProps}>{teamInfo?.name??"Unknown Team"} <HiOutlineCursorClick size={12} /></Text>
+                <Text {...redirectProps} className="center-flex">{teamInfo?.name??"Unknown Team"} <HiOutlineCursorClick size={12} /></Text>
                 <Space h="3px" />
                 <Pill style={{ backgroundColor: "var(--mantine-color-cyan-filled)", color: "white", fontWeight: "bold" }} className="center-flex">
                     {teamData.team}
                     {teamInfo?.nop?<Tooltip label={"NOP team"}>
                         <span><RiGhostFill style={{marginBottom: -2, marginLeft: 4}}/></span>
                     </Tooltip>:null}
-                    </Pill>
+                </Pill>
             </Box></Table.Td>
             <Table.Td>
                 <Box className="center-flex-row">
