@@ -1,11 +1,5 @@
 # CTFBox
 
-- Open
-- Attack & Defense
-- Simple
-- Infrastructure
-- System
-
 ![Screenshot 2025-04-15 alle 5 34 24 PM](https://github.com/user-attachments/assets/be003001-f780-47ed-b038-273c404b1f2e)
 
 
