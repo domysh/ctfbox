@@ -334,7 +334,7 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                 "gameserver": {
                     "hostname": "gameserver",
                     "dns": [config.dns],
-                    "build": "./game_server",
+                    "build": "./gameserver",
                     "restart": "unless-stopped",
                     "container_name": g.container_name,
                     "cap_add": [
@@ -360,7 +360,7 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         }
                     },
                     "volumes": [
-                        "./game_server/checkers:/app/checkers:z",
+                        "./gameserver/checkers:/app/checkers:z",
                         "unixsk:/unixsk",
                         f"./{g.config_file}:/app/{g.config_file}:z"
                     ]
@@ -521,8 +521,8 @@ def clear_data(
         remove_prebuilt()
     if remove_checkers_data:
         puts("Removing checkers data", color=colors.yellow)
-        for service in os.listdir("./game_server/checkers"):
-            shutil.rmtree(f"./game_server/checkers/{service}/flag_ids", ignore_errors=True)
+        for service in os.listdir("./gameserver/checkers"):
+            shutil.rmtree(f"./gameserver/checkers/{service}/flag_ids", ignore_errors=True)
 
 def clear_data_only(
     remove_config=False,

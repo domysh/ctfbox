@@ -48,7 +48,7 @@ func elaborateFlag(team *TeamInfo, flag string, resp *SubResp, round uint) {
 		log.Debugf("Flag %s from %s: invalid team", flag, team)
 		return
 	}
-	if team.Nop {
+	if team.Nop || conf.getTeamByID(extractTeamID(info.Team)).Nop {
 		resp.Msg = fmt.Sprintf("[%s] Denied: flag from nop team", flag)
 		resp.Status = "DENIED"
 		log.Debugf("Flag %s from %s: from nop team", flag, team)
