@@ -84,8 +84,8 @@ type ServiceRoundStatus struct {
 	DiffLostFlags       int     `json:"diff_lost_flags"`
 	OffensivePoints     float64 `json:"offensive_points"`
 	DiffOffensivePoints float64 `json:"diff_offensive_points"`
-	DefensePoints       float64 `json:"defensive_points"`
-	DiffDefensePoints   float64 `json:"diff_defense_points"`
+	DefensivePoints     float64 `json:"defensive_points"`
+	DiffDefensivePoints float64 `json:"diff_defensive_points"`
 	Sla                 float64 `json:"sla"`
 	DiffSla             float64 `json:"diff_sla"`
 	Score               float64 `json:"score"`
@@ -131,15 +131,42 @@ func handleChart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if we have any teams configured
+	if len(conf.Teams) == 0 {
+		// No teams exist, return empty response
+		emptyResponse := []ChartAPIResponse{}
+		jsonData, err := json.Marshal(emptyResponse)
+		if err != nil {
+			log.Errorf("Error encoding empty response: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jsonData)
+		return
+	}
+
 	response := make([]ChartAPIResponse, round+1)
-	dbScores := new([]db.StatusHistory)
 	ctx := context.Background()
 	for i := 0; i <= int(round); i++ {
+		dbScores := new([]db.StatusHistory)
 		if err := conn.NewSelect().Model(dbScores).Where("round = ?", i).Scan(ctx); err != nil {
+			// Check if it's the specific column doesn't exist error
+			if strings.Contains(err.Error(), "column status_history.defense_points does not exist") {
+				log.Warningf("Defense points column doesn't exist. This might be expected when no teams are playing: %v", err)
+				// Just continue with an empty score for this round
+				response[i] = ChartAPIResponse{
+					Round:  uint(i),
+					Scores: []TeamRoundStatusShort{},
+				}
+				continue
+			}
+
 			log.Errorf("Error fetching scores for round %d: %v", i, err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+
 		scores := make([]TeamRoundStatusShort, 0, len(conf.Teams))
 		for _, score := range *dbScores {
 			scoresTeamIndex := -1
@@ -204,6 +231,24 @@ func handleScoreboard(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+		return
+	}
+
+	// Check if we have any teams
+	if len(conf.Teams) == 0 {
+		// No teams exist, return empty response
+		emptyResponse := ScoreboardAPIResponse{
+			Round:  uint(round),
+			Scores: []TeamRoundStatus{},
+		}
+		jsonData, err := json.Marshal(emptyResponse)
+		if err != nil {
+			log.Errorf("Error encoding empty response: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jsonData)
 		return
 	}
 
@@ -281,8 +326,8 @@ func handleScoreboard(w http.ResponseWriter, r *http.Request) {
 				DiffLostFlags:       diffLostFlags,
 				OffensivePoints:     service.OffensePoints,
 				DiffOffensivePoints: diffOffensivePoints,
-				DefensePoints:       service.DefensePoints,
-				DiffDefensePoints:   diffDefensePoints,
+				DefensivePoints:     service.DefensePoints,
+				DiffDefensivePoints: diffDefensePoints,
 				Sla:                 service.Sla,
 				DiffSla:             diffSla,
 				Score:               service.Score,
@@ -436,8 +481,8 @@ func handleTeam(w http.ResponseWriter, r *http.Request) {
 				DiffLostFlags:       diffLostFlags,
 				OffensivePoints:     service.OffensePoints,
 				DiffOffensivePoints: diffOffensivePoints,
-				DefensePoints:       service.DefensePoints,
-				DiffDefensePoints:   diffDefensePoints,
+				DefensivePoints:     service.DefensePoints,
+				DiffDefensivePoints: diffDefensePoints,
 				Sla:                 service.Sla,
 				DiffSla:             diffSla,
 				Score:               service.Score,

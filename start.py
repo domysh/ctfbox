@@ -9,9 +9,62 @@ import secrets
 import shutil
 from datetime import datetime
 import platform
+from dataclasses import dataclass, field, asdict
+from typing import List, Optional, Dict, Any, Union
 
 pref = "\033["
 reset = f"{pref}0m"
+
+@dataclass
+class Team:
+    id: int
+    name: str
+    token: str
+    wireguard_port: int
+    nop: bool = False
+    image: str = ""
+
+@dataclass
+class Config:
+    wireguard_start_port: int
+    wireguard_profiles: int
+    server_addr: str
+    dns: str
+    tick_time: int
+    flag_expire_ticks: int
+    initial_service_score: int
+    max_flags_per_request: int
+    submission_timeout: float
+    network_limit_bandwidth: str
+    max_vm_cpus: str
+    max_vm_mem: str
+    gameserver_token: str
+    teams: List[Team] = field(default_factory=list)
+    unsafe_privileged: bool = False
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    max_disk_size: Optional[str] = None
+    gameserver_exposed_port: Optional[str] = None
+    debug: bool = False
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> Config:
+        teams_data = data.pop('teams', [])
+        teams = [Team(**team) for team in teams_data]
+        config = cls(**data, teams=teams)
+        return config
+    
+    @classmethod
+    def from_json_file(cls, filepath: str) -> Config:
+        with open(filepath, 'r') as f:
+            return cls.from_dict(json.load(f))
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+    
+    def save_to_file(self, filepath: str, indent: int = 4) -> None:
+        with open(filepath, 'w') as f:
+            json.dump(self.to_dict(), f, indent=indent)
 
 class g:
     keep_file = False
@@ -201,13 +254,17 @@ def commit_prebuilt():
     return cmd_check(f'docker commit {g.prebuilded_container} {g.prebuilt_image}:latest', print_output=True)
 
 
-def write_compose(data):
+def write_compose(config: Union[Dict[str, Any], Config]):
+    # Convert dict to Config object if needed
+    if not isinstance(config, Config):
+        config = Config.from_dict(config)
+    
     with open(g.composefile,"wt") as compose:
         compose.write(dict_to_yaml({
             "services": {
                 "router": {
                     "hostname": "router",
-                    "dns": [data['dns']],
+                    "dns": [config.dns],
                     "build": "./router",
                     "cap_add": [
                         "NET_ADMIN",
@@ -221,18 +278,18 @@ def write_compose(data):
                         "net.ipv6.conf.all.forwarding=0",
                     ],
                     "environment": {
-                        "NTEAM": len(data['teams']),
-                        "RATE_NET": data['network_limit_bandwidth'],
+                        "NTEAM": len(config.teams),
+                        "RATE_NET": config.network_limit_bandwidth,
                     },
                     "volumes": [
-                        "unixsk:/unixsk/"
+                        "unixsk:/unixsk"
                     ],
                     "restart": "unless-stopped",
                     "networks": {
-                        **{f"vm-team{team['id']}": {
+                        **{f"vm-team{team.id}": {
                             "priority": 10,
-                            "ipv4_address": f"10.60.{team['id']}.250"
-                        } for team in data['teams']},
+                            "ipv4_address": f"10.60.{team.id}.250"
+                        } for team in config.teams},
                         "gameserver": {
                             "priority": 10,
                             "ipv4_address": "10.10.0.250"
@@ -241,17 +298,16 @@ def write_compose(data):
                             "priority": 1,
                         },
                         **{
-                            f"players{team['id']}":{
+                            f"players{team.id}":{
                                 "priority": 10,
-                                "ipv4_address": f"10.80.{team['id']}.250"
-                            } for team in data['teams'] if not team['nop']
+                                "ipv4_address": f"10.80.{team.id}.250"
+                            } for team in config.teams if not team.nop
                         }
-
                     }
                 },
                 "database": {
                     "hostname": "oasis-database",
-                    "dns": [data['dns']],
+                    "dns": [config.dns],
                     "image": "postgres:17",
                     "restart": "unless-stopped",
                     "environment": {
@@ -268,7 +324,7 @@ def write_compose(data):
                 },
                 "gameserver": {
                     "hostname": "gameserver",
-                    "dns": [data['dns']],
+                    "dns": [config.dns],
                     "build": "./game_server",
                     "restart": "unless-stopped",
                     "container_name": g.container_name,
@@ -277,13 +333,13 @@ def write_compose(data):
                     ],
                     **({
                         "ports": [
-                            f"{data['gameserver_exposed_port']}:80"
+                            f"{config.gameserver_exposed_port}:80"
                         ]
-                    } if data['gameserver_exposed_port'] is not None else {}),
+                    } if config.gameserver_exposed_port is not None else {}),
                     "depends_on": [
                         "router",
                         "database",
-                        *[f"team{ele['id']}" for ele in data['teams']]
+                        *[f"team{team.id}" for team in config.teams]
                     ],
                     "networks": {
                         "internalnet": {
@@ -295,43 +351,43 @@ def write_compose(data):
                         }
                     },
                     "volumes": [
-                        "./game_server/checkers/:/app/checkers/:z",
-                        "unixsk:/unixsk/:z",
+                        "./game_server/checkers:/app/checkers:z",
+                        "unixsk:/unixsk",
                         f"./{g.config_file}:/app/{g.config_file}:z"
                     ]
                 },
                 **{
-                    f"team{team['id']}": {
-                        "hostname": f"team{team['id']}",
-                        "dns": [data['dns']],
+                    f"team{team.id}": {
+                        "hostname": f"team{team.id}",
+                        "dns": [config.dns],
                         "build": {
                             "context": "./vm",
                             "args": {
-                                "TOKEN": team['token'],
+                                "TOKEN": team.token,
                             }
                         },
-                        **({ "storage_opt": {"size":data['max_disk_size']} } if data['enable_disk_limit'] else {}),
-                        **({"privileged": "true"} if data['unsafe_privileged'] else { "runtime": "sysbox-runc" }),
+                        **({ "storage_opt": {"size":config.max_disk_size} } if config.max_disk_size else {}),
+                        **({"privileged": "true"} if config.unsafe_privileged else { "runtime": "sysbox-runc" }),
                         "restart": "unless-stopped",
                         "networks": {
-                            f"vm-team{team['id']}": {
-                                "ipv4_address": f"10.60.{team['id']}.1"
+                            f"vm-team{team.id}": {
+                                "ipv4_address": f"10.60.{team.id}.1"
                             }
                         },
                         "deploy":{
                             "resources":{
                                 "limits":{
-                                    "cpus": f'"{data["max_vm_cpus"]}"',
-                                    "memory": data['max_vm_mem']
+                                    "cpus": f'"{config.max_vm_cpus}"',
+                                    "memory": config.max_vm_mem
                                 }
                             }
                         }
-                    } for team in data['teams']
+                    } for team in config.teams
                 },
                 **{
-                    f"wireguard{team['id']}": {
-                        "hostname": f"wireguard{team['id']}",
-                        "dns": [data['dns']],
+                    f"wireguard{team.id}": {
+                        "hostname": f"wireguard{team.id}",
+                        "dns": [config.dns],
                         "build": "./wireguard",
                         "restart": "unless-stopped",
                         "cap_add": [
@@ -343,28 +399,28 @@ def write_compose(data):
                             "net.ipv4.conf.all.src_valid_mark=1",
                         ],
                         "volumes": [
-                            f"./wireguard/conf{team['id']}/:/config/:z"
+                            f"./wireguard/conf{team.id}:/config:z"
                         ],
                         "networks": {
-                            f"players{team['id']}": {
-                                "ipv4_address": f"10.80.{team['id']}.128"
+                            f"players{team.id}": {
+                                "ipv4_address": f"10.80.{team.id}.128"
                             }
                         },
                         "ports": [
-                            f"{data['wireguard_start_port']+team['id']}:51820/udp"
+                            f"{config.wireguard_start_port+team.id}:51820/udp"
                         ],
                         "environment": {
                             "PUID": os.getuid() if is_linux() else 0,
                             "PGID": os.getgid() if is_linux() else 0,
                             "TZ": "Etc/UTC",
-                            "PEERS": data['wireguard_profiles'],
-                            "PEERDNS": data['dns'],
+                            "PEERS": config.wireguard_profiles,
+                            "PEERDNS": config.dns,
                             "ALLOWEDIPS": "10.10.0.0/16, 10.60.0.0/16, 10.80.0.0/16",
-                            "SERVERURL": data['server_addr'],
-                            "SERVERPORT": data['wireguard_start_port']+team['id'],
-                            "INTERNAL_SUBNET": f"10.80.{team['id']}.0/24",
+                            "SERVERURL": config.server_addr,
+                            "SERVERPORT": config.wireguard_start_port+team.id,
+                            "INTERNAL_SUBNET": f"10.80.{team.id}.0/24",
                         }
-                    } for team in data['teams'] if not team['nop']
+                    } for team in config.teams if not team.nop
                 }
             },
             "volumes": {
@@ -388,33 +444,33 @@ def write_compose(data):
                     }
                 },
                 **{
-                    f"vm-team{team['id']}": {
+                    f"vm-team{team.id}": {
                         "internal": "true",
                         "driver": "macvlan",
                         "ipam": {
                             "driver": "default",
                             "config": [
                                 {
-                                    "subnet": f"10.60.{team['id']}.0/24",
-                                    "gateway": f"10.60.{team['id']}.254",
+                                    "subnet": f"10.60.{team.id}.0/24",
+                                    "gateway": f"10.60.{team.id}.254",
                                 }
                             ]
                         }
-                    } for team in data['teams']
+                    } for team in config.teams
                 },
                 **{
-                    f"players{team['id']}": {
+                    f"players{team.id}": {
                         "driver": "bridge",
                         "ipam": {
                             "driver": "default",
                             "config": [
                                 {
-                                    "subnet": f"10.80.{team['id']}.0/24",
-                                    "gateway": f"10.80.{team['id']}.254",
+                                    "subnet": f"10.80.{team.id}.0/24",
+                                    "gateway": f"10.80.{team.id}.254",
                                 }
                             ]
                         }
-                    } for team in data['teams'] if not team['nop']
+                    } for team in config.teams if not team.nop
                 }
             }
         }))
@@ -484,20 +540,19 @@ def try_mkdir(path):
     except FileExistsError:
         pass
 
-def generate_teams_array(number_of_teams: int, enable_nop_team: bool, wireguard_start_port: int):
+def generate_teams_array(number_of_teams: int, enable_nop_team: bool, wireguard_start_port: int) -> List[Team]:
     teams = []
     for i in range(number_of_teams + (1 if enable_nop_team else 0)):
-        team = {
-            'id': i,
-            'name': f'Team {i}',
-            'token': secrets.token_hex(32),
-            'wireguard_port': wireguard_start_port+i,
-            'nop': False,
-            'image': ""
-        }
+        team = Team(
+            id=i,
+            name=f'Team {i}',
+            token=secrets.token_hex(32),
+            wireguard_port=wireguard_start_port+i,
+            nop=(i == 0 and enable_nop_team),
+            image=""
+        )
         if i == 0 and enable_nop_team:
-            team['nop'] = True
-            team['name'] = 'Nop Team'
+            team.name = 'Nop Team'
         teams.append(team)
     return teams
 
@@ -517,14 +572,12 @@ def get_input(prompt: str, default = None, is_required: bool = False, default_pr
         return value
     return default
 
-def config_input():
-    data = {}
-
+def config_input() -> Config:
     # abs() put for consistency with the other options
     default_number_of_teams = args.number_of_teams
-    args.number_of_teams = abs(int(get_input('Number of teams, >= 1 and < 250', default_number_of_teams)))
-    while args.number_of_teams < 1 or args.number_of_teams >= 250:
-        args.number_of_teams = abs(int(get_input('Number of teams, >= 1 and < 250', default_number_of_teams)))
+    args.number_of_teams = abs(int(get_input('Number of teams, >= 0 and < 250', default_number_of_teams)))
+    while args.number_of_teams < 0 or args.number_of_teams >= 250:
+        args.number_of_teams = abs(int(get_input('Number of teams, >= 0 and < 250', default_number_of_teams)))
 
     # abs() put for consistency with the other options
     default_wireguard_start_port = args.wireguard_start_port
@@ -548,9 +601,12 @@ def config_input():
 
     args.max_vm_cpus             = get_input('Max VM CPUs', args.max_vm_cpus)
     args.max_vm_mem              = get_input('Max VM Memory', args.max_vm_mem)
-    args.disk_limit              = get_input('Enable disk limit? (REQUIRES XFS FILESYSTEM)', 'yes').lower().startswith('y')
-    if args.disk_limit:
+    if get_input('Enable disk limit? (REQUIRES XFS FILESYSTEM)', 'yes').lower().startswith('y'):
         args.max_disk_size       = get_input('Max VM disk size', args.max_disk_size)
+    else:
+        args.max_disk_size = None
+    if get_input('Expose externally the gameserver scoreboard?', 'yes').lower().startswith('y'):
+        args.expose_gameserver = get_input('Insert with witch port or ip:port to expose the gameserver scoreboard', args.gameserver_port)
     
     args.gameserver_token        = get_input('Gameserver token', default_prompt='randomly generated')
     args.enable_nop_team         = get_input('Enable NOP team?', 'yes').lower().startswith('y')
@@ -558,54 +614,48 @@ def config_input():
     if args.privileged:
         puts("Privileged mode enabled (DO NOT USE THIS IN PRODUCTION)", color=colors.yellow)
 
-    data['wireguard_start_port'] = args.wireguard_start_port
-
-    data['wireguard_profiles'] = args.wireguard_profiles
-    data['server_addr'] = args.server_addr
-    data['dns'] = args.dns
-
-    data['start_time'] = datetime.fromisoformat(args.start_time).isoformat() if args.start_time else None
-    data['end_time'] = datetime.fromisoformat(args.end_time).isoformat() if args.end_time else None
-    data['tick_time'] = args.tick_time
-    data['flag_expire_ticks'] = args.flag_expire_ticks
-
-    data['initial_service_score'] = args.initial_service_score
-    data['max_flags_per_request'] = args.max_flags_per_request
-    data['submission_timeout'] = args.submission_timeout
-    data['network_limit_bandwidth'] = args.network_limit_bandwidth
-
-    data['max_vm_cpus'] = args.max_vm_cpus
-    data['max_vm_mem'] = args.max_vm_mem
-    data['max_disk_size'] = args.max_disk_size
-
-    data['gameserver_token'] = args.gameserver_token if args.gameserver_token else secrets.token_hex(32)
-    # asking for NOP team here
-    data['unsafe_privileged'] = args.privileged
-    data['enable_disk_limit'] = args.disk_limit
+    gameserver_exposed_port = None
     if args.expose_gameserver:
-        data['gameserver_exposed_port'] = args.gameserver_port
-    else:
-        data['gameserver_exposed_port'] = None
+        gameserver_exposed_port = args.gameserver_port
 
-    data['debug'] = False
+    # Create teams
+    teams = generate_teams_array(args.number_of_teams, args.enable_nop_team, args.wireguard_start_port)
     
-    data['teams'] = generate_teams_array(args.number_of_teams, args.enable_nop_team, args.wireguard_start_port)
+    # Create and return the Config object
+    return Config(
+        wireguard_start_port=args.wireguard_start_port,
+        wireguard_profiles=args.wireguard_profiles,
+        server_addr=args.server_addr,
+        dns=args.dns,
+        start_time=datetime.fromisoformat(args.start_time).isoformat() if args.start_time else None,
+        end_time=datetime.fromisoformat(args.end_time).isoformat() if args.end_time else None,
+        tick_time=args.tick_time,
+        flag_expire_ticks=args.flag_expire_ticks,
+        initial_service_score=args.initial_service_score,
+        max_flags_per_request=args.max_flags_per_request,
+        submission_timeout=args.submission_timeout,
+        network_limit_bandwidth=args.network_limit_bandwidth,
+        max_vm_cpus=args.max_vm_cpus,
+        max_vm_mem=args.max_vm_mem,
+        max_disk_size=args.max_disk_size,
+        gameserver_token=args.gameserver_token if args.gameserver_token else secrets.token_hex(32),
+        unsafe_privileged=args.privileged,
+        gameserver_exposed_port=gameserver_exposed_port,
+        debug=False,
+        teams=teams
+    )
 
-    return data
-
-def create_config(data):
-    with open(g.config_file, 'w') as f:
-        json.dump(data, f, indent=4)
+def create_config(data: Union[Dict[str, Any], Config]) -> Config:
+    if not isinstance(data, Config):
+        data = Config.from_dict(data)
+    data.save_to_file(g.config_file)
     return data
 
 def config_exists():
     return os.path.isfile(g.config_file)
 
-def read_config():
-    with open(g.config_file) as f:
-        return json.load(f)
-
-
+def read_config() -> Config:
+    return Config.from_json_file(g.config_file)
 
 def main():
     if args.command == "start":
@@ -640,26 +690,26 @@ def main():
                 if args.config_only:
                     puts(f"Config file generated!, you can customize it by editing {g.config_file}", color=colors.green)
                     return
-                if not prebuilt_exists():
-                    puts("Prebuilt image not found!", color=colors.yellow)
-                    puts("Clearing old setup images...", color=colors.yellow)
-                    #If these images exists, we need to remove them to avoid errors
-                    remove_prebuilded()
-                    remove_prebuilt()
-                    puts("Building the prebuilder image", color=colors.yellow)
-                    if not build_prebuilder():
-                        puts("Error building prebuilder image", color=colors.red)
-                        exit(1)
-                    puts("Executing prebuilder to create VMs' base image", color=colors.yellow)
-                    if not build_prebuilt(config['unsafe_privileged']):
-                        puts("Error building prebuilt image", color=colors.red)
-                        exit(1)
-                    puts("Saving base VM container as image to be used to build the CTF services\n(this action can take a while and produces no output)", color=colors.yellow)
-                    if not commit_prebuilt():
-                        puts("Error commiting prebuilt image", color=colors.red)
-                        exit(1)
-                    puts("Clear unused images", color=colors.yellow)
-                    remove_prebuilded()
+                if len(config.teams) > 0:
+                    if not prebuilt_exists():
+                        puts("Prebuilt image not found!", color=colors.yellow)
+                        puts("Clearing old setup images...", color=colors.yellow)
+                        remove_prebuilded()
+                        remove_prebuilt()
+                        puts("Building the prebuilder image", color=colors.yellow)
+                        if not build_prebuilder():
+                            puts("Error building prebuilder image", color=colors.red)
+                            exit(1)
+                        puts("Executing prebuilder to create VMs' base image", color=colors.yellow)
+                        if not build_prebuilt(config.unsafe_privileged):
+                            puts("Error building prebuilt image", color=colors.red)
+                            exit(1)
+                        puts("Saving base VM container as image to be used to build the CTF services\n(this action can take a while and produces no output)", color=colors.yellow)
+                        if not commit_prebuilt():
+                            puts("Error commiting prebuilt image", color=colors.red)
+                            exit(1)
+                        puts("Clear unused images", color=colors.yellow)
+                        remove_prebuilded()
                 
                 if not config_exists():
                     puts(f"Config file not found! please run {sys.argv[0]} start", color=colors.red)

@@ -48,7 +48,7 @@ export const ServiceScoreData = ({ score }: { score?: TeamServiceScore }) => {
             <Box display="flex" style={{ alignItems: "center", textWrap: "nowrap" }} pr="xl">
                 <FaShieldAlt size={16} /><Space w="xs" /> <Text>{score.defensive_points.toFixed(2)} ({score.lost_flags==0?"":"-"}{score.lost_flags})</Text>
             </Box>
-            <DiffArrow diff={score.diff_defense_points} text={`${score.diff_defense_points.toFixed(2)} (${score.diff_lost_flags==0?"":"-"}${score.diff_lost_flags})`} />
+            <DiffArrow diff={score.diff_defensive_points} text={`${score.diff_defensive_points.toFixed(2)} (${score.diff_lost_flags==0?"":"-"}${score.diff_lost_flags})`} />
         </Box>
         <Box display="flex" style={{ alignItems: "center", justifyContent: "space-between", width: "100%" }}>
             <Box display="flex" style={{ alignItems: "center", textWrap: "nowrap" }} pr="xl">

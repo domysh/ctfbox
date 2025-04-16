@@ -46,7 +46,7 @@ export type TeamServiceScore = {
     diff_stolen_flags: number,
     diff_lost_flags: number,
     diff_offensive_points: number,
-    diff_defense_points: number,
+    diff_defensive_points: number,
     diff_sla: number,
     diff_score: number,
     diff_final_score: number,
