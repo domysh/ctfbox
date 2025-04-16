@@ -1,4 +1,4 @@
-import { Badge, Box, Chip, Progress, Text } from "@mantine/core"
+import { Badge, Box, Progress, Text } from "@mantine/core"
 import { useStatusQuery } from "../scripts/query"
 import { useInterval } from "@mantine/hooks"
 import { useEffect, useState } from "react"

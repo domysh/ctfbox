@@ -1,4 +1,4 @@
-# Oasis
+# CTFBox
 
 - Open
 - Attack & Defense
@@ -10,20 +10,21 @@
 
 
 ## Introduction
-Oasis is an open-source project designed to provide a simple infrastructure for attack and defense simulations. It facilitates cybersecurity training and testing through various components and services.
+CTFBox is an open-source project designed to provide a simple infrastructure for attack and defense simulations. It facilitates cybersecurity training and testing through various components and services.
 
+This project as initially started as a fork of [OASIS](https://github.com/TheRomanXpl0it/Oasis).
 
 ## Installation
-To install and set up the Oasis project, follow these steps:
+To install and set up the CTFBox project, follow these steps:
 
 Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/Oasis.git
-cd Oasis
+git clone https://github.com/yourusername/CTFBox.git
+cd CTFBox
 ```
 
-For running Oasis, you need docker and have correctly installed and configured [sysbox](https://github.com/nestybox/sysbox).
+For running CTFBox, you need docker and have correctly installed and configured [sysbox](https://github.com/nestybox/sysbox).
 
 You can install sysbox with the official .deb files in the repository, or using AUR for Arch Linux, or even [using dnf copr](https://copr.fedorainfracloud.org/coprs/karellen/karellen-sysbox/) for Fedora. (The only official supported way is the .deb files, but the other methods are also working)
 
@@ -40,7 +41,7 @@ Remember that after installing you need to enable sysbox services, and also conf
 
 After that, restart the docker service.
 
-Now you can run Oasis using the following command:
+Now you can run CTFBox using the following command:
 
 ```bash
 sudo python3 start.py start
@@ -63,17 +64,17 @@ To manage the game network run:
 python3 start.py compose exec router ctfroute unlock|lock
 ```
 
-This will be automatically handled by the game server based on the configuration given (start_time, end_time, customizable from the oasis json). For special cases, you can use this command.
+This will be automatically handled by the game server based on the configuration given (start_time, end_time, customizable from the ctfbox json). For special cases, you can use this command.
 
 ## Configuration
 
-If you want generate the Oasis json config, edit it and after start Oasis run:
+If you want generate the CTFBox json config, edit it and after start CTFBox run:
 
 ```bash
 python3 start.py start -C
 ```
 
-This will generate the config only, you can start oasis later
+This will generate the config only, you can start ctfbox later
 
 To stop the services run:
 

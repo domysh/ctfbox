@@ -23,14 +23,7 @@ export const RulesContent = () => {
 
     return config.isSuccess?<Box>
         <Title order={1} mt="lg">Rules</Title>
-        <Text mt="lg">Welcome to OASIS, a simulation tool for Attack Defence CTF competitions.</Text>
-        <List mt="lg">
-            <List.Item>Open</List.Item>
-            <List.Item>Attack & Defense</List.Item>
-            <List.Item>Simple</List.Item>
-            <List.Item>Infrastructure</List.Item>
-            <List.Item>System</List.Item>
-        </List>
+        <Text mt="lg">Welcome to CTFBox, a simulation tool for Attack Defence CTF competitions.</Text>
         <Text mt="lg">The infrastruture is inspired from CyberChallenge A/D infrastructure, some parts of the rules are taken from there</Text>
         <Title order={2} mt="lg">Network and Setup</Title>
         <Text mt="lg">The game is played within the 10.0.0.0/8 subnet. Each team has its own vulnerable machine located at 10.60.team_id.1, while players connecting to the game network are assigned an ip in the 10.80.team_id.1/24 subnet.</Text>

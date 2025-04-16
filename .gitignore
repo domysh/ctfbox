@@ -1,11 +1,8 @@
 __pycache__/
-
 /config.json
-
 volumes/**
-
 volumes/
-
 /compose.yml
-
-/oasis-compose-tmp-file.yml
+/ctfbox-compose-tmp-file.yml
+/.ctfbox-secrets-tmp
+/.ctfbox-secrets-tmp/** */

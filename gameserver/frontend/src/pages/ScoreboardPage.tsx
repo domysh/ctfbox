@@ -55,7 +55,7 @@ const TeamRow = memo(({ teamData, pos, services, teamInfo }: {
             <Table.Td {...redirectProps} px="md"><Box className="center-flex"><Text>{pos + 1}</Text></Box></Table.Td>
             <Table.Td {...redirectProps}><Box className="center-flex" style={{ width: "100%"}}>
                 <Image
-                    src={"/images/teams/"+(teamInfo?.image == "" || teamInfo == null ?"oasis-player.png":teamInfo.image)}
+                    src={"/images/teams/"+(teamInfo?.image == "" || teamInfo == null ?"ctfbox-player.png":teamInfo.image)}
                     alt={teamData.team}
                     mah={120}
                     mih={120}

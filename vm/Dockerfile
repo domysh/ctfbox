@@ -1,11 +1,19 @@
-FROM oasis-vm-base:latest
+FROM ctfbox-vm-base:latest
 
-ARG TOKEN
-ENV TOKEN=$TOKEN
-RUN echo "root:${TOKEN:-root}" | chpasswd
+ARG TEAM_ID
+ENV TEAM_ID=$TEAM_ID
+RUN echo $TEAM_ID >> /etc/teamid
 
 ARG TEAM_NAME
 ENV TEAM_NAME=$TEAM_NAME
 RUN echo $TEAM_NAME >> /etc/teamname
+
+# Use build secrets instead of ARG for sensitive data
+RUN --mount=type=secret,id=token_team_${TEAM_ID} \
+    if [ -f "/run/secrets/token_team_${TEAM_ID}" ]; then \
+        echo "root:$(cat /run/secrets/token_team_${TEAM_ID})" | chpasswd; \
+    else \
+        exit 1; \
+    fi
 
 ENTRYPOINT [ "/sbin/init", "--log-level=err" ]

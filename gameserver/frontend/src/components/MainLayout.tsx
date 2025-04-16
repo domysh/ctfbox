@@ -48,9 +48,9 @@ export const MainLayout = ({ page }: { page:Pages }) => {
     <AppShell.Header>
       <Box className='center-flex' style={{ height: "100%" }} >
         <Space w="md" />
-        <Image src="/logo.png" alt="Oasis Logo" width={40} height={40} />
+        <Image src="/logo.png" alt="CTFBox Logo" width={40} height={40} />
         <Title ml="5px" order={2}>
-          Oasis
+          CTFBox
         </Title>
         <Box flex={1} />
         {headerComponents}

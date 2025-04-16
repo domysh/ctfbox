@@ -28,7 +28,9 @@ iptables -o eth+ -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 iptables -o eth+ -A FORWARD -s 10.10.0.0/16 -j ACCEPT
 iptables -o eth+ -A FORWARD -d 10.10.0.1 -j ACCEPT
 
-for i in $(seq 0 $(($NTEAM-1))) ; do
+# Using explicit TEAM_IDS list instead of calculating from NTEAM
+IFS=',' read -ra TEAM_ID_ARRAY <<< "$TEAM_IDS"
+for i in "${TEAM_ID_ARRAY[@]}" ; do
     #traffic from team to the self-VM is allowed
     iptables -o eth+ -A FORWARD -s 10.80.$i.0/24 -d 10.60.$i.1 -j ACCEPT
     #Allow traffic between team members
@@ -36,7 +38,7 @@ for i in $(seq 0 $(($NTEAM-1))) ; do
 done
 iptables -o eth+ -A FORWARD -s 10.0.0.0/8 -d 10.80.0.0/16 -j REJECT
 
-echo "Created rules for $NTEAM teams"
+echo "Created rules for ${#TEAM_ID_ARRAY[@]} teams with IDs: $TEAM_IDS"
 
 if [[ "$VM_NET_LOCKED" != "n" ]]; then
     ctfroute lock

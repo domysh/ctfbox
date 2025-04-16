@@ -77,14 +77,15 @@ class Config:
 
 class g:
     keep_file = False
-    composefile = "oasis-compose-tmp-file.yml"
-    container_name = "oasis_gameserver"
-    compose_project_name = "oasis"
-    name = "Oasis"
+    composefile = "ctfbox-compose-tmp-file.yml"
+    container_name = "ctfbox_gameserver"
+    compose_project_name = "ctfbox"
+    name = "CTFBox"
     config_file = "config.json"
-    prebuild_image = "oasis-prebuilder"
-    prebuilded_container = "oasis-prebuilded"
-    prebuilt_image = "oasis-vm-base"
+    prebuild_image = "ctfbox-prebuilder"
+    prebuilded_container = "ctfbox-prebuilded"
+    prebuilt_image = "ctfbox-vm-base"
+    secrets_dir = ".ctfbox-secrets-tmp"  # New temporary directory for secrets
 
 use_build_on_compose = True
 
@@ -165,7 +166,7 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_start.add_argument('--max-vm-cpus', type=str, default="1", help='Max CPUs for VMs')
     parser_start.add_argument('--wireguard-profiles', type=int, default=30, help='Number of wireguard profiles')
     parser_start.add_argument('--dns', type=str, default="1.1.1.1", help='DNS server')
-    parser_start.add_argument('--server-addr', type=str, help='Oasis public ip address')
+    parser_start.add_argument('--server-addr', type=str, help='CTFBox public ip address')
     parser_start.add_argument('--submission-timeout', type=float, default=0.03, help='Submission timeout rate limit') # 30 req/s
     parser_start.add_argument('--flag-expire-ticks', type=int, default=5, help='Flag expire ticks')
     parser_start.add_argument('--initial-service-score', type=int, default=5000, help='Initial service score')
@@ -248,7 +249,7 @@ def remove_prebuilded():
     return cmd_check(f'docker container rm {g.prebuilded_container}')
 
 def remove_database_volume():
-    return cmd_check('docker volume rm -f oasis_oasis-postgres-db')
+    return cmd_check('docker volume rm -f ctfbox_ctfbox-postgres-db')
 
 def build_prebuilder():
     return cmd_check(f'docker build -t {g.prebuild_image} -f ./vm/Dockerfile.prebuilder ./vm/', print_output=True)
@@ -268,6 +269,16 @@ def write_compose(config: Union[Dict[str, Any], Config]):
     if not isinstance(config, Config):
         config = Config.from_dict(config)
     
+    cleanup_secrets()
+    # Create temporary directory for secrets if it doesn't exist
+    if not os.path.exists(g.secrets_dir):
+        os.makedirs(g.secrets_dir)
+    
+    # Create token secret files for each team
+    for team in config.teams:
+        with open(f"{g.secrets_dir}/token_{team.id}", "w") as f:
+            f.write(team.token)
+        
     with open(g.composefile,"wt") as compose:
         compose.write(dict_to_yaml({
             "services": {
@@ -287,8 +298,8 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         "net.ipv6.conf.all.forwarding=0",
                     ],
                     "environment": {
-                        "NTEAM": len(config.teams),
                         "RATE_NET": config.network_limit_bandwidth,
+                        "TEAM_IDS": ",".join(str(team.id) for team in config.teams),
                     },
                     "volumes": [
                         "unixsk:/unixsk"
@@ -315,17 +326,17 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                     }
                 },
                 "database": {
-                    "hostname": "oasis-database",
+                    "hostname": "ctfbox-database",
                     "dns": [config.dns],
                     "image": "postgres:17",
                     "restart": "unless-stopped",
                     "environment": {
-                        "POSTGRES_USER": "oasis",
-                        "POSTGRES_PASSWORD": "oasis",
-                        "POSTGRES_DB": "oasis"
+                        "POSTGRES_USER": "ctfbox",
+                        "POSTGRES_PASSWORD": "ctfbox",
+                        "POSTGRES_DB": "ctfbox"
                     },
                     "volumes": [
-                        "oasis-postgres-db:/var/lib/postgresql/data"
+                        "ctfbox-postgres-db:/var/lib/postgresql/data"
                     ],
                     "networks": {
                         "internalnet": "",
@@ -371,8 +382,12 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         "dns": [config.dns],
                         "build": {
                             "context": "./vm",
+                            "secrets": [
+                                f"token_team_{team.id}"
+                            ],
                             "args": {
-                                "TOKEN": team.token,
+                                "TEAM_ID": team.id,
+                                "TEAM_NAME": team.name,
                             }
                         },
                         **({ "storage_opt": {"size":config.max_disk_size} } if config.max_disk_size else {}),
@@ -432,9 +447,16 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                     } for team in config.teams if not team.nop
                 }
             },
+            "secrets":{
+                **{
+                    f"token_team_{team.id}": {
+                        "file": f"{g.secrets_dir}/token_{team.id}"
+                    } for team in config.teams
+                },
+            },
             "volumes": {
                 "unixsk": "",
-                "oasis-postgres-db": ""
+                "ctfbox-postgres-db": ""
             },
             "networks": {
                 "externalnet": "",
@@ -667,6 +689,10 @@ def config_exists():
 def read_config() -> Config:
     return Config.from_json_file(g.config_file)
 
+def cleanup_secrets():
+    if os.path.exists(g.secrets_dir):
+        shutil.rmtree(g.secrets_dir)
+
 def main():
     if args.command == "start":
         if args.config_only:
@@ -801,6 +827,7 @@ if __name__ == "__main__":
             main()
         finally:
             kill_builder()
+            cleanup_secrets()
             if os.path.isfile(g.composefile) and not g.keep_file:
                 os.remove(g.composefile)
     except KeyboardInterrupt:
