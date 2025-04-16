@@ -15,7 +15,6 @@ from typing import List, Optional, Dict, Any, Union
 pref = "\033["
 reset = f"{pref}0m"
 
-
 @dataclass
 class PinEntry:
     pin: str
@@ -57,7 +56,9 @@ class Config:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> Config:
         teams_data = data.pop('teams', [])
-        teams = [Team(**team) for team in teams_data]
+        teams = [
+            Team(**team, pins=[PinEntry(**pin) for pin in team.get('pins', [])])
+        for team in teams_data]
         config = cls(**data, teams=teams)
         return config
     
