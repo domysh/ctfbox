@@ -52,6 +52,7 @@ class Config:
     max_disk_size: Optional[str] = None
     gameserver_exposed_port: Optional[str] = None
     debug: bool = False
+    pin_data_added: bool = False
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> Config:
