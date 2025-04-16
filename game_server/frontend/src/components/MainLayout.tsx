@@ -15,7 +15,6 @@ export const MainLayout = ({ page }: { page:Pages }) => {
     const config = useStatusQuery()
     const [oldRound, setOldRound] = useState(-1)
     const queryClient = useQueryClient()
-    const [firstLoading, setFirstLoading] = useState(false)
 
     const { headerComponents, setHeaderComponents, loading } = useGlobalState()
 
@@ -29,11 +28,9 @@ export const MainLayout = ({ page }: { page:Pages }) => {
     }, [config.isFetching])
 
     useEffect(()=>{
-      if (!firstLoading){
-        setFirstLoading(true)
-        return
+      if (!["scoreboard-team"].includes(page)) {
+        setHeaderComponents(null)
       }
-      setHeaderComponents(null)
     }, [page])
 
     const renderedPage = useMemo(() => {

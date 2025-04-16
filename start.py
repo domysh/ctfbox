@@ -8,6 +8,7 @@ import json
 import secrets
 import shutil
 from datetime import datetime
+import platform
 
 pref = "\033["
 reset = f"{pref}0m"
@@ -26,6 +27,9 @@ class g:
 use_build_on_compose = True
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
+def is_linux():
+    return "linux" in sys.platform and 'microsoft-standard' not in platform.uname().release
 
 #Terminal colors
 
@@ -350,8 +354,8 @@ def write_compose(data):
                             f"{data['wireguard_start_port']+team['id']}:51820/udp"
                         ],
                         "environment": {
-                            "PUID": os.getuid(),
-                            "PGID": os.getgid(),
+                            "PUID": os.getuid() if is_linux() else 0,
+                            "PGID": os.getgid() if is_linux() else 0,
                             "TZ": "Etc/UTC",
                             "PEERS": data['wireguard_profiles'],
                             "PEERDNS": data['dns'],
