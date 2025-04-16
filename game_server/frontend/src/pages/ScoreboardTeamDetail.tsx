@@ -1,7 +1,7 @@
 import { ActionIcon, Box, Pill, ScrollAreaAutosize, Space, Table, Text, Title } from "@mantine/core"
 import { TeamScores, useScoreboardQuery, useStatusQuery, useTeamQuery, useTeamSolver } from "../scripts/query"
 import { LineChart } from "@mantine/charts"
-import { hashedColor, scoreBoardSortFunction, useGlobalState } from "../scripts/utils"
+import { hashedColor, scoreBoardSortFunction, useGlobalState, useStickyScrollableHeader } from "../scripts/utils"
 import { MdGroups } from "react-icons/md";
 import { FaHashtag } from "react-icons/fa6";
 import { ImTarget } from "react-icons/im";
@@ -21,7 +21,7 @@ const TeamRoundRow = memo(({ round, currentTeam, services }:{
 }) => {
     return (
         <Table.Tr>
-            <Table.Td px="lg"><Box className="center-flex"><Text>{round.round}</Text></Box></Table.Td>
+            <Table.Td px="md"><Box className="center-flex"><Text>{round.round}</Text></Box></Table.Td>
             <Table.Td><Box className="center-flex-col">
                 <Text>{currentTeam?.name ?? "Unknown Team"}</Text>
                 <Space h="3px" />
@@ -132,6 +132,7 @@ export const ScoreboardTeamDetail = () => {
     );
 
     const setLoading = useGlobalState(state => state.setLoading)
+    const tableRef = useStickyScrollableHeader()
 
     // Better error handling for sorting
     const sortedTeamData = useMemo(() => 
@@ -269,7 +270,7 @@ export const ScoreboardTeamDetail = () => {
             <Space h="lg" />
             
             <ScrollAreaAutosize>
-                <Table striped highlightOnHover>
+                <Table striped highlightOnHover ref={tableRef}>
                     <TableHeader services={services} />
                     <Table.Tbody>{rows}</Table.Tbody>
                 </Table>

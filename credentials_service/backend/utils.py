@@ -6,7 +6,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DEBUG = os.getenv('DEBUG', "0").strip() == "1"
 
-TEAMS_DATA_FILE = os.path.join(BASE_DIR, 'oasis-setup-config.json' if not DEBUG else '../../oasis-setup-config.json')
+TEAMS_DATA_FILE = os.path.join(BASE_DIR, 'config.json' if not DEBUG else '../../config.json')
 
 config_file_lock = InterProcessLock(os.path.join(BASE_DIR, "teams_data.json.lock"))
 

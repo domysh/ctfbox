@@ -1,7 +1,7 @@
-import { Box, Image, Paper, Pill, ScrollAreaAutosize, Space, Table, Text, Title } from "@mantine/core"
+import { Box, Image, Paper, Pill, ScrollAreaAutosize, Space, Table, Text, Title, Tooltip } from "@mantine/core"
 import { useChartQuery, useStatusQuery, useScoreboardQuery, useTeamSolver, TeamStatusInfo, TeamScores } from "../scripts/query"
 import { ChartTooltipProps, LineChart } from "@mantine/charts"
-import { hashedColor, scoreBoardSortFunction, useGlobalState } from "../scripts/utils"
+import { hashedColor, scoreBoardSortFunction, useGlobalState, useStickyScrollableHeader } from "../scripts/utils"
 import { MdGroups } from "react-icons/md";
 import { FaHashtag } from "react-icons/fa6";
 import { ImTarget } from "react-icons/im";
@@ -10,8 +10,9 @@ import { ServiceScoreData } from "../components/ServiceScoreData";
 import { RoundCounter } from "../components/RoundCounter";
 import { useNavigate } from "react-router-dom";
 import { DiffArrow } from "../components/DiffArrow";
-import { FiExternalLink } from "react-icons/fi";
 import { useMemo, memo, useEffect } from "react";
+import { HiOutlineCursorClick } from "react-icons/hi";
+import { RiGhostFill } from "react-icons/ri";
 
 const ChartTooltip = memo(({ label, payload }: ChartTooltipProps) => {
     if (!payload) return null;
@@ -51,19 +52,26 @@ const TeamRow = memo(({ teamData, pos, services, teamInfo }: {
 
     return (
         <Table.Tr>
-            <Table.Td {...redirectProps} px="lg"><Box className="center-flex"><Text>{pos + 1}</Text></Box></Table.Td>
+            <Table.Td {...redirectProps} px="md"><Box className="center-flex"><Text>{pos + 1}</Text></Box></Table.Td>
             <Table.Td {...redirectProps}><Box className="center-flex" style={{ width: "100%"}}>
                 <Image
                     src={"/images/teams/"+(teamInfo?.image == "" || teamInfo == null ?"oasis-player.png":teamInfo.image)}
                     alt={teamData.team}
                     mah={120}
+                    mih={120}
                     maw={120}
+                    miw={120}
                 />
             </Box></Table.Td>
             <Table.Td><Box className="center-flex-col">
-                <Text {...redirectProps}>{teamInfo?.name??"Unknown Team"} <FiExternalLink size={12} /></Text>
+                <Text {...redirectProps}>{teamInfo?.name??"Unknown Team"} <HiOutlineCursorClick size={12} /></Text>
                 <Space h="3px" />
-                <Pill style={{ backgroundColor: "var(--mantine-color-cyan-filled)", color: "white", fontWeight: "bold" }}>{teamData.team}</Pill>
+                <Pill style={{ backgroundColor: "var(--mantine-color-cyan-filled)", color: "white", fontWeight: "bold" }} className="center-flex">
+                    {teamData.team}
+                    {teamInfo?.nop?<Tooltip label={"NOP team"}>
+                        <span><RiGhostFill style={{marginBottom: -2, marginLeft: 4}}/></span>
+                    </Tooltip>:null}
+                    </Pill>
             </Box></Table.Td>
             <Table.Td>
                 <Box className="center-flex-row">
@@ -100,6 +108,7 @@ export const ScoreboardPage = () => {
     );
 
     const dataLoaded = chartData.isSuccess && scoreboardData.isSuccess && configData.isSuccess;
+    const tableRef = useStickyScrollableHeader()
 
     useEffect(() => {
         if (!dataLoaded){
@@ -186,10 +195,10 @@ export const ScoreboardPage = () => {
             <RoundCounter />
             <Space h="lg" />
             <ScrollAreaAutosize>
-                <Table highlightOnHover striped>
+                <Table highlightOnHover striped ref={tableRef}>
                     <Table.Thead h={60} style={{ backgroundColor: "var(--mantine-color-dark-8)" }}>
                         <Table.Tr>
-                            <Table.Th style={{ width: "10px"}}>
+                            <Table.Th style={{ width: "10px"}} px="md">
                                 <Box className="center-flex"><FaHashtag size={20} /></Box>
                             </Table.Th>
                             <Table.Th style={{ width: "140px"}}>{/*Image*/}</Table.Th>

@@ -5,6 +5,6 @@ __pycache__
 Dockerfile.api
 .dockerignore
 .git
-/oasis-setup-config.json
+/config.json
 /teams_data.json.lock
 
