@@ -1,11 +1,13 @@
 # CTFBox
 
+An Open Attack/Defense Infrastructure Simulation Tool - based on containers
+
 <img width="1002" alt="Screenshot 2025-04-16 alle 11 16 05 PM" src="https://github.com/user-attachments/assets/bc1d15e5-6bde-429b-aeed-ed127a08900b" />
 
 ## Introduction
 CTFBox is an open-source project designed to provide a simple infrastructure for attack and defense simulations. It facilitates cybersecurity training and testing through various components and services.
 
-This project as initially started as a fork of [OASIS](https://github.com/TheRomanXpl0it/Oasis).
+The project was initially started as a fork of [OASIS](https://github.com/TheRomanXpl0it/Oasis).
 
 ## Installation
 To install and set up the CTFBox project, follow these steps:
