@@ -198,16 +198,36 @@
         
         /* Improved responsive styles */
         @media (max-width: 768px) {
-            .container {
-                padding: 15px;
-            }
             .section {
                 padding: 15px;
+                border: none;
+                border-radius: 0;
+                background-color: transparent;
+                margin-bottom: 20px;
+            }
+            .team-card {
+                border: none;
+                border-radius: 0;
+                padding: 15px 10px;
+                margin-bottom: 15px;
+                box-shadow: none;
+            }
+            .team-card.nop-team {
+                border-left: 2px solid #0d6efd;
+            }
+            .json-preview {
+                border: none;
+                border-radius: 0;
+                padding: 10px;
+            }
+            .header, .footer {
+                border: none;
             }
             .team-header {
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 10px;
+                border: none;
             }
             .preview-header {
                 flex-direction: column;
@@ -263,7 +283,12 @@
                 bottom: 0;
                 padding: 10px;
             }
-            
+            .container {
+                padding: 15px;;
+                border-radius: 0;
+                background-color: transparent;
+                box-shadow: none;
+            }
             .toast {
                 width: 100%;
             }
@@ -271,24 +296,43 @@
         
         @media (max-width: 576px) {
             body {
-                padding: 10px;
-            }
-            .container {
-                padding: 10px;
+                padding: 10px 0;
             }
             .section {
-                padding: 10px;
+                padding: 10px 5px;
+                margin-bottom: 15px;
             }
-            
-            /* Ensure buttons and inputs are properly sized on very small screens */
+            .import-option {
+                border: none;
+                border-radius: 0;
+                padding: 10px 5px;
+            }
             .btn {
-                width: 100%;
-                margin-bottom: 8px;
+                border-radius: 3px;
+            }
+            .accordion-item {
+                border: none;
+            }
+            .accordion-button {
+                padding: 10px;
+                border-radius: 0 !important;
             }
             
-            /* Improve form controls spacing on small screens */
-            .form-floating {
-                margin-bottom: 12px;
+            /* Remove all inner borders in mobile view */
+            .form-control, 
+            .form-select, 
+            .input-group-text,
+            .modal-content,
+            .toast {
+                border-radius: 3px;
+            }
+            
+            /* Reduce padding for better space usage */
+            .modal-body, 
+            .modal-header, 
+            .modal-footer,
+            .accordion-body {
+                padding: 10px;
             }
         }
 
@@ -470,6 +514,9 @@
                             <input type="text" class="form-control" id="maxDiskSize" value="30G">
                             <label for="maxDiskSize">Max Disk Size</label>
                         </div>
+                        <small class="text-muted mt-1 d-block">
+                            Note: Requires XFS filesystem with pquota enabled on the host
+                        </small>
                     </div>
                 </div>
             </div>
@@ -489,6 +536,9 @@
                         <input class="form-check-input" type="checkbox" id="unsafePrivileged">
                         <label class="form-check-label" for="unsafePrivileged">Use Privileged Mode (Not Recommended)</label>
                     </div>
+                    <small class="d-block text-muted mt-1">
+                        When enabled, sysbox will not be used and doesn't need to be installed
+                    </small>
                     <div class="form-check form-switch mt-3">
                         <input class="form-check-input" type="checkbox" id="exposeGameserver">
                         <label class="form-check-label" for="exposeGameserver">Expose Gameserver</label>
