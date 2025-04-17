@@ -610,7 +610,7 @@ def config_input() -> Config:
     use_web_editor = get_input('Do you want to use the web editor?', 'yes').lower().startswith('y')
     
     if use_web_editor:
-        puts("Open the web editor at: https://domysh.github.io/ctfbox/utils/editor.html", color=colors.green)
+        puts("Open the web editor at: https://domysh.github.io/ctfbox/utils/editor", color=colors.green)
         puts("Configure your settings and then click 'Copy Compressed Config'", color=colors.green)
         puts("Paste the base64 compressed config below:", color=colors.yellow)
         

@@ -35,17 +35,68 @@
             color: #6ea8fe;
         }
         .team-card {
-            margin-bottom: 15px;
+            margin-bottom: 0;
             border: 1px solid #495057;
             border-radius: 5px;
-            padding: 15px;
+            padding: 20px;
             background-color: #2c3034;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        .team-card:hover {
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+        .team-card.nop-team {
+            border-left: 4px solid #0d6efd;
         }
         .team-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #343a40;
+        }
+        .team-id-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background-color: #212529;
+            color: #fff;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border: 2px solid #495057;
+            font-size: 1rem;
+        }
+        .team-container-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .team-container-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .team-switch-container {
+            display: flex;
+            align-items: center;
             margin-bottom: 15px;
+        }
+        .team-switch-container .form-check-input {
+            width: 3em;
+            height: 1.5em;
+            margin-right: 10px;
+        }
+        .team-switch-container .form-check-label {
+            font-weight: 500;
         }
         .advanced-toggle {
             cursor: pointer;
@@ -125,9 +176,23 @@
         .form-check.form-switch {
             display: flex;
             align-items: center;
+            justify-content: center;
+            margin: auto;
         }
         .form-check.form-switch .form-check-input {
             margin-right: 10px;
+        }
+        .form-check.form-switch .form-check-label {
+            display: flex;
+            align-items: center;
+        }
+        .col-md-6 .form-check.form-switch {
+            justify-content: flex-start;
+            margin: 0;
+        }
+        .preview-actions .form-check.form-switch {
+            justify-content: flex-start;
+            margin: 0;
         }
         
         /* Improved responsive styles */
@@ -189,6 +254,18 @@
             .pins-container .row > div:last-child {
                 margin-bottom: 0;
             }
+            
+            /* Make toasts full-width on mobile */
+            .toast-container {
+                right: 0;
+                left: 0;
+                bottom: 0;
+                padding: 10px;
+            }
+            
+            .toast {
+                width: 100%;
+            }
         }
         
         @media (max-width: 576px) {
@@ -212,6 +289,33 @@
             .form-floating {
                 margin-bottom: 12px;
             }
+        }
+
+        /* Make modal animations faster */
+        .modal.fade .modal-dialog {
+            transition: transform 0.15s ease-out !important;
+        }
+
+        /* Toast styles */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1060;
+        }
+
+        .toast {
+            background-color: #343a40;
+            border-left: 4px solid #6ea8fe;
+        }
+
+        .toast.bg-success {
+            border-left-color: #198754;
+        }
+
+        .toast-header {
+            background-color: rgba(52, 58, 64, 0.9);
+            color: #e9ecef;
         }
     </style>
 </head>
@@ -378,19 +482,47 @@
 
         <div class="section">
             <h3 class="section-title">Team Configuration</h3>
-            <div class="aligned-controls mb-3">
-                <div class="form-floating" style="width: 200px;">
-                    <input type="number" class="form-control" id="numberOfTeams" value="4" min="1" max="249">
-                    <label for="numberOfTeams">Number of Teams</label>
+            <div class="row align-items-center mb-3 justify-content-center">
+                <div class="col-md-4 col-lg-3">
+                    <div class="form-floating">
+                        <input type="number" class="form-control" id="numberOfTeams" value="4" min="1" max="249">
+                        <label for="numberOfTeams">Number of Teams</label>
+                    </div>
                 </div>
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="enableNopTeam">
-                    <label class="form-check-label" for="enableNopTeam">Enable NOP Team</label>
+                <div class="col-md-4 col-lg-3 mt-3 mt-md-0">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="enableNopTeam">
+                        <label class="form-check-label" for="enableNopTeam">Enable NOP Team</label>
+                    </div>
                 </div>
-                <button class="btn btn-primary" id="generateTeams">Generate Teams</button>
+                <div class="col-md-4 col-lg-3 mt-3 mt-md-0">
+                    <button class="btn btn-primary w-100" id="generateTeams">Generate Teams</button>
+                </div>
             </div>
             
-            <div id="teamsContainer">
+            <div class="team-actions d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-outline-success" id="addSingleTeam">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle" viewBox="0 0 16 16">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                        </svg> Add Team
+                    </button>
+                    <button class="btn btn-outline-secondary" id="sortTeamsByID">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-sort-numeric-down" viewBox="0 0 16 16">
+                            <path d="M12.438 1.668V7H11.39V2.684h-.051l-1.211.859v-.969l1.262-.906h1.046z"/>
+                            <path fill-rule="evenodd" d="M11.36 14.098c-1.137 0-1.708-.657-1.762-1.278h1.004c.058.223.343.45.773.45.824 0 1.164-.829 1.133-1.856h-.059c-.148.39-.57.742-1.261.742-.91 0-1.72-.613-1.72-1.758 0-1.148.848-1.835 1.973-1.835 1.09 0 2.063.636 2.063 2.687 0 1.867-.723 2.848-2.145 2.848zm.062-2.735c.504 0 .933-.336.933-.972 0-.633-.398-1.008-.94-1.008-.52 0-.927.375-.927 1 0 .64.418.98.934.98z"/>
+                            <path d="M4.5 2.5a.5.5 0 0 0-1 0v9.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 1.999.007.007a.497.497 0 0 0 .7-.006l2-2a.5.5 0 0 0-.707-.708L4.5 12.293V2.5z"/>
+                        </svg> Sort by ID
+                    </button>
+                </div>
+            </div>
+            
+            <div class="team-count-info mb-3 text-muted">
+                <small><span id="teamCountDisplay">0</span> teams configured</small>
+            </div>
+            
+            <div id="teamsContainer" class="team-container-grid">
                 <!-- Teams will be generated here -->
             </div>
         </div>
@@ -412,12 +544,41 @@
             </div>
         </div>
         
-        <div class="d-grid gap-2">
-            <button class="btn btn-success btn-lg" id="generateConfig">Generate & Download Configuration</button>
+        <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+            <button class="btn btn-primary btn-lg flex-grow-1 me-md-2" id="generateConfig">Generate Configuration</button>
+            <button class="btn btn-success btn-lg" id="downloadConfig" aria-label="Download Configuration">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-download" viewBox="0 0 16 16">
+                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                    <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                </svg>
+            </button>
         </div>
         
         <div class="footer">
             <p>CTFBox Configuration Editor</p>
+        </div>
+    </div>
+    
+    <!-- Toast container -->
+    <div class="toast-container">
+        <!-- Toasts will be created dynamically -->
+    </div>
+
+    <!-- Modal for error messages -->
+    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="errorModalLabel">Error</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="errorModalBody">
+                    An error occurred.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -440,6 +601,56 @@
             }
         }, 300);
 
+        // Toast handling function
+        function showToast(message, type = 'success') {
+            // Create toast element
+            const toastId = `toast-${Date.now()}`;
+            const toastElement = document.createElement('div');
+            toastElement.className = `toast align-items-center border-0 ${type === 'success' ? 'bg-success' : ''}`;
+            toastElement.setAttribute('role', 'alert');
+            toastElement.setAttribute('aria-live', 'assertive');
+            toastElement.setAttribute('aria-atomic', 'true');
+            toastElement.id = toastId;
+            
+            // Toast content
+            toastElement.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+            
+            // Add to container
+            document.querySelector('.toast-container').appendChild(toastElement);
+            
+            // Initialize and show toast
+            const toast = new bootstrap.Toast(toastElement, {
+                animation: true,
+                autohide: true,
+                delay: 3000
+            });
+            toast.show();
+            
+            // Remove from DOM after hidden
+            toastElement.addEventListener('hidden.bs.toast', function() {
+                this.remove();
+            });
+        }
+        
+        // Modal handling functions
+        function showSuccessModal(message) {
+            showToast(message, 'success');
+        }
+        
+        function showErrorModal(message) {
+            const modalBody = document.getElementById('errorModalBody');
+            modalBody.textContent = message;
+            const modal = new bootstrap.Modal(document.getElementById('errorModal'));
+            modal.show();
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             // Handle disk limit toggle
             document.getElementById('enableDiskLimit').addEventListener('change', function() {
@@ -459,8 +670,44 @@
                 updatePreviewDebounced();
             });
             
+            // Add single team
+            document.getElementById('addSingleTeam').addEventListener('click', function() {
+                addSingleTeam();
+                updatePreviewDebounced();
+            });
+            
             // Generate configuration
-            document.getElementById('generateConfig').addEventListener('click', generateConfiguration);
+            document.getElementById('generateConfig').addEventListener('click', function() {
+                try {
+                    const config = buildConfigObject();
+                    const jsonStr = JSON.stringify(config, null, 4);
+                    const coloredJson = syntaxHighlight(jsonStr);
+                    document.getElementById('configPreview').innerHTML = coloredJson;
+                    showToast('Configuration generated successfully!');
+                } catch (error) {
+                    showErrorModal(`Error: ${error.message}`);
+                }
+            });
+            
+            // Download configuration
+            document.getElementById('downloadConfig').addEventListener('click', function() {
+                try {
+                    // Check if there is a valid configuration already
+                    let config;
+                    try {
+                        config = buildConfigObject();
+                    } catch (error) {
+                        showErrorModal(`Cannot download: ${error.message}`);
+                        return;
+                    }
+                    
+                    // Generate and download the JSON
+                    downloadJSON(config, 'config.json');
+                    showToast('Configuration downloaded successfully!');
+                } catch (error) {
+                    showErrorModal(`Error: ${error.message}`);
+                }
+            });
             
             // Copy config
             document.getElementById('copyConfig').addEventListener('click', copyConfigToClipboard);
@@ -468,10 +715,10 @@
             // Copy compressed config
             document.getElementById('copyCompressedConfig').addEventListener('click', copyCompressedConfigToClipboard);
             
-            // Auto-refresh toggle
+            // Auto-refresh toggle - fix by adding direct update
             document.getElementById('autoRefresh').addEventListener('change', function() {
                 if (this.checked) {
-                    updatePreview();
+                    updatePreview(); // Directly update when toggled on
                 }
             });
             
@@ -500,21 +747,57 @@
             // Initial setup for existing form elements
             setupFormListeners(document);
             
-            // Initial preview update
-            updatePreview();
+            // Ensure the initial state is set correctly
+            if (document.getElementById('autoRefresh').checked) {
+                updatePreview();
+            }
+
+            // Sort teams by ID
+            document.getElementById('sortTeamsByID').addEventListener('click', function() {
+                const teamsContainer = document.getElementById('teamsContainer');
+                const teams = Array.from(teamsContainer.querySelectorAll('.team-card'));
+                
+                teams.sort((a, b) => {
+                    const idA = parseInt(a.getAttribute('data-team-id'));
+                    const idB = parseInt(b.getAttribute('data-team-id'));
+                    return idA - idB;
+                });
+                
+                // Apply animation class
+                teams.forEach(team => team.classList.add('team-card-moving'));
+                
+                // Clear and re-append in sorted order
+                teamsContainer.innerHTML = '';
+                teams.forEach(team => teamsContainer.appendChild(team));
+                
+                // Remove animation class after animation completes
+                setTimeout(() => {
+                    teams.forEach(team => team.classList.remove('team-card-moving'));
+                }, 300);
+                
+                showToast('Teams sorted by ID');
+            });
         });
         
         function setupFormListeners(rootElement) {
-            // Add event listeners to all form controls for live preview updates
-            rootElement.querySelectorAll('input, select').forEach(element => {
+            // Improved event listener setup
+            rootElement.querySelectorAll('input, select, textarea').forEach(element => {
                 // Remove existing listeners to prevent duplicates
                 element.removeEventListener('change', updatePreviewDebounced);
                 element.removeEventListener('input', updatePreviewDebounced);
                 
                 // Add new listeners
                 element.addEventListener('change', updatePreviewDebounced);
-                if (element.type === 'text' || element.type === 'number' || element.type === 'datetime-local') {
+                if (element.type === 'text' || element.type === 'number' || 
+                    element.type === 'datetime-local' || element.type === 'textarea') {
                     element.addEventListener('input', updatePreviewDebounced);
+                }
+                
+                // For checkboxes and radio buttons
+                if (element.type === 'checkbox' || element.type === 'radio') {
+                    element.addEventListener('change', function() {
+                        setTimeout(updatePreviewDebounced, 0); // Use setTimeout to ensure it runs after state change
+                    });
                 }
             });
         }
@@ -523,95 +806,292 @@
             const numberOfTeams = parseInt(document.getElementById('numberOfTeams').value);
             const enableNopTeam = document.getElementById('enableNopTeam').checked;
             const teamsContainer = document.getElementById('teamsContainer');
+            
+            // Store existing team data
+            const existingTeams = {};
+            document.querySelectorAll('.team-card').forEach(teamCard => {
+                const teamId = parseInt(teamCard.getAttribute('data-team-id'));
+                
+                // Skip if team id is NaN
+                if (isNaN(teamId)) return;
+                
+                // Collect all data for this team
+                const teamData = {
+                    name: document.getElementById(`teamName-${teamId}`)?.value || `Team ${teamId}`,
+                    token: document.getElementById(`teamToken-${teamId}`)?.value || "",
+                    nop: document.getElementById(`teamNop-${teamId}`)?.checked || false,
+                    wireguardPort: document.getElementById(`teamWireguardPort-${teamId}`)?.value || (51000 + teamId),
+                    image: document.getElementById(`teamImage-${teamId}`)?.value || "",
+                    pins: []
+                };
+                
+                // Collect pins
+                const pinsContainer = document.getElementById(`pins-container-${teamId}`);
+                if (pinsContainer) {
+                    const pinRows = pinsContainer.children;
+                    for (let j = 0; j < pinRows.length; j++) {
+                        const pinElement = document.getElementById(`teamPin-${teamId}-${j}`);
+                        const profileElement = document.getElementById(`teamPinProfile-${teamId}-${j}`);
+                        
+                        if (pinElement && profileElement && pinElement.value) {
+                            teamData.pins.push({
+                                pin: pinElement.value,
+                                profile: parseInt(profileElement.value)
+                            });
+                        }
+                    }
+                }
+                
+                existingTeams[teamId] = teamData;
+            });
+            
+            // Clear the container but keep old team data
             teamsContainer.innerHTML = '';
             
-            let startIndex = 0;
-            let totalTeams = numberOfTeams;
+            let startIndex = enableNopTeam ? 0 : 1;
+            let endIndex = enableNopTeam ? numberOfTeams + 1 : numberOfTeams + 1;
             
+            // If NOP team is enabled, make sure we create or keep it
             if (enableNopTeam) {
-                // Add NOP team as team 0
-                const nopTeam = createTeamCard(0, 'Nop Team', true);
-                teamsContainer.appendChild(nopTeam);
-                startIndex = 1;
-                totalTeams += 1;
-            }
-            
-            // Add regular teams
-            for (let i = startIndex; i < totalTeams; i++) {
-                const team = createTeamCard(i, `Team ${i}`, false);
-                teamsContainer.appendChild(team);
-            }
-            
-            // Set up event listeners for advanced settings toggle
-            document.querySelectorAll('.advanced-toggle').forEach(toggle => {
-                toggle.addEventListener('click', function() {
-                    const settingsId = this.getAttribute('data-target');
-                    const settings = document.getElementById(settingsId);
-                    if (settings.style.display === 'none' || !settings.style.display) {
-                        settings.style.display = 'block';
-                        this.textContent = 'Hide Advanced Settings';
-                    } else {
-                        settings.style.display = 'none';
-                        this.textContent = 'Show Advanced Settings';
+                // Check if NOP team already exists
+                if (existingTeams[0]) {
+                    // Use existing NOP team data
+                    const nopTeamData = existingTeams[0];
+                    nopTeamData.nop = true; // Ensure it's marked as NOP
+                    const nopTeam = createTeamCard(0, nopTeamData.name, true);
+                    nopTeam.setAttribute('data-team-id', '0');
+                    teamsContainer.appendChild(nopTeam);
+                    
+                    // Restore values
+                    document.getElementById(`teamToken-0`).value = nopTeamData.token;
+                    document.getElementById(`teamWireguardPort-0`).value = nopTeamData.wireguardPort;
+                    document.getElementById(`teamImage-0`).value = nopTeamData.image;
+                    updateTeamImagePreview(nopTeamData.image, 0);
+                    
+                    // Restore pins
+                    if (nopTeamData.pins.length > 0) {
+                        const pinsContainer = document.getElementById(`pins-container-0`);
+                        nopTeamData.pins.forEach((pin, idx) => {
+                            addPin(0, pin.pin, pin.profile);
+                        });
                     }
-                });
+                } else {
+                    // Create new NOP team
+                    const nopTeam = createTeamCard(0, 'Nop Team', true);
+                    nopTeam.setAttribute('data-team-id', '0');
+                    teamsContainer.appendChild(nopTeam);
+                }
+            }
+            
+            // Create teams from 1 to number of teams
+            for (let i = 1; i <= numberOfTeams; i++) {
+                // Use existing data if available
+                if (existingTeams[i]) {
+                    const teamData = existingTeams[i];
+                    const team = createTeamCard(i, teamData.name, teamData.nop);
+                    team.setAttribute('data-team-id', i.toString());
+                    teamsContainer.appendChild(team);
+                    
+                    // Restore values
+                    document.getElementById(`teamNop-${i}`).checked = teamData.nop;
+                    document.getElementById(`teamToken-${i}`).value = teamData.token;
+                    document.getElementById(`teamWireguardPort-${i}`).value = teamData.wireguardPort;
+                    document.getElementById(`teamImage-${i}`).value = teamData.image;
+                    updateTeamImagePreview(teamData.image, i);
+                    
+                    // Restore pins
+                    if (teamData.pins.length > 0) {
+                        const pinsContainer = document.getElementById(`pins-container-${i}`);
+                        teamData.pins.forEach((pin) => {
+                            addPin(i, pin.pin, pin.profile);
+                        });
+                    }
+                } else {
+                    // Create new team
+                    const team = createTeamCard(i, `Team ${i}`, false);
+                    team.setAttribute('data-team-id', i.toString());
+                    teamsContainer.appendChild(team);
+                }
+            }
+            
+            updatePreviewDebounced();
+            updateTeamCount();
+        }
+        
+        function addSingleTeam() {
+            const teamsContainer = document.getElementById('teamsContainer');
+            
+            // Find the highest team ID currently in use
+            let highestId = 0;
+            document.querySelectorAll('.team-card').forEach(teamCard => {
+                const teamId = parseInt(teamCard.getAttribute('data-team-id'));
+                if (!isNaN(teamId) && teamId > highestId) {
+                    highestId = teamId;
+                }
             });
+            
+            // Create a new team with the next available ID
+            const newTeamId = highestId + 1;
+            const team = createTeamCard(newTeamId, `Team ${newTeamId}`, false);
+            team.setAttribute('data-team-id', newTeamId.toString());
+            teamsContainer.appendChild(team);
+            
+            // Set up form listeners for the new team
+            setupFormListeners(team);
+
+            updatePreviewDebounced();
+            updateTeamCount();
+        }
+        
+        function removeTeam(teamId) {
+            const teamCard = document.querySelector(`.team-card[data-team-id="${teamId}"]`);
+            if (teamCard) {
+                // Check if it's a NOP team (team 0) and warn if enable NOP team is checked
+                if (teamId === 0 && document.getElementById('enableNopTeam').checked) {
+                    if (!confirm("This will remove the NOP team, but it may be re-added if 'Enable NOP Team' is still checked. Continue?")) {
+                        return;
+                    }
+                }
+                
+                teamCard.remove();
+                updatePreviewDebounced();
+            }
+
+            updateTeamCount();
         }
         
         function createTeamCard(id, name, isNop) {
             const card = document.createElement('div');
-            card.className = 'team-card';
-            card.innerHTML = `
-                <div class="team-header">
-                    <h5>Team ${id} Configuration</h5>
-                    <span class="advanced-toggle" data-target="advanced-settings-${id}">Show Advanced Settings</span>
+            card.className = `team-card ${isNop ? 'nop-team' : ''}`;
+            card.setAttribute('data-team-id', id.toString());
+            
+            // Create ID badge
+            const idBadge = document.createElement('div');
+            idBadge.className = 'team-id-badge';
+            idBadge.textContent = id;
+            card.appendChild(idBadge);
+            
+            // Create team header
+            const header = document.createElement('div');
+            header.className = 'team-header';
+            
+            // Populate header with title and delete button
+            header.innerHTML = `
+                <div class="d-flex align-items-center gap-2">
+                    <h5 class="team-title m-0" id="team-title-${id}">${name}</h5>
                 </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="teamName-${id}" value="${name}">
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTeam(${id})">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/>
+                            <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/>
+                        </svg> Remove
+                    </button>
+                </div>
+            `;
+            
+            // Create team content
+            const content = document.createElement('div');
+            content.innerHTML = `
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="teamName-${id}" value="${name}" oninput="updateTeamTitle(${id}, this.value)">
                             <label for="teamName-${id}">Team Name</label>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-floating mb-3">
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="teamNop-${id}" ${isNop ? 'checked' : ''} ${id === 0 ? 'disabled' : ''} onchange="updateTeamNopStatus(${id}, this.checked)">
+                            <label class="form-check-label" for="teamNop-${id}">NOP Team</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="form-floating">
                             <input type="text" class="form-control" id="teamToken-${id}" placeholder="Auto-generated if empty">
                             <label for="teamToken-${id}">Team Token (Optional)</label>
                         </div>
                     </div>
                 </div>
-                <div class="form-check mb-3">
-                    <input class="form-check-input" type="checkbox" id="teamNop-${id}" ${isNop ? 'checked' : ''} ${isNop ? 'disabled' : ''}>
-                    <label class="form-check-label" for="teamNop-${id}">NOP Team</label>
-                </div>
-                <div class="advanced-settings" id="advanced-settings-${id}">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-floating mb-3">
-                                <input type="number" class="form-control" id="teamWireguardPort-${id}" value="${51000 + parseInt(id)}">
-                                <label for="teamWireguardPort-${id}">Wireguard Port</label>
-                            </div>
+                
+                <div class="team-image-container mb-4">
+                    <label class="form-label fw-bold">Team Image</label>
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="me-3" style="width: 80px; height: 80px; overflow: hidden; border-radius: 5px; background-color: #212529;">
+                            <img id="teamImagePreview-${id}" 
+                                 src="./ctfbox-player.png" 
+                                 onerror="this.src='./ctfbox-player.png'" 
+                                 alt="Team Logo" 
+                                 style="width: 100%; height: 100%; object-fit: contain;">
                         </div>
-                        <div class="col-md-6">
-                            <div class="form-floating mb-3">
-                                <input type="text" class="form-control" id="teamImage-${id}" value="">
-                                <label for="teamImage-${id}">Team Image (Optional)</label>
+                        <div class="d-flex flex-column">
+                            <div class="btn-group mb-2">
+                                <button type="button" class="btn btn-sm btn-primary" onclick="selectImageFile(${id})">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-upload" viewBox="0 0 16 16">
+                                        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                                        <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+                                    </svg> Upload
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTeamImage(${id})">Remove</button>
                             </div>
+                            <small class="text-muted">Max 1MB, JPG/PNG (via ImgBB)</small>
                         </div>
                     </div>
-                    <div class="pins-section">
-                        <h6>Team Pins</h6>
-                        <div class="pins-container" id="pins-container-${id}">
-                            <!-- Pins will be added here -->
+                    <input type="file" id="teamImageFile-${id}" accept="image/jpeg, image/png" style="display: none;" onchange="uploadTeamImage(this, ${id})">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="teamImage-${id}" value="" oninput="updateTeamImagePreview(this.value, ${id})">
+                        <label for="teamImage-${id}">Image URL</label>
+                    </div>
+                    <div id="uploadProgress-${id}" class="progress mt-2" style="display: none; height: 5px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="accordion mb-3" id="accordionTeamAdvanced-${id}">
+                    <div class="accordion-item bg-dark">
+                        <h2 class="accordion-header" id="headingAdvanced-${id}">
+                            <button class="accordion-button collapsed bg-dark text-light" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#collapseAdvanced-${id}" aria-expanded="false" aria-controls="collapseAdvanced-${id}">
+                                Advanced Settings
+                            </button>
+                        </h2>
+                        <div id="collapseAdvanced-${id}" class="accordion-collapse collapse" aria-labelledby="headingAdvanced-${id}">
+                            <div class="accordion-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input type="number" class="form-control" id="teamWireguardPort-${id}" value="${51000 + parseInt(id)}">
+                                            <label for="teamWireguardPort-${id}">Wireguard Port</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="pins-section">
+                                    <h6>Team Pins</h6>
+                                    <div class="pins-container" id="pins-container-${id}">
+                                        <!-- Pins will be added here -->
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addPin(${id})">Add Pin</button>
+                                </div>
+                            </div>
                         </div>
-                        <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addPin(${id})">Add Pin</button>
                     </div>
                 </div>
             `;
+            
+            // Append everything to the card
+            card.appendChild(header);
+            card.appendChild(content);
+            
             return card;
         }
-        
-        function addPin(teamId) {
+
+        function addPin(teamId, pinValue = '', profileValue = 0) {
             const pinsContainer = document.getElementById(`pins-container-${teamId}`);
             const pinIndex = pinsContainer.children.length;
             
@@ -620,13 +1100,13 @@
             pinRow.innerHTML = `
                 <div class="col-md-5">
                     <div class="form-floating">
-                        <input type="text" class="form-control" id="teamPin-${teamId}-${pinIndex}">
+                        <input type="text" class="form-control" id="teamPin-${teamId}-${pinIndex}" value="${pinValue}">
                         <label for="teamPin-${teamId}-${pinIndex}">Pin</label>
                     </div>
                 </div>
                 <div class="col-md-5">
                     <div class="form-floating">
-                        <input type="number" class="form-control" id="teamPinProfile-${teamId}-${pinIndex}" value="0">
+                        <input type="number" class="form-control" id="teamPinProfile-${teamId}-${pinIndex}" value="${profileValue}">
                         <label for="teamPinProfile-${teamId}-${pinIndex}">Profile</label>
                     </div>
                 </div>
@@ -636,11 +1116,111 @@
             `;
             pinsContainer.appendChild(pinRow);
             updatePreviewDebounced();
+            
+            return pinRow;
         }
         
-        function removePin(button) {
-            const pinRow = button.closest('.row');
-            pinRow.remove();
+        // Team image handling functions
+        function selectImageFile(teamId) {
+            document.getElementById(`teamImageFile-${teamId}`).click();
+        }
+        
+        function uploadTeamImage(fileInput, teamId) {
+            if (!fileInput.files || !fileInput.files[0]) return;
+            
+            const file = fileInput.files[0];
+            
+            // File size validation (1MB max)
+            if (file.size > 1024 * 1024) {
+                showErrorModal("Image file is too large. Maximum size is 1MB.");
+                return;
+            }
+            
+            // Show progress bar
+            const progressBar = document.querySelector(`#uploadProgress-${teamId} .progress-bar`);
+            document.getElementById(`uploadProgress-${teamId}`).style.display = 'flex';
+            progressBar.style.width = '0%';
+            
+            // Use FormData to prepare the upload
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            // Create a unique temporary preview
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById(`teamImagePreview-${teamId}`).src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            
+            // Upload to ImgBB API
+            fetch('https://api.imgbb.com/1/upload?key=fd9dbdfc2bd2f6899698c47d0b8e1ea9', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Update the image URL input with the direct URL
+                    const imageUrl = data.data.url;
+                    document.getElementById(`teamImage-${teamId}`).value = imageUrl;
+                    document.getElementById(`teamImagePreview-${teamId}`).src = imageUrl;
+                    showToast('Image uploaded successfully to ImgBB!');
+                    updatePreviewDebounced();
+                } else {
+                    throw new Error('Upload to ImgBB failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showErrorModal(`Failed to upload image to ImgBB: ${error.message}`);
+                // Reset preview to previous value or default
+                updateTeamImagePreview(document.getElementById(`teamImage-${teamId}`).value, teamId);
+            })
+            .finally(() => {
+                // Hide progress bar
+                document.getElementById(`uploadProgress-${teamId}`).style.display = 'none';
+            });
+        }
+        
+        function removeTeamImage(teamId) {
+            document.getElementById(`teamImage-${teamId}`).value = '';
+            document.getElementById(`teamImagePreview-${teamId}`).src = './ctfbox-player.png';
+            document.getElementById(`teamImageFile-${teamId}`).value = '';
+            updatePreviewDebounced();
+        }
+        
+        function updateTeamImagePreview(imageUrl, teamId) {
+            const preview = document.getElementById(`teamImagePreview-${teamId}`);
+            preview.src = imageUrl || './ctfbox-player.png';
+            updatePreviewDebounced();
+        }
+        
+        function updateTeamTitle(id, newName) {
+            const titleElement = document.getElementById(`team-title-${id}`);
+            if (titleElement) {
+                titleElement.textContent = newName;
+            }
+            updatePreviewDebounced();
+        }
+        
+        function updateTeamNopStatus(id, isNop) {
+            const teamCard = document.querySelector(`.team-card[data-team-id="${id}"]`);
+            if (teamCard) {
+                if (isNop) {
+                    teamCard.classList.add('nop-team');
+                } else {
+                    teamCard.classList.remove('nop-team');
+                }
+            }
+            updatePreviewDebounced();
+        }
+        
+        function updateTeamCount() {
+            const teamCount = document.querySelectorAll('.team-card').length;
+            document.getElementById('teamCountDisplay').textContent = teamCount;
             updatePreviewDebounced();
         }
         
@@ -666,9 +1246,10 @@
                     setTimeout(() => {
                         copyBtn.textContent = originalText;
                     }, 2000);
+                    showToast('Configuration copied to clipboard!');
                 });
             } catch (error) {
-                alert(`Failed to copy: ${error.message}`);
+                showErrorModal(`Failed to copy: ${error.message}`);
             }
         }
         
@@ -688,6 +1269,7 @@
                         setTimeout(() => {
                             copyBtn.textContent = originalText;
                         }, 2000);
+                        showToast('Compressed configuration copied to clipboard!');
                     });
                 } else {
                     // Fallback to simple base64 without compression
@@ -699,10 +1281,11 @@
                         setTimeout(() => {
                             copyBtn.textContent = originalText;
                         }, 2000);
+                        showToast('Configuration copied in base64 format (uncompressed)');
                     });
                 }
             } catch (error) {
-                alert(`Failed to copy compressed config: ${error.message}`);
+                showErrorModal(`Failed to copy compressed config: ${error.message}`);
             }
         }
         
@@ -833,17 +1416,6 @@
             });
         }
         
-        function generateConfiguration() {
-            try {
-                const config = buildConfigObject();
-                
-                // Generate and download the JSON
-                downloadJSON(config, 'config.json');
-            } catch (error) {
-                alert(`Error: ${error.message}`);
-            }
-        }
-        
         function generateRandomToken() {
             const array = new Uint8Array(32);
             window.crypto.getRandomValues(array);
@@ -863,7 +1435,17 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
+
+        // Ensure removePin function exists and updates preview
+        function removePin(button) {
+            const pinRow = button.closest('.row');
+            pinRow.remove();
+            updatePreviewDebounced();
+        }
     </script>
+    
+    <!-- Add Bootstrap JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"></script>
     
     <!-- Add compression library -->
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
