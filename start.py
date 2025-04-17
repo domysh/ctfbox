@@ -13,6 +13,11 @@ from datetime import datetime
 import platform
 from dataclasses import dataclass, field, asdict
 from typing import List, Optional, Dict, Any, Union
+try:
+    import readline # For allow any size of input 0_0 Strange python
+    readline.set_history_length(0)
+except Exception:
+    pass
 
 pref = "\033["
 reset = f"{pref}0m"
@@ -91,7 +96,8 @@ class g:
 
 use_build_on_compose = True
 
-os.chdir(os.path.dirname(os.path.realpath(__file__)))
+if __name__ == "__main__":
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 def is_linux():
     return "linux" in sys.platform and 'microsoft-standard' not in platform.uname().release
@@ -216,7 +222,8 @@ def gen_args(args_to_parse: list[str]|None = None):
 
     return args
 
-args = gen_args()
+if __name__ == "__main__":
+    args = gen_args()
 
 def composecmd(cmd, composefile=None):
     if composefile:
@@ -625,8 +632,8 @@ def config_input() -> Config:
             return Config.from_dict(config_data)
         except Exception as e:
             puts(f"Error decoding configuration: {e}", color=colors.red)
-            puts("Please try again with valid base64 compressed config or raw JSON", color=colors.red)
-            return config_input()
+            puts("Please try again with valid base64 compressed config", color=colors.red)
+            exit(1)
     
     # Original config input flow
     # abs() put for consistency with the other options
