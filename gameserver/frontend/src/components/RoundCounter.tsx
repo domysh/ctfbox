@@ -54,7 +54,7 @@ export const RoundCounter = () => {
 
     return config.isSuccess?<Box>
         <Text size="md">{ !roundInfo.hasStarted ? "Game has not started yet" :roundInfo.hasEnded ? "Game has ended!" : roundInfo.currentRound==-1 ? "Game has started!" : `Round: ${config.data.current_round} - next round ${lastsTimeString?'in '+lastsTimeString:'soon...'}` }</Text>
-        <Progress size="lg" value={roundInfo.hasEnded ? 100 : config.data.current_round >= 0?roundInfo.currentRoundPercent:0} color="red" animated />
+        <Progress size="lg" value={roundInfo.hasEnded ? 100 : config.data.current_round >= 0?roundInfo.currentRoundPercent:0} color="red" animated={!roundInfo.hasEnded} />
         <Box className="center-flex" mt="sm">
             <Text size="md"><Badge size="md" radius="md" color="teal" >Starts - {getDateFormatted(roundInfo.startTime.toISOString())}</Badge> </Text>
             <Box style={{flex:1}}/>
