@@ -44,7 +44,7 @@ export const useGlobalState = create<GlobalState>()((set) => ({
     setLoading: (loading) => set(() => ({ loading }))
 }))
 
-export const useStickyScrollableHeader = () => {
+export const useStickyScrollableHeader = ({ headHeight, topOffset}: { headHeight: number, topOffset: number }) => {
     const tableRef = useRef<HTMLTableElement>(null);
     const paddingElement = useRef<HTMLDivElement>();
     useEffect(() => {
@@ -66,8 +66,20 @@ export const useStickyScrollableHeader = () => {
                 // Set each header column width to match body column width
                 for (let i = 0; i < headerRow.cells.length; i++) {
                     if (i < firstBodyRow.cells.length) {
-                        const width = firstBodyRow.cells[i].getBoundingClientRect().width;
-                        headerRow.cells[i].style.width = `${width}px`;
+                        const headWidth = headerRow.cells[i].getBoundingClientRect().width;
+                        const bodyWidth = firstBodyRow.cells[i].getBoundingClientRect().width;
+                        console.log(headWidth, bodyWidth, i)
+                        if (bodyWidth > headWidth) {
+                            headerRow.cells[i].style.minWidth = `${bodyWidth}px`;
+                            headerRow.cells[i].style.width = `${bodyWidth}px`;
+                            firstBodyRow.cells[i].style.width = `${bodyWidth}px`;
+                            firstBodyRow.cells[i].style.minWidth = `${bodyWidth}px`;
+                        }else{
+                            headerRow.cells[i].style.minWidth = `${headWidth}px`;
+                            headerRow.cells[i].style.width = `${headWidth}px`;
+                            firstBodyRow.cells[i].style.width = `${headWidth}px`;
+                            firstBodyRow.cells[i].style.minWidth = `${headWidth}px`;
+                        }
                     }
                 }
             }
@@ -86,7 +98,7 @@ export const useStickyScrollableHeader = () => {
                 const rect = tableRef.current.getBoundingClientRect();
                 const tableBody = tableRef.current.tBodies[0];
                 
-                if (rect.top < 60) {
+                if (rect.top < topOffset) {
                     if (!paddingElement.current) {
                         // Add padding to prevent content jump when header becomes fixed
                         // Create a placeholder element for the fixed header
@@ -95,7 +107,7 @@ export const useStickyScrollableHeader = () => {
                         const randomId = `header-placeholder-${Math.random().toString(36).substring(2, 10)}`;
                         placeholder.id = randomId;
                         placeholder.className = 'header-placeholder';
-                        placeholder.style.height = '60px';
+                        placeholder.style.height = `${topOffset}px`;
                         paddingElement.current = placeholder
                         tableBody.parentNode?.insertBefore(placeholder, tableBody)
                         // Update header sizes when switching to fixed position
@@ -104,17 +116,15 @@ export const useStickyScrollableHeader = () => {
                     
                     // Apply fixed positioning and set horizontal transform
                     tHead.style.position = "fixed";
-                    tHead.style.top = "60px";
+                    tHead.style.top = `${topOffset}px`;
                     tHead.style.left = `${rect.left}px`;
                     tHead.style.width = `${rect.width}px`;
-                    tHead.style.height = "60px";
+                    tHead.style.height = `${headHeight}px`;
                     if (tHead.rows.length > 0) {
-                        tHead.rows[0].style.height = "60px";
+                        tHead.rows[0].style.height = `${headHeight}px`;
                     }
                     tHead.style.zIndex = "100";
                     
-                    // Update transform to match horizontal scroll position
-                    //tHead.style.transform = `translateX(${-scrollLeft}px)`;
                 } else {
                     // Restore normal positioning
                     tHead.style.position = "static";
@@ -151,7 +161,25 @@ export const useStickyScrollableHeader = () => {
         // Setup horizontal scroll listener
         const setupHorizontalScrollListener = () => {
             if (tableRef.current) {
-                const viewport = tableRef.current.closest('.mantine-ScrollArea-viewport')?.parentElement?.parentElement?.parentElement
+                const viewport = (() => {
+                    // Try to find any scrollable parent
+                    let element: HTMLElement | null = tableRef.current;
+                    while (element && element !== document.documentElement) {
+                        const style = window.getComputedStyle(element);
+                        const hasOverflow = ['auto', 'scroll'].includes(style.overflowX) || 
+                                            ['auto', 'scroll'].includes(style.overflowY) ||
+                                            ['auto', 'scroll'].includes(style.overflow);
+                        const canScroll = element.scrollWidth > element.clientWidth || 
+                                         element.scrollHeight > element.clientHeight;
+                        
+                        if (hasOverflow && canScroll) {
+                            return element;
+                        }
+                        element = element.parentElement;
+                    }
+
+                    return document.scrollingElement || document.documentElement;
+                })();
                 if (viewport) {
                     scrollViewport = viewport as HTMLElement;
                     viewport.addEventListener('scroll', horizontalScrollEvent, { passive: true });

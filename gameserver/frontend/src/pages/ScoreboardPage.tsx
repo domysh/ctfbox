@@ -113,7 +113,7 @@ export const ScoreboardPage = () => {
     );
 
     const dataLoaded = chartData.isSuccess && scoreboardData.isSuccess && configData.isSuccess;
-    const tableRef = useStickyScrollableHeader()
+    const tableRef = useStickyScrollableHeader({ headHeight: 60, topOffset: 60 })
 
     useEffect(() => {
         if (!dataLoaded){

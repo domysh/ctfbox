@@ -132,7 +132,7 @@ export const ScoreboardTeamDetail = () => {
     );
 
     const setLoading = useGlobalState(state => state.setLoading)
-    const tableRef = useStickyScrollableHeader()
+    const tableRef = useStickyScrollableHeader({ headHeight: 60, topOffset: 60 })
 
     // Better error handling for sorting
     const sortedTeamData = useMemo(() => 
