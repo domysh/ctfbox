@@ -191,7 +191,13 @@ export const useStickyScrollableHeader = ({ headHeight, topOffset}: { headHeight
         
         // Regular event handlers
         const handleVerticalScroll = () => throttledEvent(scrollEvent);
+
+        // Setup horizontal scroll listener with delay to ensure DOM is ready
+        let cleanupHorizontal = setupHorizontalScrollListener();
+
         const handleResize = () => throttledEvent(() => {
+            cleanupHorizontal()
+            cleanupHorizontal = setupHorizontalScrollListener();
             updateHeaderSizes();
             scrollEvent();
         });
@@ -199,15 +205,6 @@ export const useStickyScrollableHeader = ({ headHeight, topOffset}: { headHeight
         // Add event listeners
         document.addEventListener("scroll", handleVerticalScroll);
         window.addEventListener("resize", handleResize);
-        
-        // Setup horizontal scroll listener with delay to ensure DOM is ready
-        let cleanupHorizontal = setupHorizontalScrollListener();
-        
-        // Handle potential DOM changes
-        setTimeout(() => {
-            cleanupHorizontal();
-            cleanupHorizontal = setupHorizontalScrollListener();
-        }, 500);
         
         // Initialize state on mount
         scrollEvent();
