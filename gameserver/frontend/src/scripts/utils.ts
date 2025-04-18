@@ -196,8 +196,6 @@ export const useStickyScrollableHeader = ({ headHeight, topOffset}: { headHeight
         let cleanupHorizontal = setupHorizontalScrollListener();
 
         const handleResize = () => throttledEvent(() => {
-            cleanupHorizontal()
-            cleanupHorizontal = setupHorizontalScrollListener();
             updateHeaderSizes();
             scrollEvent();
         });
@@ -208,10 +206,16 @@ export const useStickyScrollableHeader = ({ headHeight, topOffset}: { headHeight
         
         // Initialize state on mount
         scrollEvent();
+
+        const interval = setInterval(() => {
+            cleanupHorizontal()
+            cleanupHorizontal = setupHorizontalScrollListener();
+        }, 300)
         
         return () => {
             document.removeEventListener("scroll", handleVerticalScroll);
             window.removeEventListener("resize", handleResize);
+            clearInterval(interval)
             cleanupHorizontal();
         };
     }, []);
