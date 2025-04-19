@@ -62,7 +62,12 @@ export const useStickyScrollableHeader = ({ headHeight, topOffset}: { headHeight
             
             if (tableBody?.rows.length > 0) {
                 const firstBodyRow = tableBody.rows[0];
-                
+                for (let i = 0; i < headerRow.cells.length; i++) {
+                    headerRow.cells[i].style.width = "auto";
+                    headerRow.cells[i].style.minWidth = "auto";
+                    firstBodyRow.cells[i].style.width = "auto";
+                    firstBodyRow.cells[i].style.minWidth = "auto";
+                }
                 // Set each header column width to match body column width
                 for (let i = 0; i < headerRow.cells.length; i++) {
                     if (i < firstBodyRow.cells.length) {
@@ -74,10 +79,10 @@ export const useStickyScrollableHeader = ({ headHeight, topOffset}: { headHeight
                             firstBodyRow.cells[i].style.width = `${bodyWidth}px`;
                             firstBodyRow.cells[i].style.minWidth = `${bodyWidth}px`;
                         }else{
-                            headerRow.cells[i].style.minWidth = `${headWidth}px`;
-                            headerRow.cells[i].style.width = `${headWidth}px`;
                             firstBodyRow.cells[i].style.width = `${headWidth}px`;
                             firstBodyRow.cells[i].style.minWidth = `${headWidth}px`;
+                            headerRow.cells[i].style.minWidth = `${headWidth}px`;
+                            headerRow.cells[i].style.width = `${headWidth}px`;
                         }
                     }
                 }
