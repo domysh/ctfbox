@@ -68,7 +68,6 @@ export const useStickyScrollableHeader = ({ headHeight, topOffset}: { headHeight
                     if (i < firstBodyRow.cells.length) {
                         const headWidth = headerRow.cells[i].getBoundingClientRect().width;
                         const bodyWidth = firstBodyRow.cells[i].getBoundingClientRect().width;
-                        console.log(headWidth, bodyWidth, i)
                         if (bodyWidth > headWidth) {
                             headerRow.cells[i].style.minWidth = `${bodyWidth}px`;
                             headerRow.cells[i].style.width = `${bodyWidth}px`;
