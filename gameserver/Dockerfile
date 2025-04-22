@@ -26,7 +26,7 @@ RUN go mod download
 WORKDIR /app/src/
 COPY ./src/ .
 WORKDIR /app/src/
-RUN go build .
+RUN go build -o ctfserver .
 WORKDIR /app/src/frontend
 COPY --from=frontend /app/dist .
 WORKDIR /app/src/
