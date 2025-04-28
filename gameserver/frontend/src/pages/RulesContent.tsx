@@ -24,7 +24,7 @@ export const RulesContent = () => {
     return config.isSuccess?<Box>
         <Title order={1} mt="lg">Rules</Title>
         <Text mt="lg">Welcome to CTFBox, a simulation tool for Attack Defence CTF competitions.</Text>
-        <Text mt="lg">The infrastruture is inspired from CyberChallenge A/D infrastructure, some parts of the rules are taken from there</Text>
+        <Text mt="xl" fw={600}><u>The infrastruture has the same model of <a href="https://ad.cyberchallenge.it/rules">CyberChallenge A/D infrastructure</a> created by <a href="https://cybersecnatlab.it/">CINI Cybersecurity National Lab</a>: also the rules and the network schema are taken from there.</u></Text>
         <Title order={2} mt="lg">Network and Setup</Title>
         <Text mt="lg">The game is played within the 10.0.0.0/8 subnet. Each team has its own vulnerable machine located at 10.60.team_id.1, while players connecting to the game network are assigned an ip in the 10.80.team_id.1/24 subnet.</Text>
         {nopTeam?<Text mt="md">The ip address <u>{nopTeam.host}</u> is assigned as NOP Team (Non-playing team) vulnerable VM, this VM will not be patched during the competition and its flags will not count towards the scoreboard you can use it to test your attacks.</Text>:null}

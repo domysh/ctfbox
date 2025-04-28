@@ -6,6 +6,8 @@ An Open Attack/Defense Infrastructure Simulation Tool - based on containers
 
 You can see a demo [here](https://ctfbox.domy.sh)
 
+The infrastruture has the same model of <a href="https://ad.cyberchallenge.it/rules">CyberChallenge A/D infrastructure</a> created by <a href="https://cybersecnatlab.it/">CINI Cybersecurity National Lab</a>: also the rules and the network schema are taken from there.
+
 ## Introduction
 CTFBox is an open-source project designed to provide a simple infrastructure for attack and defense simulations. It facilitates cybersecurity training and testing through various components and services.
 
