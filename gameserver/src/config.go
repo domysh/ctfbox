@@ -140,7 +140,10 @@ func LoadConfig(path string) (*Config, error) {
 	}
 	for _, e := range entries {
 		if e.IsDir() {
-			conf.Services = append(conf.Services, e.Name())
+			checkerPath := "../checkers/" + e.Name() + "/checker.py"
+			if _, err := os.Stat(checkerPath); err == nil {
+				conf.Services = append(conf.Services, e.Name())
+			}
 		}
 	}
 

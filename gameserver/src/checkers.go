@@ -9,6 +9,7 @@ import (
 	"game/log"
 	"math/rand"
 	"net"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -90,6 +91,7 @@ func runChecker(team string, service string, params *CheckerParams, ctx context.
 	cmd.Env = append(cmd.Env, "FLAG="+params.Flag)
 	cmd.Env = append(cmd.Env, "SERVICE="+service)
 	cmd.Env = append(cmd.Env, "TERM=xterm")
+	cmd.Env = append(cmd.Env, fmt.Sprintf("PYTHONPATH=%s:%s", os.Getenv("PYTHONPATH"), "../"))
 
 	workingDir, err := filepath.Abs("../checkers/" + service)
 	if err != nil {
@@ -296,8 +298,14 @@ func checkerRoutine() {
 								Flag:   flag,
 								Action: action,
 							}
+							sleepTime := int(maxTimeout) - 20000
+							if sleepTime < 0 {
+								sleepTime = 0
+							} else {
+								sleepTime = rand.Intn(sleepTime)
+							}
 							//Random timeout to avoid all checkers to run at the same time and to avoid timing detection
-							time.Sleep(time.Duration(rand.Intn(int(float64(maxTimeout)/1.15))) * time.Millisecond)
+							time.Sleep(time.Duration(sleepTime) * time.Millisecond)
 
 							status, msg := runChecker(team, service, params, ctx)
 

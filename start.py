@@ -84,7 +84,7 @@ class Config:
 
 class g:
     keep_file = False
-    composefile = "ctfbox-compose-tmp-file.yml"
+    composefile = ".ctfbox-compose.yml"
     container_name = "ctfbox_gameserver"
     compose_project_name = "ctfbox"
     name = "CTFBox"
@@ -92,7 +92,7 @@ class g:
     prebuild_image = "ctfbox-prebuilder"
     prebuilded_container = "ctfbox-prebuilded"
     prebuilt_image = "ctfbox-vm-base"
-    secrets_dir = ".ctfbox-secrets-tmp"  # New temporary directory for secrets
+    secrets_dir = ".ctfbox-secrets-tmp"
 
 use_build_on_compose = True
 
@@ -860,8 +860,6 @@ if __name__ == "__main__":
         finally:
             kill_builder()
             cleanup_secrets()
-            if os.path.isfile(g.composefile) and not g.keep_file:
-                os.remove(g.composefile)
     except KeyboardInterrupt:
         print()
 

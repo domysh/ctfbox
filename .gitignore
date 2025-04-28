@@ -3,6 +3,6 @@ __pycache__/
 volumes/**
 volumes/
 /compose.yml
-/ctfbox-compose-tmp-file.yml
+/.ctfbox-compose.yml
 /.ctfbox-secrets-tmp
 /.ctfbox-secrets-tmp/** */
