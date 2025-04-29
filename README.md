@@ -96,6 +96,7 @@ Before run the competition, you can customize additional settings in the `config
 - `enable_disk_limit`: Enable disk size limitations for VMs (requires XFS filesystem).
 - `gameserver_token`: The token used for the game server. (It's also the password login for the credential server)
 - `gameserver_exposed_port`: The port on which the game server will be exposed.
+- `credential_server`: The address of the credential server (null if deactivated).
 - `flag_expire_ticks`: The number of ticks after which a flag expires.
 - `initial_service_score`: The initial score for each service.
 - `max_flags_per_request`: The maximum number of flags that can be submitted in a single request.
