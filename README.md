@@ -49,7 +49,7 @@ sudo python3 start.py start
 You can configure CTFBox using the terminal or using the config editor [here](https://ctfbox.domy.sh/editor) (sources on demo branch).
 
 NOTE: You can avoid to use sysbox by using privileged mode, but this is not recommended if the VMs are given to untrusted users. The privileged mode will give
-access to some hosts functionality to the VMs, and escape from container is possible. If you want to use it, you can run:
+access to some hosts functionality to the VMs, and escape from container is possible.
 
 
 To connect to the VMs, you need to use one of the wireguard configurations in the wireguard folder.
