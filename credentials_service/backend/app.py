@@ -1,8 +1,9 @@
 from flask import Flask, send_from_directory
 from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
-from utils import load_teams_data, prepare_json_file, BASE_DIR, DEBUG
-import os, subprocess
+from utils import load_config_data, BASE_DIR, DEBUG
+import os
+import subprocess
 from admin import admin_blueprint
 from user import user_blueprint
 from werkzeug.security import safe_join
@@ -13,7 +14,7 @@ frontend_folder = os.path.join(BASE_DIR, "frontend") if not DEBUG else os.path.j
 
 app = Flask(__name__)
 
-secret_token = load_teams_data()['gameserver_token']
+secret_token = load_config_data()['gameserver_token']
 
 app.config['SECRET_KEY'] = secret_token
 app.config['JWT_SECRET_KEY'] = secret_token
@@ -46,7 +47,6 @@ def catch_all(path):
         return send_from_directory(frontend_folder, "index.html")
 
 if __name__ == "__main__":
-    prepare_json_file()
     try:
         if DEBUG:
             app.run(host='0.0.0.0', port=4040, debug=True)

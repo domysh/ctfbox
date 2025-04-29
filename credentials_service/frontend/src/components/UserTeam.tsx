@@ -57,7 +57,7 @@ export const UserTeams = () => {
                 <ActionIcon color='red' variant='light' onClick={() => setToken(null)} size="lg"><IoLogOut size={20} /></ActionIcon>
             </Box>
             <Table data={tableData} my={15} />
-            <Box className='center-flex' my={15}>
+            <Box my={15} display="flex">
                 <Text><strong>Token (and VM password): </strong>{team.token}</Text>
                 <CopyButton value={team.token} timeout={2000}>
                 {({ copied, copy }) => (

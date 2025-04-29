@@ -3,7 +3,7 @@ services:
     build: ./
     restart: unless-stopped
     volumes:
-      - ../config.json:/app/config.json:z
-      - ../wireguard:/app/wireguard:z
+      - ../config.json:/app/config.json:ro
+      - ../router:/app/router:ro
     ports:
       - "4040:4040"

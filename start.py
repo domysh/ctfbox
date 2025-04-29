@@ -23,23 +23,16 @@ pref = "\033["
 reset = f"{pref}0m"
 
 @dataclass
-class PinEntry:
-    pin: str
-    profile: int
-
-@dataclass
 class Team:
     id: int
     name: str
     token: str
-    wireguard_port: int
     nop: bool = False
     image: str = ""
-    pins: List[PinEntry] = field(default_factory=list)
 
 @dataclass
 class Config:
-    wireguard_start_port: int
+    wireguard_port: int
     wireguard_profiles: int
     server_addr: str
     dns: str
@@ -59,14 +52,11 @@ class Config:
     max_disk_size: Optional[str] = None
     gameserver_exposed_port: Optional[str] = None
     debug: bool = False
-    pin_data_added: bool = False
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> Config:
         teams_data = data.pop('teams', [])
-        teams = [
-            Team(pins=[PinEntry(**pin) for pin in team.pop('pins', [])], **team)
-        for team in teams_data]
+        teams = [Team(**team) for team in teams_data]
         config = cls(**data, teams=teams)
         return config
     
@@ -182,7 +172,7 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_start.add_argument('--start-time', type=str, help='Start time (RFC 3339, see https://ijmacd.github.io/rfc3339-iso8601/)')
     parser_start.add_argument('--end-time', type=str, help='End time (RFC 3339, see https://ijmacd.github.io/rfc3339-iso8601/)')
     parser_start.add_argument('--max-disk-size', type=str, default="30G", help='Max disk size for VMs')
-    parser_start.add_argument('--network-limit-bandwidth', type=str, default="20mbit", help='Network limit bandwidth')
+    parser_start.add_argument('--network-limit-bandwidth', type=str, default="50mbit", help='Network limit bandwidth')
     parser_start.add_argument('--tick-time', type=int, default=120, help='Tick time in seconds')
     parser_start.add_argument('--number-of-teams', type=int, default=4, help='Number of teams')
     parser_start.add_argument('--enable-nop-team', action='store_true', help='Enable NOP team')
@@ -307,11 +297,17 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         "net.ipv6.conf.all.forwarding=0",
                     ],
                     "environment": {
+                        "PUID": os.getuid() if is_linux() else 0,
+                        "PGID": os.getgid() if is_linux() else 0,
                         "RATE_NET": config.network_limit_bandwidth,
-                        "TEAM_IDS": ",".join(str(team.id) for team in config.teams),
+                        "TEAM_IDS": ",".join(str(team.id) for team in config.teams if not team.nop),
+                        "CONFIG_PER_TEAM": config.wireguard_profiles,
+                        "PUBLIC_IP": config.server_addr,
+                        "PUBLIC_PORT": config.wireguard_port,
                     },
                     "volumes": [
-                        "unixsk:/unixsk"
+                        "unixsk:/unixsk",
+                        "./router/configs:/app/configs:z"
                     ],
                     "restart": "unless-stopped",
                     "networks": {
@@ -326,13 +322,10 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         "externalnet": {
                             "priority": 1,
                         },
-                        **{
-                            f"players{team.id}":{
-                                "priority": 10,
-                                "ipv4_address": f"10.80.{team.id}.250"
-                            } for team in config.teams if not team.nop
-                        }
-                    }
+                    },
+                    "ports": [
+                        f"{config.wireguard_port}:51820/udp"
+                    ],
                 },
                 "database": {
                     "hostname": "ctfbox-database",
@@ -417,44 +410,6 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         }
                     } for team in config.teams
                 },
-                **{
-                    f"wireguard{team.id}": {
-                        "hostname": f"wireguard{team.id}",
-                        "dns": [config.dns],
-                        "build": "./wireguard",
-                        "restart": "unless-stopped",
-                        "cap_add": [
-                            "NET_ADMIN",
-                            "SYS_MODULE"
-                        ],
-                        "sysctls": [
-                            "net.ipv4.ip_forward=1",
-                            "net.ipv4.conf.all.src_valid_mark=1",
-                        ],
-                        "volumes": [
-                            f"./wireguard/conf{team.id}:/config:z"
-                        ],
-                        "networks": {
-                            f"players{team.id}": {
-                                "ipv4_address": f"10.80.{team.id}.128"
-                            }
-                        },
-                        "ports": [
-                            f"{config.wireguard_start_port+team.id}:51820/udp"
-                        ],
-                        "environment": {
-                            "PUID": os.getuid() if is_linux() else 0,
-                            "PGID": os.getgid() if is_linux() else 0,
-                            "TZ": "Etc/UTC",
-                            "PEERS": config.wireguard_profiles,
-                            "PEERDNS": config.dns,
-                            "ALLOWEDIPS": "10.10.0.0/16, 10.60.0.0/16, 10.80.0.0/16",
-                            "SERVERURL": config.server_addr,
-                            "SERVERPORT": config.wireguard_start_port+team.id,
-                            "INTERNAL_SUBNET": f"10.80.{team.id}.0/24",
-                        }
-                    } for team in config.teams if not team.nop
-                }
             },
             "secrets":{
                 **{
@@ -498,20 +453,6 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         }
                     } for team in config.teams
                 },
-                **{
-                    f"players{team.id}": {
-                        "driver": "bridge",
-                        "ipam": {
-                            "driver": "default",
-                            "config": [
-                                {
-                                    "subnet": f"10.80.{team.id}.0/24",
-                                    "gateway": f"10.80.{team.id}.254",
-                                }
-                            ]
-                        }
-                    } for team in config.teams if not team.nop
-                }
             }
         }))
 
@@ -535,9 +476,7 @@ def clear_data(
         remove_database_volume()
     if remove_wireguard:
         puts("Removing wireguard configs", color=colors.yellow)
-        for file in os.listdir("./wireguard"):
-            if file.startswith("conf"):
-                shutil.rmtree(f"./wireguard/{file}", ignore_errors=True)
+        shutil.rmtree("./router/configs", ignore_errors=True)
     if remove_config:
         puts("Removing config.json", color=colors.yellow)
         try_to_remove(g.config_file)
@@ -580,14 +519,13 @@ def try_mkdir(path):
     except FileExistsError:
         pass
 
-def generate_teams_array(number_of_teams: int, enable_nop_team: bool, wireguard_start_port: int) -> List[Team]:
+def generate_teams_array(number_of_teams: int, enable_nop_team: bool) -> List[Team]:
     teams = []
     for i in range(number_of_teams + (1 if enable_nop_team else 0)):
         team = Team(
             id=i,
             name=f'Team {i}',
             token=secrets.token_hex(32),
-            wireguard_port=wireguard_start_port+i,
             nop=(i == 0 and enable_nop_team),
             image=""
         )
@@ -643,10 +581,10 @@ def config_input() -> Config:
         args.number_of_teams = abs(int(get_input('Number of teams, >= 0 and < 250', default_number_of_teams)))
 
     # abs() put for consistency with the other options
-    default_wireguard_start_port = args.wireguard_start_port
-    args.wireguard_start_port = abs(int(get_input(f'Wireguard start port, >= 1 and <= {65535-args.number_of_teams}', default_wireguard_start_port)))
-    while args.wireguard_start_port < 1 or args.wireguard_start_port > 65535-args.number_of_teams:
-        args.wireguard_start_port = abs(int(get_input(f'Wireguard start port, >= 1 and <= {65535-args.number_of_teams}', default_wireguard_start_port)))
+    default_wireguard_port = args.wireguard_port
+    args.wireguard_port = abs(int(get_input(f'Wireguard port, >= 1 and <= {65535-args.number_of_teams}', default_wireguard_port)))
+    while args.wireguard_port < 1 or args.wireguard_port > 65535-args.number_of_teams:
+        args.wireguard_port = abs(int(get_input(f'Wireguard start port, >= 1 and <= {65535-args.number_of_teams}', default_wireguard_port)))
 
     args.wireguard_profiles      = abs(int(get_input('Number of wireguard profiles for each team', args.wireguard_profiles)))
     args.server_addr             = get_input('Server address', is_required=True)
@@ -683,11 +621,11 @@ def config_input() -> Config:
         gameserver_exposed_port = args.gameserver_port
 
     # Create teams
-    teams = generate_teams_array(args.number_of_teams, args.enable_nop_team, args.wireguard_start_port)
+    teams = generate_teams_array(args.number_of_teams, args.enable_nop_team, args.wireguard_port)
     
     # Create and return the Config object
     return Config(
-        wireguard_start_port=args.wireguard_start_port,
+        wireguard_port=args.wireguard_port,
         wireguard_profiles=args.wireguard_profiles,
         server_addr=args.server_addr,
         dns=args.dns,

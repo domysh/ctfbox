@@ -59,10 +59,14 @@ Instead you can run `python3 start.py compose exec team<team_id> bash` to connec
 To manage the game network run:
 
 ```bash 
-python3 start.py compose exec router ctfroute unlock|lock
+python3 start.py compose exec router ctfroute freeze|lock|unlock
 ```
 
 This will be automatically handled by the game server based on the configuration given (start_time, end_time, customizable from the ctfbox json). For special cases, you can use this command.
+
+- freeze: freeze the network, no one can connect to the VMs (but only to the gameserver)
+- lock: the network is frozen, but now every team can access to their own VM
+- unlock: the network is unlocked, every team can access to every VM
 
 ## Configuration
 
@@ -83,7 +87,7 @@ python3 start.py clear --all # Only if you want remove all the volumes and confi
 
 Before run the competition, you can customize additional settings in the `config.json` file:
 
-- `wireguard_start_port`: The starting port for WireGuard connections.
+- `wireguard_port`: The port for WireGuard connections.
 - `dns`: The DNS server to be used internally in the network.
 - `wireguard_profiles`: The number of WireGuard profiles to be created for each team.
 - `max_vm_cpus`: The maximum number of CPUs allocated to each VM.
@@ -107,7 +111,6 @@ Before run the competition, you can customize additional settings in the `config
   - `id`: The ID of the team.
   - `name`: The name of the team.
   - `token`: The token for the team (used for flag submission and server password).
-  - `wireguard_port`: The port for WireGuard connections for the team.
   - `nop`: True if the team is marked as NOP team (will not have a wireguard access server).
   - `image`: (Optional) The image used by the team for the scoreboard (more images can be added in the frontend).
 
