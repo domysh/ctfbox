@@ -1,9 +1,0 @@
-services:
-  web:
-    build: ./
-    restart: unless-stopped
-    volumes:
-      - ../config.json:/app/config.json:ro
-      - ../router:/app/router:ro
-    ports:
-      - "4040:4040"

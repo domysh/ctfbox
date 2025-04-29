@@ -51,6 +51,7 @@ class Config:
     end_time: Optional[str] = None
     max_disk_size: Optional[str] = None
     gameserver_exposed_port: Optional[str] = None
+    credential_server: Optional[str] = None
     debug: bool = False
     
     @classmethod
@@ -176,10 +177,11 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_start.add_argument('--tick-time', type=int, default=120, help='Tick time in seconds')
     parser_start.add_argument('--number-of-teams', type=int, default=4, help='Number of teams')
     parser_start.add_argument('--enable-nop-team', action='store_true', help='Enable NOP team')
-    #init options
     parser_start.add_argument('--privileged', '-P', action='store_true', help='Use privileged mode for VMs')
     parser_start.add_argument('--expose-gameserver', '-E', action='store_true', help='Expose gameserver port')
     parser_start.add_argument('--gameserver-port', default="127.0.0.1:8888", help='Gameserver port')
+    parser_start.add_argument('--enable-credential-service', help='Enable credential service', action='store_true')
+    parser_start.add_argument('--credential-server-port', help='Credential server port', default=None)
     parser_start.add_argument('--config-only', '-C', action='store_true', help='Only generate config file')
     parser_start.add_argument('--disk-limit', '-D', action='store_true', help='Limit disk size for VMs (NEED TO ENABLE QUOTAS)')
 
@@ -189,10 +191,6 @@ def gen_args(args_to_parse: list[str]|None = None):
     #Restart Command
     parser_restart = subcommands.add_parser('restart', help=f'Restart {g.name}')
     parser_restart.add_argument('--logs', required=False, action="store_true", help=f'Show {g.name} logs', default=False)
-    parser_restart.add_argument('--privileged', '-P', action='store_true', help='Use privileged mode for VMs')
-    parser_restart.add_argument('--disk-limit', '-D', action='store_true', help='Limit disk size for VMs')
-    parser_restart.add_argument('--expose-gameserver', '-E', action='store_true', help='Expose gameserver port')
-    parser_restart.add_argument('--gameserver-port', default="127.0.0.1:8888", help='Gameserver port')
 
     #Clear Command
     parser_clear = subcommands.add_parser('clear', help='Clear data')
@@ -378,6 +376,24 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         f"./{g.config_file}:/app/{g.config_file}:z"
                     ]
                 },
+                **({
+                    "credentials": {
+                    "hostname": "credentials",
+                    "dns": [config.dns],
+                    "build": "./credentials",
+                    "restart": "unless-stopped",
+                    "ports": [
+                        f"{config.credential_server}:4040"
+                    ],
+                    "depends_on": [ "router" ],
+                    "networks": {
+                        "internalnet": {},
+                    },
+                    "volumes": [
+                        "./config.json:/app/config.json:ro",
+                        "./router:/app/router:ro"
+                    ]
+                }} if config.credential_server is not None else {}),
                 **{
                     f"team{team.id}": {
                         "hostname": f"team{team.id}",
@@ -606,9 +622,13 @@ def config_input() -> Config:
         args.max_disk_size       = get_input('Max VM disk size', args.max_disk_size)
     else:
         args.max_disk_size = None
-    args.expose_gameserver = get_input('Expose externally the gameserver scoreboard?', 'yes').lower().startswith('y')
+    args.expose_gameserver = get_input('Expose externally the gameserver scoreboard?', 'yes' if args.expose_gameserver else 'no').lower().startswith('y')
     if args.expose_gameserver:
         args.gameserver_port = get_input('Insert with witch port or ip:port to expose the gameserver scoreboard', args.gameserver_port)
+    
+    args.enable_credential_service = get_input('Enable credential service?', 'yes' if args.enable_credential_service else 'no').lower().startswith('y')
+    if args.enable_credential_service:
+        args.credential_server_port = get_input('Insert the port to expose the credential server', args.credential_server_port)
     
     args.gameserver_token        = get_input('Gameserver token', default_prompt='randomly generated')
     args.enable_nop_team         = get_input('Enable NOP team?', 'yes').lower().startswith('y')
@@ -619,6 +639,10 @@ def config_input() -> Config:
     gameserver_exposed_port = None
     if args.expose_gameserver:
         gameserver_exposed_port = args.gameserver_port
+        
+    credential_server = None
+    if args.enable_credential_service:
+        credential_server = args.credential_server_port
 
     # Create teams
     teams = generate_teams_array(args.number_of_teams, args.enable_nop_team, args.wireguard_port)
@@ -643,6 +667,7 @@ def config_input() -> Config:
         gameserver_token=args.gameserver_token if args.gameserver_token else secrets.token_hex(32),
         unsafe_privileged=args.privileged,
         gameserver_exposed_port=gameserver_exposed_port,
+        credential_server=credential_server,
         debug=False,
         teams=teams
     )
