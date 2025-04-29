@@ -2,7 +2,7 @@
 
 An Open Attack/Defense Infrastructure Simulation Tool - based on containers
 
-<img width="1037" alt="Screenshot 2025-04-29 alle 7 53 53 AM" src="https://github.com/user-attachments/assets/7ee6e195-1102-4d28-80e3-7a5ca73384cb" />
+<img width="1221" alt="Screenshot 2025-04-29 alle 9 22 05 AM" src="https://github.com/user-attachments/assets/29d8ff13-8523-4c8a-87dc-bf8931c0f490" />
 
 You can see a demo [here](https://ctfbox.domy.sh)
 
