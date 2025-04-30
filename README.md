@@ -78,11 +78,11 @@ python3 start.py start -C
 
 This will generate the config only, you can start ctfbox later
 
-To stop the services run:
+To stop and reset competition run:
 
 ```bash
 python3 start.py stop
-python3 start.py clear --all # Only if you want remove all the volumes and configs
+python3 start.py clear # Only if you want remove all the volumes and configs
 ```
 
 Before run the competition, you can customize additional settings in the `config.json` file:
