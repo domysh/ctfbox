@@ -22,7 +22,10 @@
             --text-primary: #eaeaea;
             --text-secondary: #9ba3af;
             --team-card-bg: #181a28;
-            --nop-team-border: #38b6e0;
+            --nop-team-border: #3a9188;  /* Un verde-blu tenue (teal) */
+            --nop-team-gradient-start: rgba(58, 145, 136, 0.12);
+            --nop-team-gradient-mid: rgba(58, 145, 136, 0.06);
+            --nop-team-gradient-end: rgba(58, 145, 136, 0.02);
             --code-bg: #0e0e18;
         }
         
@@ -181,8 +184,29 @@
         }
         
         .team-card.nop-team {
+            border: 1px solid var(--nop-team-border);
             border-left: 4px solid var(--nop-team-border);
-            background: linear-gradient(to right, rgba(76, 201, 240, 0.1), rgba(76, 201, 240, 0) 50%);
+            background: linear-gradient(135deg, var(--nop-team-gradient-start) 0%, var(--nop-team-gradient-mid) 40%, var(--nop-team-gradient-end) 100%);
+            box-shadow: 0 8px 24px rgba(58, 145, 136, 0.15);
+        }
+        
+        .team-card.nop-team::before {
+            content: "NOP";
+            position: absolute;
+            top: 0;
+            right: 0;
+            background-color: var(--nop-team-border);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: bold;
+            padding: 3px 10px;
+            border-bottom-left-radius: 8px;
+            letter-spacing: 1px;
+        }
+        
+        .team-card.nop-team .team-title {
+            color: var(--nop-team-border);
+            font-weight: 700;
         }
         
         .team-header {
@@ -374,7 +398,7 @@
             background: #4b5563;
         }
         
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
             .grid-layout {
                 grid-template-columns: 1fr;
                 gap: 1.5rem;
@@ -563,18 +587,16 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="checkbox-wrapper">
-                                <div class="form-check form-switch form-switch-lg">
-                                    <input class="form-check-input" type="checkbox" id="enableDiskLimit">
-                                    <label class="form-check-label" for="enableDiskLimit">Enable Disk Limit</label>
-                                </div>
+                            <div class="form-check form-switch form-switch-lg d-flex align-items-center" style="height: 42px; margin-bottom: 0.5rem;">
+                                <input class="form-check-input me-2" type="checkbox" id="enableDiskLimit">
+                                <label class="form-check-label" for="enableDiskLimit">Enable Disk Limit</label>
                             </div>
-                            <div id="diskLimitField" style="display: none;">
-                                <div class="form-floating mt-3">
+                            <div id="diskLimitField" style="display: none; margin-top: 0.5rem;">
+                                <div class="form-floating mb-2">
                                     <input type="text" class="form-control" id="maxDiskSize" value="30G">
                                     <label for="maxDiskSize">Max Disk Size</label>
                                 </div>
-                                <small class="text-muted mt-1 d-block">
+                                <small class="text-muted d-block" style="font-size: 0.85rem; line-height: 1.2;">
                                     Note: Requires XFS filesystem with pquota enabled on the host
                                 </small>
                             </div>
@@ -669,7 +691,7 @@
                     <h3 class="section-title mb-0">Team Configuration</h3>
                 </div>
                 <div class="card-body">
-                    <div class="row align-items-center mb-4">
+                    <div class="row align-items-center mb-4" style="justify-content: center;">
                         <div class="col-md-4 col-lg-3">
                             <div class="form-floating">
                                 <input type="number" class="form-control" id="numberOfTeams" value="4" min="1" max="249">
@@ -677,7 +699,7 @@
                             </div>
                         </div>
                         <div class="col-md-4 col-lg-3 mt-3 mt-md-0">
-                            <div class="form-check form-switch form-switch-lg form-check-centered">
+                            <div class="form-check form-switch form-switch-lg form-check-centered" style="justify-content: center;">
                                 <input class="form-check-input" type="checkbox" id="enableNopTeam">
                                 <label class="form-check-label fs-5" for="enableNopTeam">Enable NOP Team</label>
                             </div>
@@ -904,6 +926,7 @@
                     document.getElementById('configPreview').innerHTML = coloredJson;
                     showToast('Configuration generated successfully!');
                 } catch (error) {
+                    console.error(error);
                     showErrorModal(`Error: ${error.message}`);
                 }
             });
@@ -914,6 +937,7 @@
                     try {
                         config = buildConfigObject();
                     } catch (error) {
+                        console.error(error);
                         showErrorModal(`Cannot download: ${error.message}`);
                         return;
                     }
@@ -921,6 +945,7 @@
                     downloadJSON(config, 'config.json');
                     showToast('Configuration downloaded successfully!');
                 } catch (error) {
+                    console.error(error);
                     showErrorModal(`Error: ${error.message}`);
                 }
             });
@@ -1307,6 +1332,7 @@
                     showToast('Configuration copied to clipboard!');
                 });
             } catch (error) {
+                console.error(error);
                 showErrorModal(`Failed to copy: ${error.message}`);
             }
         }
@@ -1341,6 +1367,7 @@
                     });
                 }
             } catch (error) {
+                console.error(error);
                 showErrorModal(`Failed to copy compressed config: ${error.message}`);
             }
         }
@@ -1484,6 +1511,7 @@
                         const importModal = bootstrap.Modal.getInstance(document.getElementById('importModal'));
                         importModal.hide();
                     } catch (error) {
+                        console.error(error);
                         showErrorModal(`Error parsing JSON file: ${error.message}`);
                     }
                 };
@@ -1518,6 +1546,7 @@
                     const importModal = bootstrap.Modal.getInstance(document.getElementById('importModal'));
                     importModal.hide();
                 } catch (error) {
+                    console.error(error);
                     showErrorModal(`Error processing input: ${error.message}`);
                 }
             } else {
