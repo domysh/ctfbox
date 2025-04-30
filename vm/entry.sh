@@ -5,6 +5,7 @@
 ###################################################
 
 if [[ "$1" == "prebuild" ]]; then
+    /usr/lib/systemd/systemd-binfmt
     dockerd > /var/log/dockerd.log 2>&1 &
     while [[ ! $(docker ps 2> /dev/null) ]]; do
         sleep 1
