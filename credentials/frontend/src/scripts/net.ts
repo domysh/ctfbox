@@ -7,14 +7,12 @@ export type Team = {
         profile: number
     }[],
     token: string,
-    wireguard_port: number,
     nop: number,
 }
 
 export type UserTeam = {
     id: number,
     team_name: string,
-    wireguard_port: number,
     profile: number,
     token: string,
     nop: boolean

@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, send_file
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from utils import load_teams_data, wireguard_path
+from utils import load_config_data, wireguard_path, load_pins_info
 import os
 import time
 
@@ -13,13 +13,17 @@ def user_login():
     time.sleep(0.3) # Avoid brute force attacks
     pin = request.json.get('pin')
     
-    teams_data = load_teams_data()
-    team = next((team for team in teams_data['teams'] if not team['nop'] and pin in [ele['pin'] for ele in team['pins']]), None)
+    profile_pin = None
+    pin_info = load_pins_info()
+    for team_pin_list in pin_info.values():
+        for pin_info in team_pin_list:
+            if pin_info['pin'] == pin:
+                profile_pin = pin_info
+                break
     
-    if team:
-        user_profile_id = next((ele['profile'] for ele in team['pins'] if ele['pin'] == pin), None)  
+    if profile_pin:
         access_token = create_access_token(
-            identity=f"user_{team['id']}_{user_profile_id}"
+            identity=f"user_{profile_pin['team_id']}_{profile_pin['profile_id']}",
         )
         return jsonify(access_token=access_token), 200
     
@@ -33,7 +37,7 @@ def get_team_info():
         return jsonify({"msg": "Forbidden: This endpoint is for users only"}), 422
     
     team_id, user_id = map(int, current_user.split('_')[1:])
-    teams_data = load_teams_data()
+    teams_data = load_config_data()
 
     team = next((team for team in teams_data['teams'] if team['id'] == team_id), None)
     
@@ -43,7 +47,6 @@ def get_team_info():
     return jsonify({
         "id": team['id'],
         "team_name": team['name'],
-        "wireguard_port": team['wireguard_port'],
         "profile": user_id,
         "token": team['token'],
         "nop": team['nop']
