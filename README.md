@@ -82,7 +82,7 @@ To stop and reset competition run:
 
 ```bash
 python3 start.py stop
-python3 start.py clear # Only if you want remove all the volumes and configs
+python3 start.py clear # This will reset the gameserver db, and all generated data + wg configs
 ```
 
 Before run the competition, you can customize additional settings in the `config.json` file:
