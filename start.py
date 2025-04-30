@@ -159,7 +159,7 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_start = subcommands.add_parser('start', help=f'Start {g.name}')
     parser_start.add_argument('--logs', required=False, action="store_true", help=f'Show {g.name} logs', default=False)
     #Gameserver options
-    parser_start.add_argument('--wireguard-start-port', type=int, default=51000, help='Wireguard start port')
+    parser_start.add_argument('--wireguard-port', type=int, default=51000, help='Wireguard start port')
     parser_start.add_argument('--gameserver-token', type=str, help='Gameserver token')
     parser_start.add_argument('--max-vm-mem', type=str, default="2G", help='Max memory for VMs')
     parser_start.add_argument('--max-vm-cpus', type=str, default="1", help='Max CPUs for VMs')
@@ -206,7 +206,11 @@ def gen_args(args_to_parse: list[str]|None = None):
     #Status Command
     subcommands.add_parser('status', help='Show status')
     
-    args = parser.parse_args(args=args_to_parse)
+    if args_to_parse is None:
+        args = sys.argv[1:]
+    if not args:
+        args = ["start"]
+    args = parser.parse_args(args=args)
 
     return args
 
@@ -645,7 +649,7 @@ def config_input() -> Config:
         credential_server = args.credential_server_port
 
     # Create teams
-    teams = generate_teams_array(args.number_of_teams, args.enable_nop_team, args.wireguard_port)
+    teams = generate_teams_array(args.number_of_teams, args.enable_nop_team)
     
     # Create and return the Config object
     return Config(
