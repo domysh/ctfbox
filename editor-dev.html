@@ -398,7 +398,7 @@
             background: #4b5563;
         }
         
-        @media (max-width: 1024px) {
+        @media (max-width: 992px) {
             .grid-layout {
                 grid-template-columns: 1fr;
                 gap: 1.5rem;
@@ -415,6 +415,9 @@
             
             .card-body {
                 padding: 1.5rem;
+            }
+            .row{
+                gap: 20px;
             }
         }
         
@@ -454,6 +457,101 @@
             padding-top: 2rem;
             border-top: 1px solid var(--border-color);
         }
+
+        .btn-reset {
+            background-color: var(--secondary);
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+        
+        .btn-reset:hover {
+            background-color: #242538;
+            border-color: var(--border-color);
+            color: var(--danger);
+        }
+
+        .floating-reset-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: var(--secondary);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+        }
+
+        .floating-reset-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+            background-color: #242538;
+            color: var(--danger);
+        }
+
+        .floating-reset-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .floating-reset-btn {
+                bottom: 20px;
+                right: 20px;
+                width: 50px;
+                height: 50px;
+            }
+        }
+
+        .toast-container {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            z-index: 1100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background-color: var(--card-bg);
+            border-left: 4px solid var(--primary);
+            color: var(--text-primary);
+            padding: 10px;
+            min-width: 280px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            opacity: 1;
+        }
+
+        .toast.bg-success {
+            border-left-color: var(--success);
+            background-color: rgba(5, 184, 137, 0.2);
+        }
+
+        .toast-body {
+            padding: 0.5rem 0.5rem;
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 768px) {
+            .toast-container {
+                bottom: 80px;
+                left: 20px;
+                right: 20px;
+                align-items: center;
+            }
+            
+            .toast {
+                width: 90%;
+                max-width: 350px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -470,25 +568,25 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="number" class="form-control" id="wireguardPort" value="51000" min="1">
                                 <label for="wireguardPort">Wireguard Port</label>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="number" class="form-control" id="wireguardProfiles" value="30" min="1">
                                 <label for="wireguardProfiles">Wireguard Profiles</label>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="serverAddr" required>
                                 <label for="serverAddr">Server Address (Required)</label>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="dns" value="1.1.1.1">
                                 <label for="dns">DNS Server</label>
@@ -504,14 +602,14 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="datetime-local" class="form-control" id="startTime">
                                 <label for="startTime">Start Time (Optional)</label>
                             </div>
                             <div class="time-note">Uses your current time zone</div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="datetime-local" class="form-control" id="endTime">
                                 <label for="endTime">End Time (Optional)</label>
@@ -534,25 +632,25 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="number" class="form-control" id="flagExpireTicks" value="5" min="1">
                                 <label for="flagExpireTicks">Flag Expire Ticks</label>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="number" class="form-control" id="initialServiceScore" value="5000" min="0">
                                 <label for="initialServiceScore">Initial Service Score</label>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="number" class="form-control" id="maxFlagsPerRequest" value="3000" min="1">
                                 <label for="maxFlagsPerRequest">Max Flags Per Request</label>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="number" class="form-control" id="submissionTimeout" value="0.03" min="0" step="0.01">
                                 <label for="submissionTimeout">Submission Timeout</label>
@@ -568,25 +666,25 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="networkLimitBandwidth" value="20mbit">
                                 <label for="networkLimitBandwidth">Network Limit Bandwidth</label>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="maxVmCpus" value="1">
                                 <label for="maxVmCpus">Max VM CPUs</label>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="maxVmMem" value="2G">
                                 <label for="maxVmMem">Max VM Memory</label>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="form-check form-switch form-switch-lg d-flex align-items-center" style="height: 42px; margin-bottom: 0.5rem;">
                                 <input class="form-check-input me-2" type="checkbox" id="enableDiskLimit">
                                 <label class="form-check-label" for="enableDiskLimit">Enable Disk Limit</label>
@@ -611,13 +709,13 @@
                 </div>
                 <div class="card-body">
                     <div class="row mb-4">
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="gameserverToken" placeholder="Auto-generated if empty">
                                 <label for="gameserverToken">Gameserver Token (Optional)</label>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-lg-6">
                             <div class="checkbox-wrapper">
                                 <div class="form-check form-switch form-switch-lg">
                                     <input class="form-check-input" type="checkbox" id="debugMode">
@@ -692,19 +790,19 @@
                 </div>
                 <div class="card-body">
                     <div class="row align-items-center mb-4" style="justify-content: center;">
-                        <div class="col-md-4 col-lg-3">
+                        <div class="col-lg-4 col-lg-3">
                             <div class="form-floating">
                                 <input type="number" class="form-control" id="numberOfTeams" value="4" min="1" max="249">
                                 <label for="numberOfTeams">Number of Teams</label>
                             </div>
                         </div>
-                        <div class="col-md-4 col-lg-3 mt-3 mt-md-0">
+                        <div class="col-lg-4 col-lg-3 mt-3 mt-lg-0">
                             <div class="form-check form-switch form-switch-lg form-check-centered" style="justify-content: center;">
                                 <input class="form-check-input" type="checkbox" id="enableNopTeam">
                                 <label class="form-check-label fs-5" for="enableNopTeam">Enable NOP Team</label>
                             </div>
                         </div>
-                        <div class="col-md-4 col-lg-3 mt-3 mt-md-0">
+                        <div class="col-lg-4 col-lg-3 mt-3 mt-lg-0">
                             <button class="btn btn-primary w-100" id="generateTeams">Generate Teams</button>
                         </div>
                     </div>
@@ -749,8 +847,8 @@
             </div>
         </div>
         
-        <div class="d-grid gap-3 d-md-flex justify-content-md-between mb-4">
-            <div class="d-grid gap-3 d-md-flex">
+        <div class="d-grid gap-3 d-lg-flex justify-content-lg-between mb-4">
+            <div class="d-grid gap-3 d-lg-flex">
                 <button class="btn btn-primary btn-lg flex-grow-1" id="generateConfig">Generate Configuration</button>
                 <button class="btn btn-outline-info btn-lg" id="importConfig">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-upload me-2" viewBox="0 0 16 16">
@@ -766,11 +864,15 @@
                 </svg> Download
             </button>
         </div>
-        
-        <div class="footer">
-            <p>CTFBox Configuration Editor</p>
-        </div>
     </div>
+    
+    <!-- Add the floating reset button -->
+    <button class="floating-reset-btn" id="resetConfig" title="Reset Configuration">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z"/>
+            <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z"/>
+        </svg>
+    </button>
     
     <div class="toast-container">
     </div>
@@ -831,6 +933,24 @@
         </div>
     </div>
 
+    <div class="modal fade" id="resetConfirmModal" tabindex="-1" aria-labelledby="resetConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resetConfirmModalLabel">Confirm Reset</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to reset all configuration settings to default values? This action cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmReset">Reset Configuration</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         function debounce(func, wait) {
             let timeout;
@@ -848,6 +968,162 @@
                 updatePreview();
             }
         }, 300);
+
+        // Add a debounced function for saving state
+        let saveStateDebounced = debounce(function() {
+            saveStateToLocalStorage();
+        }, 500);
+
+        function saveStateToLocalStorage() {
+            try {
+                const formData = {
+                    wireguardPort: document.getElementById('wireguardPort').value,
+                    wireguardProfiles: document.getElementById('wireguardProfiles').value,
+                    serverAddr: document.getElementById('serverAddr').value,
+                    dns: document.getElementById('dns').value,
+                    startTime: document.getElementById('startTime').value,
+                    endTime: document.getElementById('endTime').value,
+                    tickTime: document.getElementById('tickTime').value,
+                    flagExpireTicks: document.getElementById('flagExpireTicks').value,
+                    initialServiceScore: document.getElementById('initialServiceScore').value,
+                    maxFlagsPerRequest: document.getElementById('maxFlagsPerRequest').value,
+                    submissionTimeout: document.getElementById('submissionTimeout').value,
+                    networkLimitBandwidth: document.getElementById('networkLimitBandwidth').value,
+                    maxVmCpus: document.getElementById('maxVmCpus').value,
+                    maxVmMem: document.getElementById('maxVmMem').value,
+                    enableDiskLimit: document.getElementById('enableDiskLimit').checked,
+                    maxDiskSize: document.getElementById('maxDiskSize').value,
+                    gameserverToken: document.getElementById('gameserverToken').value,
+                    unsafePrivileged: document.getElementById('unsafePrivileged').checked,
+                    exposeGameserver: document.getElementById('exposeGameserver').checked,
+                    gameserverExposedPort: document.getElementById('gameserverExposedPort').value,
+                    enableCredentialServer: document.getElementById('enableCredentialServer').checked,
+                    credentialServerPort: document.getElementById('credentialServerPort').value,
+                    debugMode: document.getElementById('debugMode').checked,
+                    numberOfTeams: document.getElementById('numberOfTeams').value,
+                    enableNopTeam: document.getElementById('enableNopTeam').checked,
+                    autoRefresh: document.getElementById('autoRefresh').checked
+                };
+
+                // Get teams data
+                formData.teams = [];
+                document.querySelectorAll('.team-card').forEach(teamCard => {
+                    const teamId = parseInt(teamCard.getAttribute('data-team-id'));
+                    if (isNaN(teamId)) return;
+                    
+                    const teamData = {
+                        id: teamId,
+                        name: document.getElementById(`teamName-${teamId}`)?.value || `Team ${teamId}`,
+                        token: document.getElementById(`teamToken-${teamId}`)?.value || "",
+                        nop: document.getElementById(`teamNop-${teamId}`)?.checked || false,
+                        image: document.getElementById(`teamImage-${teamId}`)?.value || ""
+                    };
+                    
+                    formData.teams.push(teamData);
+                });
+
+                localStorage.setItem('ctfboxEditorState', JSON.stringify(formData));
+                console.log('State saved to localStorage');
+            } catch (error) {
+                console.error('Error saving state to localStorage:', error);
+            }
+        }
+
+        function loadStateFromLocalStorage() {
+            try {
+                const savedState = localStorage.getItem('ctfboxEditorState');
+                if (!savedState) return false;
+                
+                const formData = JSON.parse(savedState);
+                
+                // Load basic form fields
+                if (formData.wireguardPort) document.getElementById('wireguardPort').value = formData.wireguardPort;
+                if (formData.wireguardProfiles) document.getElementById('wireguardProfiles').value = formData.wireguardProfiles;
+                if (formData.serverAddr) document.getElementById('serverAddr').value = formData.serverAddr;
+                if (formData.dns) document.getElementById('dns').value = formData.dns;
+                if (formData.startTime) document.getElementById('startTime').value = formData.startTime;
+                if (formData.endTime) document.getElementById('endTime').value = formData.endTime;
+                if (formData.tickTime) document.getElementById('tickTime').value = formData.tickTime;
+                if (formData.flagExpireTicks) document.getElementById('flagExpireTicks').value = formData.flagExpireTicks;
+                if (formData.initialServiceScore) document.getElementById('initialServiceScore').value = formData.initialServiceScore;
+                if (formData.maxFlagsPerRequest) document.getElementById('maxFlagsPerRequest').value = formData.maxFlagsPerRequest;
+                if (formData.submissionTimeout) document.getElementById('submissionTimeout').value = formData.submissionTimeout;
+                if (formData.networkLimitBandwidth) document.getElementById('networkLimitBandwidth').value = formData.networkLimitBandwidth;
+                if (formData.maxVmCpus) document.getElementById('maxVmCpus').value = formData.maxVmCpus;
+                if (formData.maxVmMem) document.getElementById('maxVmMem').value = formData.maxVmMem;
+                
+                if (formData.enableDiskLimit !== undefined) {
+                    document.getElementById('enableDiskLimit').checked = formData.enableDiskLimit;
+                    document.getElementById('diskLimitField').style.display = formData.enableDiskLimit ? 'block' : 'none';
+                }
+                if (formData.maxDiskSize) document.getElementById('maxDiskSize').value = formData.maxDiskSize;
+                if (formData.gameserverToken) document.getElementById('gameserverToken').value = formData.gameserverToken;
+                if (formData.unsafePrivileged !== undefined) document.getElementById('unsafePrivileged').checked = formData.unsafePrivileged;
+                if (formData.exposeGameserver !== undefined) {
+                    document.getElementById('exposeGameserver').checked = formData.exposeGameserver;
+                    document.getElementById('gameserverPortField').style.display = formData.exposeGameserver ? 'block' : 'none';
+                }
+                if (formData.gameserverExposedPort) document.getElementById('gameserverExposedPort').value = formData.gameserverExposedPort;
+                if (formData.enableCredentialServer !== undefined) {
+                    document.getElementById('enableCredentialServer').checked = formData.enableCredentialServer;
+                    document.getElementById('credentialServerField').style.display = formData.enableCredentialServer ? 'block' : 'none';
+                }
+                if (formData.credentialServerPort) document.getElementById('credentialServerPort').value = formData.credentialServerPort;
+                if (formData.debugMode !== undefined) document.getElementById('debugMode').checked = formData.debugMode;
+                if (formData.numberOfTeams) document.getElementById('numberOfTeams').value = formData.numberOfTeams;
+                if (formData.enableNopTeam !== undefined) document.getElementById('enableNopTeam').checked = formData.enableNopTeam;
+                if (formData.autoRefresh !== undefined) document.getElementById('autoRefresh').checked = formData.autoRefresh;
+                
+                // Handle teams if they exist
+                if (formData.teams && Array.isArray(formData.teams) && formData.teams.length > 0) {
+                    document.getElementById('teamsContainer').innerHTML = '';
+                    
+                    formData.teams.forEach(team => {
+                        const teamCard = createTeamCard(team.id, team.name, team.nop);
+                        teamCard.setAttribute('data-team-id', team.id);
+                        document.getElementById('teamsContainer').appendChild(teamCard);
+                        
+                        document.getElementById(`teamName-${team.id}`).value = team.name;
+                        if (team.nop !== undefined && team.id !== 0) document.getElementById(`teamNop-${team.id}`).checked = team.nop;
+                        if (team.token) document.getElementById(`teamToken-${team.id}`).value = team.token;
+                        if (team.image) {
+                            document.getElementById(`teamImage-${team.id}`).value = team.image;
+                            updateTeamImagePreview(team.image, team.id);
+                        }
+                        
+                        updateTeamTitle(team.id, team.name);
+                        updateTeamNopStatus(team.id, team.nop);
+                    });
+                    
+                    updateTeamCount();
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('Error loading state from localStorage:', error);
+                return false;
+            }
+        }
+
+        function clearLocalStorage() {
+            localStorage.removeItem('ctfboxEditorState');
+            console.log('Local storage cleared');
+        }
+
+        function resetWithConfirmation() {
+            const resetModal = new bootstrap.Modal(document.getElementById('resetConfirmModal'));
+            resetModal.show();
+        }
+
+        function resetConfiguration() {
+            resetFormToDefaults();
+            document.getElementById('teamsContainer').innerHTML = '';
+            generateTeamFields();
+            updateTeamCount();
+            updatePreview();
+            clearLocalStorage();
+            showToast('Configuration has been reset to default values');
+        }
 
         function showToast(message, type = 'success') {
             const toastId = `toast-${Date.now()}`;
@@ -893,31 +1169,50 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Load state from local storage if available
+            const stateLoaded = loadStateFromLocalStorage();
+            if (stateLoaded) {
+                console.log('State loaded from localStorage');
+                updatePreview();
+            }
+
             document.getElementById('enableDiskLimit').addEventListener('change', function() {
                 document.getElementById('diskLimitField').style.display = this.checked ? 'block' : 'none';
                 updatePreviewDebounced();
+                saveStateDebounced();
             });
             
             document.getElementById('exposeGameserver').addEventListener('change', function() {
                 document.getElementById('gameserverPortField').style.display = this.checked ? 'block' : 'none';
                 updatePreviewDebounced();
+                saveStateDebounced();
             });
 
             document.getElementById('enableCredentialServer').addEventListener('change', function() {
                 document.getElementById('credentialServerField').style.display = this.checked ? 'block' : 'none';
                 updatePreviewDebounced();
+                saveStateDebounced();
             });
             
             document.getElementById('generateTeams').addEventListener('click', function() {
                 generateTeamFields();
                 updatePreviewDebounced();
+                saveStateDebounced();
             });
             
             document.getElementById('addSingleTeam').addEventListener('click', function() {
                 addSingleTeam();
                 updatePreviewDebounced();
+                saveStateDebounced();
             });
-            
+
+            document.getElementById('resetConfig').addEventListener('click', resetWithConfirmation);
+            document.getElementById('confirmReset').addEventListener('click', function() {
+                const resetModal = bootstrap.Modal.getInstance(document.getElementById('resetConfirmModal'));
+                resetModal.hide();
+                resetConfiguration();
+            });
+
             document.getElementById('generateConfig').addEventListener('click', function() {
                 try {
                     const config = buildConfigObject();
@@ -998,15 +1293,25 @@
                 element.removeEventListener('change', updatePreviewDebounced);
                 element.removeEventListener('input', updatePreviewDebounced);
                 
-                element.addEventListener('change', updatePreviewDebounced);
+                element.addEventListener('change', function() {
+                    updatePreviewDebounced();
+                    saveStateDebounced();
+                });
+                
                 if (element.type === 'text' || element.type === 'number' || 
                     element.type === 'datetime-local' || element.type === 'textarea') {
-                    element.addEventListener('input', updatePreviewDebounced);
+                    element.addEventListener('input', function() {
+                        updatePreviewDebounced();
+                        saveStateDebounced();
+                    });
                 }
                 
                 if (element.type === 'checkbox' || element.type === 'radio') {
                     element.addEventListener('change', function() {
-                        setTimeout(updatePreviewDebounced, 0);
+                        setTimeout(function() {
+                            updatePreviewDebounced();
+                            saveStateDebounced();
+                        }, 0);
                     });
                 }
             });
@@ -1097,6 +1402,7 @@
             setupFormListeners(team);
 
             updatePreviewDebounced();
+            saveStateDebounced();
             updateTeamCount();
         }
         
@@ -1111,6 +1417,7 @@
                 
                 teamCard.remove();
                 updatePreviewDebounced();
+                saveStateDebounced();
             }
 
             updateTeamCount();
@@ -1137,7 +1444,7 @@
                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTeam(${id})">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
                             <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/>
-                            <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/>
+                            <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 3h11V2h-11v1Z"/>
                         </svg> Remove
                     </button>
                 </div>
@@ -1254,6 +1561,7 @@
                     document.getElementById(`teamImagePreview-${teamId}`).src = imageUrl;
                     showToast('Image uploaded successfully to ImgBB!');
                     updatePreviewDebounced();
+                    saveStateDebounced();
                 } else {
                     throw new Error('Upload to ImgBB failed');
                 }
@@ -1273,12 +1581,14 @@
             document.getElementById(`teamImagePreview-${teamId}`).src = './images/teams/ctfbox-player.png';
             document.getElementById(`teamImageFile-${teamId}`).value = '';
             updatePreviewDebounced();
+            saveStateDebounced();
         }
         
         function updateTeamImagePreview(imageUrl, teamId) {
             const preview = document.getElementById(`teamImagePreview-${teamId}`);
             preview.src = imageUrl || './images/teams/ctfbox-player.png';
             updatePreviewDebounced();
+            saveStateDebounced();
         }
         
         function updateTeamTitle(id, newName) {
@@ -1287,6 +1597,7 @@
                 titleElement.textContent = newName;
             }
             updatePreviewDebounced();
+            saveStateDebounced();
         }
         
         function updateTeamNopStatus(id, isNop) {
@@ -1299,12 +1610,14 @@
                 }
             }
             updatePreviewDebounced();
+            saveStateDebounced();
         }
         
         function updateTeamCount() {
             const teamCount = document.querySelectorAll('.team-card').length;
             document.getElementById('teamCountDisplay').textContent = teamCount;
             updatePreviewDebounced();
+            saveStateDebounced();
         }
         
         function updatePreview() {
@@ -1507,6 +1820,7 @@
                         const content = e.target.result;
                         const config = JSON.parse(content);
                         applyImportedConfig(config);
+                        saveStateDebounced(); // Save imported config to localStorage
                         
                         const importModal = bootstrap.Modal.getInstance(document.getElementById('importModal'));
                         importModal.hide();
@@ -1542,6 +1856,7 @@
                     }
                     
                     applyImportedConfig(config);
+                    saveStateDebounced(); // Save imported config to localStorage
                     
                     const importModal = bootstrap.Modal.getInstance(document.getElementById('importModal'));
                     importModal.hide();
