@@ -117,10 +117,7 @@ Before run the competition, you can customize additional settings in the `config
 
 ## Credential Service
 
-You can also give wireguard profile and password and ip to each team member using the credential_service that is a separate
-service that could be runned using docker compose, that will read and write pins that can be used to access the competition.
-The webplatform will require a PIN to login and access to download the wireguard profile and on the team token.
-Admins can access and read PIN on /admin page, loggin in with the gameserver token.
+You can also give wireguard profile, password and ip to each team member using a credential distribution service enabling it in the config, that will read pins (generated in router/team\<id\>/pins.json) that can be used to access the competition. The web-platform will require a PIN to login and access to download the wireguard profile and on the team token. Admins can access and read PIN on /admin page, logging-in with the gameserver token.
 
 ## Features
 - Attack and Defense Simulations: Simulate various cybersecurity attack and defense scenarios.
