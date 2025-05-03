@@ -326,7 +326,10 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         },
                     },
                     "ports": [
-                        f"{config.wireguard_port}:51820/udp"
+                        f"{config.wireguard_port}:51820/udp",
+                        *([
+                            f"{config.gameserver_exposed_port}:80"
+                        ] if config.gameserver_exposed_port is not None else {}),
                     ],
                 },
                 "database": {
@@ -355,11 +358,6 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                     "cap_add": [
                         "NET_ADMIN"
                     ],
-                    **({
-                        "ports": [
-                            f"{config.gameserver_exposed_port}:80"
-                        ]
-                    } if config.gameserver_exposed_port is not None else {}),
                     "depends_on": [
                         "router",
                         "database",
