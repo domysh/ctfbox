@@ -161,6 +161,7 @@ export const ScoreboardPage = () => {
                 return (
                     <TeamRow 
                         key={teamData.team}
+                        clickable
                         teamData={teamData}
                         pos={pos} 
                         services={services}
