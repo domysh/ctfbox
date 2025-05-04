@@ -38,26 +38,6 @@ Remember that after installing you need to enable sysbox services, and also conf
 }
 ```
 
-It's also highly recommended to use the sysbox-runc to disable Inner image preloading, which is a feature that will make the VM images heavy and slow to load. To do this, you need to add the --disable-inner-image-preload option to the sysbox-mgr service.
-
-To do this, you can run the following commands (if you are running sysbox with systemd):
-```bash
-# Stopping all sysbox container
-for container in `docker ps -aq`; do
-  runtime=$(docker inspect --format='{{.HostConfig.Runtime}}' "$container")
-  if [[ "$runtime" == "sysbox-runc" ]]; then
-    echo "stopping system container $container"
-    docker stop "$container"
-    echo "removing system container $container"
-    docker rm "$container"
-  fi
-done
-# Adding --disable-inner-image-preload and restarting 
-sudo sed -i --follow-symlinks '/^ExecStart/ s/$/ --disable-inner-image-preload/' /lib/systemd/system/sysbox-mgr.service
-sudo systemctl daemon-reload
-sudo systemctl restart sysbox
-```
-
 After that, restart the docker service.
 
 Now you can run CTFBox using the following command:
