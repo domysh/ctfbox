@@ -530,7 +530,7 @@ def clear_data(
     remove_gameserver_data=True
 ):
     if remove_gameserver_data:
-        puts("Removing databse volume", color=colors.yellow)
+        puts("Removing database volume", color=colors.yellow)
         remove_database_volume()
     if remove_wireguard:
         puts("Removing wireguard configs", color=colors.yellow)
