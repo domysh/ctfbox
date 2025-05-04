@@ -43,7 +43,7 @@ After that, restart the docker service.
 Now you can run CTFBox using the following command:
 
 ```bash
-sudo python3 run.py start
+./run.py start
 ```
 
 You can configure CTFBox using the terminal or using the config editor [here](https://ctfbox.domy.sh/editor) (sources on demo branch).
@@ -59,7 +59,7 @@ Instead you can run `python3 run.py compose exec team<team_id> bash` to connect 
 To manage the game network run:
 
 ```bash 
-python3 run.py compose exec router ctfroute freeze|lock|unlock
+./run.py compose exec router ctfroute freeze|lock|unlock
 ```
 
 This will be automatically handled by the game server based on the configuration given (start_time, end_time, customizable from the ctfbox json). For special cases, you can use this command.
@@ -73,7 +73,7 @@ This will be automatically handled by the game server based on the configuration
 If you want generate the CTFBox json config, edit it and after start CTFBox run:
 
 ```bash
-python3 run.py start -C
+./run.py start -C
 ```
 
 This will generate the config only, you can start ctfbox later
@@ -81,8 +81,8 @@ This will generate the config only, you can start ctfbox later
 To stop and reset competition run:
 
 ```bash
-python3 run.py stop
-python3 run.py clear # This will reset the gameserver db, and all generated data + wg configs
+./run.py stop
+./run.py clear # This will reset the gameserver db, and all generated data + wg configs
 ```
 
 Before run the competition, you can customize additional settings in the `config.json` file:
