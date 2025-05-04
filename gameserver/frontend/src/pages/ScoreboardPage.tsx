@@ -34,21 +34,22 @@ const ChartTooltip = memo(({ label, payload }: ChartTooltipProps) => {
     );
 });
 
-const TeamRow = memo(({ teamData, pos, services, teamInfo }: {
+const TeamRow = memo(({ teamData, pos, services, teamInfo, clickable }: {
     teamData: TeamScores,
     pos: number,
     services: {name: string}[],
-    teamInfo?: TeamStatusInfo
+    teamInfo?: TeamStatusInfo,
+    clickable?: boolean
 }) => {
     const navigate = useNavigate()
     const setLoading = useGlobalState(state => state.setLoading)
-    const redirectProps = {
+    const redirectProps = clickable?{
         onClick: () => {
             setLoading(true)
             navigate(`/scoreboard/team/${teamInfo?.id}`)
         },
         style: { cursor: "pointer" }
-    };
+    }:{};
 
     
 
@@ -69,7 +70,7 @@ const TeamRow = memo(({ teamData, pos, services, teamInfo }: {
                 />
             </Box></Table.Td>
             <Table.Td><Box className="center-flex-col">
-                <Text {...redirectProps} className="center-flex">{teamInfo?.name??"Unknown Team"} <HiOutlineCursorClick size={12} /></Text>
+                <Text {...redirectProps} className="center-flex">{teamInfo?.name??"Unknown Team"} {clickable && <HiOutlineCursorClick size={12} />}</Text>
                 <Space h="3px" />
                 <Pill style={{ backgroundColor: "var(--mantine-color-cyan-filled)", color: "white", fontWeight: "bold" }} className="center-flex">
                     {teamData.team}
@@ -154,19 +155,54 @@ export const ScoreboardPage = () => {
     }, [chartData.data]);
 
     const rows = useMemo(() => 
-        scoreboardData.data?.scores
+        (scoreboardData.data?.scores.length??0) > 0?(scoreboardData.data?.scores
             .sort(scoreBoardSortFunction)
             .map((teamData, pos) => {
-                const teamInfo = teamSolver(teamData.team);
                 return (
                     <TeamRow 
                         key={teamData.team}
                         teamData={teamData}
                         pos={pos} 
                         services={services}
-                        teamInfo={teamInfo}
+                        teamInfo={teamSolver(teamData.team)}
                     />
                 );
+            })):configData.data?.teams.sort((a,b) => a.id - b.id).map((ele, pos) => {
+                return <TeamRow
+                    key={ele.id}
+                    teamData={{
+                        team: ele.host,
+                        score: 0,
+                        services: configData.data.services.map(service => ({
+                            service: service.name,
+                            stolen_flags: 0,
+                            lost_flags: 0,
+                            sla: 0,
+                            score: 0,
+                            ticks_up: 0,
+                            ticks_down: 0,
+                            put_flag: 0,
+                            put_flag_msg: "",
+                            get_flag: 0,
+                            get_flag_msg: "",
+                            offensive_points: 0,
+                            defensive_points: 0,
+                            sla_check: 0,
+                            sla_check_msg: "",
+                            final_score: 0,
+                            diff_stolen_flags: 0,
+                            diff_lost_flags: 0,
+                            diff_offensive_points: 0,
+                            diff_defensive_points: 0,
+                            diff_sla: 0,
+                            diff_score: 0,
+                            diff_final_score: 0,
+                        }))
+                    }}
+                    pos={pos}
+                    services={services}
+                    teamInfo={ele}
+                />
             }),
         [scoreboardData.data?.scores, services, teamSolver, navigate]
     );

@@ -9,6 +9,7 @@ import secrets
 import shutil
 import base64
 import zlib
+import hashlib
 from datetime import datetime
 import platform
 from dataclasses import dataclass, field, asdict
@@ -18,6 +19,9 @@ try:
     readline.set_history_length(0)
 except Exception:
     pass
+
+if __name__ == "__main__":
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 pref = "\033["
 reset = f"{pref}0m"
@@ -73,6 +77,26 @@ class Config:
         with open(filepath, 'w') as f:
             json.dump(self.to_dict(), f, indent=indent)
 
+def file_sha_hash(filename):
+    h  = hashlib.sha256()
+    b  = bytearray(128*1024)
+    mv = memoryview(b)
+    with open(filename, 'rb', buffering=0) as f:
+        for n in iter(lambda : f.readinto(mv), 0):
+            h.update(mv[:n])
+    return h.hexdigest()
+
+def dir_sha_hash(path: str) -> str:
+    if not os.path.isdir(path):
+        return ""
+    hash_list = []
+    for root, _, files in os.walk(path):
+        for name in files:
+            path = os.path.join(root, name)
+            hash_list.append((path, file_sha_hash(path)))
+    hash_list.sort(key=lambda x: x[0])
+    return hashlib.sha256(b":".join(map(lambda a: (a[0]+":"+a[1]).encode(), hash_list))).hexdigest()
+    
 class g:
     keep_file = False
     composefile = ".ctfbox-compose.yml"
@@ -86,9 +110,6 @@ class g:
     secrets_dir = ".ctfbox-secrets-tmp"
 
 use_build_on_compose = True
-
-if __name__ == "__main__":
-    os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 def is_linux():
     return "linux" in sys.platform and 'microsoft-standard' not in platform.uname().release
@@ -196,9 +217,7 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_clear = subcommands.add_parser('clear', help='Clear data')
     parser_clear.add_argument('--all', '-A', action='store_true', help='Clear everything')
     parser_clear.add_argument('--config', '-c', action='store_true', help='Clear config file')
-    parser_clear.add_argument('--prebuilded-container', '-P', action='store_true', help='Clear prebuilded container')
-    parser_clear.add_argument('--prebuilder-image', '-B', action='store_true', help='Clear prebuilder image')
-    parser_clear.add_argument('--prebuilt-image', '-I', action='store_true', help='Clear prebuilt image')
+    parser_clear.add_argument('--team-containers', '-T', action='store_true', help='Clear all building phases of team containers')
     parser_clear.add_argument('--wireguard', '-W', action='store_true', help='Clear wireguard data')
     parser_clear.add_argument('--checkers-data', '-C', action='store_true', help='Clear checkers data')
     parser_clear.add_argument('--gameserver-data', '-G', action='store_true', help='Clear gameserver data')
@@ -216,6 +235,24 @@ def gen_args(args_to_parse: list[str]|None = None):
 
 if __name__ == "__main__":
     args = gen_args()
+
+def get_deploy_info() -> dict:
+    if os.path.isfile(".deploy_info"):
+        with open(".deploy_info", "r") as f:
+            return json.load(f)
+    else:
+        return {}
+
+def set_deploy_info(data:dict):
+    if not os.path.isfile(".deploy_info"):
+        with open(".deploy_info", "w") as f:
+            json.dump({}, f)
+    with open(".deploy_info", "r+") as f:
+        deploy_info = json.load(f)
+        deploy_info.update(data)
+        f.seek(0)
+        f.truncate()
+        json.dump(deploy_info, f, indent=4)
 
 def composecmd(cmd, composefile=None):
     if composefile:
@@ -250,7 +287,10 @@ def remove_prebuilded():
     return cmd_check(f'docker container rm {g.prebuilded_container}')
 
 def remove_database_volume():
-    return cmd_check('docker volume rm -f ctfbox_ctfbox-postgres-db')
+    return cmd_check('docker volume rm -f ctfbox_db-data')
+
+def check_database_volume():
+    return cmd_check('docker volume ls --filter "name=ctfbox_db-data"', get_output=True)
 
 def build_prebuilder():
     return cmd_check(f'docker build -t {g.prebuild_image} -f ./vm/Dockerfile.prebuilder ./vm/', print_output=True)
@@ -343,7 +383,7 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         "POSTGRES_DB": "ctfbox"
                     },
                     "volumes": [
-                        "ctfbox-postgres-db:/var/lib/postgresql/data"
+                        "db-data:/var/lib/postgresql/data"
                     ],
                     "networks": {
                         "internalnet": "",
@@ -438,7 +478,7 @@ def write_compose(config: Union[Dict[str, Any], Config]):
             },
             "volumes": {
                 "unixsk": "",
-                "ctfbox-postgres-db": ""
+                "db-data": ""
             },
             "networks": {
                 "externalnet": "",
@@ -487,7 +527,7 @@ def clear_data(
     remove_prebuilt_image=True,
     remove_wireguard=True,
     remove_checkers_data=True,
-    remove_gameserver_data=True  
+    remove_gameserver_data=True
 ):
     if remove_gameserver_data:
         puts("Removing databse volume", color=colors.yellow)
@@ -723,10 +763,16 @@ def main():
                 if args.config_only:
                     puts(f"Config file generated!, you can customize it by editing {g.config_file}", color=colors.green)
                     return
+                if check_database_volume():
+                    puts("The database volume already exists, you need to clear it before starting a new game", color=colors.red)
+                    if get_input('Do you want to clear it before starting?', 'no').lower().startswith('y'):
+                        clear_data_only(remove_gameserver_data=True, remove_checkers_data=True)
+                    
                 if len(config.teams) > 0:
-                    if not prebuilt_exists():
-                        puts("Prebuilt image not found!", color=colors.yellow)
-                        puts("Clearing old setup images...", color=colors.yellow)
+                    vm_dir_hash = dir_sha_hash("./vm")
+                    old_vm_dir_hash = get_deploy_info().get("vm_dir_hash", "")
+                    if not prebuilt_exists() or vm_dir_hash != old_vm_dir_hash:
+                        puts("Need to build the team VM image", color=colors.yellow)
                         remove_prebuilded()
                         remove_prebuilt()
                         puts("Building the prebuilder image", color=colors.yellow)
@@ -743,7 +789,7 @@ def main():
                             exit(1)
                         puts("Clear unused images", color=colors.yellow)
                         remove_prebuilded()
-                
+                    set_deploy_info({"vm_dir_hash": vm_dir_hash})
                 if not config_exists():
                     puts(f"Config file not found! please run {sys.argv[0]} start", color=colors.red)
                 
@@ -783,7 +829,7 @@ def main():
                     puts(f"{g.name} is running! please stop it before clearing the data", color=colors.red)
                     exit(1)
                 if True not in vars(args).values():
-                    clear_data(remove_config=False)
+                    clear_data(remove_config=False, remove_prebuilded_container=False, remove_prebuilt_image=False)
                 if args.all:
                     puts("This will clear everything, EVEN THE CONFIG JSON, are you sure? (y/N): ", end="")
                     if input().lower() != 'y':
@@ -792,11 +838,9 @@ def main():
                     clear_data()
                 if args.config:
                     clear_data_only(remove_config=True)
-                if args.prebuilded_container:
+                if args.team_containers:
                     clear_data_only(remove_prebuilded_container=True)
-                if args.prebuilder_image:
                     clear_data_only(remove_prebuilder_image=True)
-                if args.prebuilt_image:
                     clear_data_only(remove_prebuilt_image=True)
                 if args.wireguard:
                     clear_data_only(remove_wireguard=True)
@@ -809,7 +853,6 @@ def main():
                 if check_already_running():
                     puts(f"{g.name} is running!", color=colors.green)
 
-    
     if "logs" in args and args.logs:
         if config_exists():
             write_compose(read_config())

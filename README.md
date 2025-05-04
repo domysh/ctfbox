@@ -43,7 +43,7 @@ After that, restart the docker service.
 Now you can run CTFBox using the following command:
 
 ```bash
-sudo python3 start.py start
+sudo python3 run.py start
 ```
 
 You can configure CTFBox using the terminal or using the config editor [here](https://ctfbox.domy.sh/editor) (sources on demo branch).
@@ -54,12 +54,12 @@ access to some hosts functionality to the VMs, and escape from container is poss
 
 To connect to the VMs, you need to use one of the wireguard configurations in the wireguard folder.
 
-Instead you can run `python3 start.py compose exec team<team_id> bash` to connect to the VMs.
+Instead you can run `python3 run.py compose exec team<team_id> bash` to connect to the VMs.
 
 To manage the game network run:
 
 ```bash 
-python3 start.py compose exec router ctfroute freeze|lock|unlock
+python3 run.py compose exec router ctfroute freeze|lock|unlock
 ```
 
 This will be automatically handled by the game server based on the configuration given (start_time, end_time, customizable from the ctfbox json). For special cases, you can use this command.
@@ -73,7 +73,7 @@ This will be automatically handled by the game server based on the configuration
 If you want generate the CTFBox json config, edit it and after start CTFBox run:
 
 ```bash
-python3 start.py start -C
+python3 run.py start -C
 ```
 
 This will generate the config only, you can start ctfbox later
@@ -81,8 +81,8 @@ This will generate the config only, you can start ctfbox later
 To stop and reset competition run:
 
 ```bash
-python3 start.py stop
-python3 start.py clear # This will reset the gameserver db, and all generated data + wg configs
+python3 run.py stop
+python3 run.py clear # This will reset the gameserver db, and all generated data + wg configs
 ```
 
 Before run the competition, you can customize additional settings in the `config.json` file:

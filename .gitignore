@@ -6,3 +6,4 @@ volumes/
 /.ctfbox-compose.yml
 /.ctfbox-secrets-tmp
 /.ctfbox-secrets-tmp/** */
+/.deploy_info
