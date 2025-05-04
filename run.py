@@ -290,7 +290,7 @@ def remove_database_volume():
     return cmd_check('docker volume rm -f ctfbox_db-data')
 
 def check_database_volume():
-    return cmd_check('docker volume ls --filter "name=ctfbox_db-data"', get_output=True)
+    return "ctfbox_db-data" in cmd_check('docker volume ls --filter "name=ctfbox_db-data"', get_output=True)
 
 def build_prebuilder():
     return cmd_check(f'docker build -t {g.prebuild_image} -f ./vm/Dockerfile.prebuilder ./vm/', print_output=True)
