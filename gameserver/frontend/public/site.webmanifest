@@ -1,6 +1,6 @@
 {
-  "name": "MyWebSite",
-  "short_name": "MySite",
+  "name": "CTFBox",
+  "short_name": "CTFBox",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
