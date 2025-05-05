@@ -21,6 +21,14 @@ if [[ -n "$RATE_NET" ]]; then
     done
 fi
 
+#----- GAMESERVER SCOREBOARD EXPOSE -----
+iptables -t nat -N SCOREBOARD_EXPOSE
+iptables -t nat -A SCOREBOARD_EXPOSE -s 10.10.0.0/16 -j RETURN
+iptables -t nat -A SCOREBOARD_EXPOSE -s 10.60.0.0/16 -j RETURN
+iptables -t nat -A SCOREBOARD_EXPOSE -s 10.80.0.0/16 -j RETURN
+iptables -t nat -A SCOREBOARD_EXPOSE -j DNAT --to-destination 10.10.0.1
+iptables -t nat -A PREROUTING -p tcp --dport 80 -j SCOREBOARD_EXPOSE
+
 #----- ANONYMIZE TRAFFIC AND BASIC RULES -----
 iptables -t nat -A POSTROUTING -j MASQUERADE
 iptables -t mangle -A POSTROUTING -j TTL --ttl-set 60 # Reset TTL
@@ -69,7 +77,7 @@ wg-quick up players
 #----- SETTING UP CTFROUTE SERVER -----
 
 if [[ "$VM_NET_LOCKED" != "n" ]]; then
-    ctfroute lock
+    ctfroute freeze
 fi
 
 rm -f /unixsk/ctfroute.sock

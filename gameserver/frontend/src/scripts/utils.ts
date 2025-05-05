@@ -62,13 +62,13 @@ export const useStickyScrollableHeader = ({ headHeight, topOffset}: { headHeight
             
             if (tableBody?.rows.length > 0) {
                 const firstBodyRow = tableBody.rows[0];
+                tHead.style.position = "static";
                 for (let i = 0; i < headerRow.cells.length; i++) {
-                    headerRow.cells[i].style.width = "auto";
-                    headerRow.cells[i].style.minWidth = "auto";
-                    firstBodyRow.cells[i].style.width = "auto";
-                    firstBodyRow.cells[i].style.minWidth = "auto";
-                }
-                // Set each header column width to match body column width
+                    headerRow.cells[i].style.width = undefined as unknown as string;
+                    headerRow.cells[i].style.minWidth = undefined as unknown as string;
+                    firstBodyRow.cells[i].style.width = undefined as unknown as string;
+                    firstBodyRow.cells[i].style.minWidth = undefined as unknown as string;
+                }  
                 for (let i = 0; i < headerRow.cells.length; i++) {
                     if (i < firstBodyRow.cells.length) {
                         const headWidth = headerRow.cells[i].getBoundingClientRect().width;
@@ -84,8 +84,10 @@ export const useStickyScrollableHeader = ({ headHeight, topOffset}: { headHeight
                             headerRow.cells[i].style.minWidth = `${headWidth}px`;
                             headerRow.cells[i].style.width = `${headWidth}px`;
                         }
+                        
                     }
                 }
+                tHead.style.position = "fixed";
             }
         };
 
@@ -117,7 +119,7 @@ export const useStickyScrollableHeader = ({ headHeight, topOffset}: { headHeight
                         // Update header sizes when switching to fixed position
                         updateHeaderSizes();
                     }
-                    
+
                     // Apply fixed positioning and set horizontal transform
                     tHead.style.position = "fixed";
                     tHead.style.top = `${topOffset}px`;

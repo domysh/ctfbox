@@ -1,36 +1,11 @@
 FROM ubuntu:noble
 
-#
-# Systemd installation
-#
-RUN apt-get update &&                            \
-    apt-get install -y --no-install-recommends   \
-            systemd                              \
-            systemd-sysv                         \
-            libsystemd0                          \
-            ca-certificates                      \
-            dbus                                 \
-            iptables                             \
-            iproute2                             \
-            kmod                                 \
-            locales                              \
-            sudo                                 \
-            udev &&                              \
-                                                 \
+
+RUN apt-get update && apt-get install -y \
+    systemd systemd-sysv libsystemd0 ca-certificates dbus iptables \
+    iproute2 kmod locales sudo udev && \
+    echo "ReadKMsg=no" >> /etc/systemd/journald.conf
     # Prevents journald from reading kernel messages from /dev/kmsg
-    echo "ReadKMsg=no" >> /etc/systemd/journald.conf &&               \
-                                                                      \
-    # Housekeeping
-    apt-get clean -y &&                                               \
-    rm -rf                                                            \
-       /var/cache/debconf/*                                           \
-       /var/lib/apt/lists/*                                           \
-       /var/log/*                                                     \
-       /tmp/*                                                         \
-       /var/tmp/*                                                     \
-       /usr/share/doc/*                                               \
-       /usr/share/man/*                                               \
-       /usr/share/local/*
 
 # Disable systemd services/units that are unnecessary within a container.
 RUN systemctl mask systemd-udevd.service \
@@ -44,27 +19,15 @@ RUN systemctl mask systemd-udevd.service \
 # Make use of stopsignal (instead of sigterm) to stop systemd containers.
 STOPSIGNAL SIGRTMIN+3
 
-# Install Docker
-RUN apt-get update && apt-get install -y curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh
+RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime 
 
-# Install Sshd
-RUN apt-get update && apt-get install --no-install-recommends -y openssh-server \
-    && rm -rf /var/lib/apt/lists/*
-
-EXPOSE 22
-
-#Set timezone
-RUN ln -fs /usr/share/zoneinfo/Europe/Rome /etc/localtime 
-
-# Install basic tools
-RUN apt-get update
-
-RUN apt-get install -y \
-	iproute2 vim nano tcpdump iputils-ping \
-	python3-pip python3-venv screen netcat-openbsd btop htop neovim \
-	nano curl git wget unzip zip traceroute net-tools binfmt-support qemu-user-static
+# Install Utils and Docker
+RUN apt-get update && apt-get -y upgrade \
+    && apt-get install -y curl openssh-server\
+    iproute2 vim nano tcpdump iputils-ping \
+    python3-pip python3-venv screen netcat-openbsd btop htop neovim \
+    nano curl git wget unzip zip traceroute net-tools binfmt-support qemu-user-static \
+    && curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh && apt-get update
 
 # SSH
 RUN mkdir /var/run/sshd

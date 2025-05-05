@@ -9,18 +9,22 @@ export const RoundCounter = () => {
     const config = useStatusQuery()
     
     const [roundInfo, setRoundInfo] = useState({
+        startGraceTime: new Date(0),
         startTime: new Date(0),
         roundLen: 0,
         currentRound: -1,
         currentRoundPercent: 0,
+        isGrace: false,
         hasStarted: false,
         timeForNextRound: 0,
         hasEnded: false,
-        endTime: null as Date | null
+        endTime: null as Date | null,
+        hasInit: false,
     })
 
     const updateRoundInfo = () => {
         if (config.data == null || config.isFetching) return
+        const startGrace = new Date(config.data.start_grace)
         const startGame = new Date(config.data.start)
         const endGame = config.data.end != null ? new Date(config.data.end) : null
         const now = new Date()
@@ -29,6 +33,7 @@ export const RoundCounter = () => {
         const timeForNextRound = nextRoundAt.getTime() - now.getTime()
         const nextRoundPercent = Math.min(100, 100 - ((timeForNextRound / roundLen) * 100))
         setRoundInfo({
+            startGraceTime: startGrace,
             startTime: new Date(config.data.start),
             roundLen: config.data.roundTime,
             currentRound: config.data.current_round,
@@ -36,7 +41,9 @@ export const RoundCounter = () => {
             hasStarted: startGame < now,
             timeForNextRound: (timeForNextRound <1000?0:timeForNextRound)/1000,
             hasEnded: endGame != null && endGame < now,
-            endTime: config.data.end?new Date(config.data.end??0):null
+            endTime: config.data.end?new Date(config.data.end??0):null,
+            isGrace: startGrace <= now && startGame > now,
+            hasInit: now >= startGrace,
         })
     }
 
@@ -52,9 +59,47 @@ export const RoundCounter = () => {
 
     const lastsTimeString = secondDurationToString(roundInfo.timeForNextRound)
 
+    const genInfoText = () => {
+        if (!roundInfo.hasInit){
+            if (roundInfo.startGraceTime.getTime() == roundInfo.startTime.getTime()){
+                return <Box style={{display:"flex", flexDirection:"row", alignItems:"center", justifyContent:"space-between"}}>
+                    <Box>Game has not started!</Box>
+                    <Box>Competition will start at {getDateFormatted(roundInfo.startTime.toISOString())}</Box>
+                </Box>
+            }else{
+                return <Box style={{display:"flex", flexDirection:"row", alignItems:"center", justifyContent:"space-between"}}>
+                    <Box>Game has not started!</Box>
+                    <Box>VM access at {getDateFormatted(roundInfo.startGraceTime.toISOString())}</Box>
+                </Box>
+            }
+        }
+        if (!roundInfo.hasStarted){
+            return <Box style={{display:"flex", flexDirection:"row", alignItems:"center", justifyContent:"space-between"}}>
+                <Box>Game will start soon...</Box>
+                <Box>Now you can access your VM</Box>
+            </Box>
+        }
+        if (roundInfo.hasEnded){
+            return <Box style={{display:"flex", flexDirection:"row", alignItems:"center", justifyContent:"space-between"}}>
+                <Box>Game has ended!</Box>
+                <Box>The game network is locked</Box>
+            </Box>
+        }
+        if (roundInfo.currentRound<0){
+            return <Box style={{display:"flex", flexDirection:"row", alignItems:"center", justifyContent:"space-between"}}>
+                <Box>Game has started!</Box>
+                <Box>Next round {lastsTimeString?'in '+lastsTimeString:'soon...'}</Box>
+            </Box>
+        }
+        return <Box style={{display:"flex", flexDirection:"row", alignItems:"center", justifyContent:"space-between"}}>
+            <Box>Current Round: {roundInfo.currentRound}</Box>
+            <Box>Next round {lastsTimeString?'in '+lastsTimeString:'soon...'}</Box>
+        </Box>
+    }
+
     return config.isSuccess?<Box>
-        <Text size="md">{ !roundInfo.hasStarted ? "Game has not started yet" :roundInfo.hasEnded ? "Game has ended!" : roundInfo.currentRound==-1 ? "Game has started!" : `Round: ${config.data.current_round} - next round ${lastsTimeString?'in '+lastsTimeString:'soon...'}` }</Text>
-        <Progress size="lg" value={roundInfo.hasEnded ? 100 : config.data.current_round >= 0?roundInfo.currentRoundPercent:0} color="red" animated={!roundInfo.hasEnded} />
+        <Text size="md">{genInfoText()}</Text>
+        <Progress size="lg" value={roundInfo.hasEnded ? 100 : roundInfo.hasStarted?roundInfo.currentRoundPercent:0} color="red" animated={!roundInfo.hasEnded} />
         <Box className="center-flex" mt="sm">
             <Text size="md"><Badge size="md" radius="md" color="teal" >Starts - {getDateFormatted(roundInfo.startTime.toISOString())}</Badge> </Text>
             <Box style={{flex:1}}/>

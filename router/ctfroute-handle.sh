@@ -9,6 +9,9 @@ if [[ "$line" == "LOCK" ]]; then
 elif [[ "$line" == "UNLOCK" ]]; then
     ctfroute unlock &> /dev/null
     echo "OK"
+elif [[ "$line" == "FREEZE" ]]; then
+    ctfroute freeze &> /dev/null
+    echo "OK"
 else
     echo "ERR"
 fi

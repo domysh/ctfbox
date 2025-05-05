@@ -25,6 +25,7 @@ type TeamInfo struct {
 
 type Config struct {
 	RoundLen            time.Duration
+	GraceDuration       time.Duration
 	SubmitterLimitTime  time.Duration
 	GameStartTime       time.Time
 	GameEndTime         *time.Time
@@ -41,6 +42,7 @@ type Config struct {
 	Debug               bool     `json:"debug"`
 	StartTime           *string  `json:"start_time"`
 	EndTime             *string  `json:"end_time"`
+	GraceTime           *int64   `json:"grace_time"`
 }
 
 var conf *Config
@@ -128,6 +130,11 @@ func LoadConfig(path string) (*Config, error) {
 	conf.FlagRegex = "[A-Z0-9]{31}="
 
 	conf.RoundLen = time.Duration(conf.Round) * time.Second
+	if conf.GraceTime != nil {
+		conf.GraceDuration = time.Duration(*conf.GraceTime) * time.Second
+	} else {
+		conf.GraceDuration = 0
+	}
 	if conf.SubmitterTimeout != nil {
 		conf.SubmitterLimitTime = time.Duration(*conf.SubmitterTimeout) * time.Second
 	}
@@ -158,15 +165,26 @@ func LoadConfig(path string) (*Config, error) {
 	conn = db.ConnectDB()
 	initScoreboard()
 
-	if conf.StartTime != nil {
-		startTime, err := time.Parse(time.RFC3339, *conf.StartTime)
-		if err != nil {
-			log.Panicf("Error parsing start time: %v", err)
+	dbStartTime := db.GetStartTime()
+
+	if dbStartTime == nil {
+		if conf.StartTime != nil {
+			startTime, err := time.Parse(time.RFC3339, *conf.StartTime)
+			if err != nil {
+				log.Panicf("Error parsing start time: %v", err)
+			}
+			db.SetStartTime(startTime)
+		} else {
+			db.SetStartTime(time.Now().UTC().Add(conf.GraceDuration))
 		}
-		db.SetStartTime(startTime)
 	}
 
-	conf.GameStartTime = db.GetStartTime()
+	dbStartTime = db.GetStartTime()
+	if dbStartTime == nil {
+		log.Panicf("Error fetching start time from database")
+	}
+
+	conf.GameStartTime = *dbStartTime
 
 	if conf.EndTime != nil {
 		endTime, err := time.Parse(time.RFC3339, *conf.EndTime)

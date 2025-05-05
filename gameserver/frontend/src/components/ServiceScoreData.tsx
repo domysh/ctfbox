@@ -13,7 +13,8 @@ export const ServiceScoreData = ({ score }: { score?: TeamServiceScore }) => {
 
     if (!score) return <></>
 
-    const slaOk = score.sla_check == 101 && score.get_flag == 101 && score.put_flag == 101 ? true : false
+    const slaOk = score.sla_check == 101 && score.get_flag == 101 && score.put_flag == 101
+    const slaUnknown = score.sla_check == 0 && score.get_flag == 0 && score.put_flag == 0
 
     const showDetailModal = (title:string, msg:string) => {
         modals.open({
@@ -55,7 +56,7 @@ export const ServiceScoreData = ({ score }: { score?: TeamServiceScore }) => {
                 <IoSpeedometer size={16} /><Space w="xs" /><Text>{(score.sla*100).toFixed(2)}%</Text><Space w="xs" />
                 <Tooltip label={`Rounds up ${score.ticks_up}/${score.ticks_down+score.ticks_up}`} position="top" withArrow>
                     <Box>
-                        <FaCircle size={16} style={{ color: slaOk ? "green" : "red" }} />
+                        <FaCircle size={16} style={{ color: slaOk ? "green" : slaUnknown ? "gray" : "red" }} />
                     </Box>
                 </Tooltip>
             </Box>
@@ -65,32 +66,32 @@ export const ServiceScoreData = ({ score }: { score?: TeamServiceScore }) => {
             <Box display="flex" style={{ alignItems: "center", textWrap: "nowrap" }}>
                 <FaWrench size={16} /><Space w="xs" />
                 <Box p={3} className="center-flex" style={{ borderRadius: "100px" }}>
-                    <Tooltip label={"SLA CHECK: "+score.sla_check_msg.substring(0,150)} position="top" withArrow color={score.sla_check == 101 ? "green": "red"}>
+                    <Tooltip label={slaUnknown?"SLA CHECK":"SLA CHECK: "+score.sla_check_msg.substring(0,150)} position="top" withArrow color={slaUnknown?"gray":score.sla_check == 101 ? "green": "red"}>
                         <Box
                             py={4} px={10}
-                            style={{ backgroundColor: score.sla_check == 101 ? "green": "red", borderTopLeftRadius: 6, borderBottomLeftRadius: 6 }}
+                            style={{ backgroundColor: slaUnknown?"gray":score.sla_check == 101 ? "green": "red", borderTopLeftRadius: 6, borderBottomLeftRadius: 6 }}
                             className="center-flex"
-                            onClick={()=>showDetailModal(`SLA CHECK on ${score.service}`, score.sla_check_msg)}
+                            onClick={slaUnknown ? ()=>{}:()=>showDetailModal(`SLA CHECK on ${score.service}`, score.sla_check_msg)}
                         >
                             <FaPlug size={14}/>
                         </Box>
                     </Tooltip>
-                    <Tooltip label={"PUT FLAG: "+score.put_flag_msg.substring(0,150)} position="top" withArrow color={score.put_flag == 101 ? "green": "red"}>
+                    <Tooltip label={slaUnknown?"PUT FLAG":"PUT FLAG: "+score.put_flag_msg.substring(0,150)} position="top" withArrow color={slaUnknown?"gray":score.put_flag == 101 ? "green": "red"}>
                         <Box
                             py={4} px={10}
-                            style={{ backgroundColor: score.put_flag == 101 ? "green": "red"}}
+                            style={{ backgroundColor: slaUnknown?"gray":score.put_flag == 101 ? "green": "red"}}
                             className="center-flex"
-                            onClick={()=>showDetailModal(`PUT FLAG on ${score.service}`, score.put_flag_msg)}
+                            onClick={slaUnknown ? ()=>{}:()=>showDetailModal(`PUT FLAG on ${score.service}`, score.put_flag_msg)}
                         >
                             <FaPlus size={14} />
                         </Box> 
                     </Tooltip>
-                    <Tooltip label={"GET FLAG: "+score.get_flag_msg.substring(0,150)} position="top" withArrow color={score.get_flag == 101 ? "green": "red"}>
+                    <Tooltip label={slaUnknown?"GET FLAG":"GET FLAG: "+score.get_flag_msg.substring(0,150)} position="top" withArrow color={slaUnknown?"gray":score.get_flag == 101 ? "green": "red"}>
                         <Box
                             py={4} px={12}
-                            style={{ backgroundColor: score.get_flag == 101 ? "green": "red", borderTopRightRadius: 6, borderBottomRightRadius: 6 }}
+                            style={{ backgroundColor: slaUnknown?"gray":score.get_flag == 101 ? "green": "red", borderTopRightRadius: 6, borderBottomRightRadius: 6 }}
                             className="center-flex"
-                            onClick={()=>showDetailModal(`GET FLAG on ${score.service}`, score.get_flag_msg)}
+                            onClick={slaUnknown ? ()=>{}:()=>showDetailModal(`GET FLAG on ${score.service}`, score.get_flag_msg)}
                         >
                             <FaSearch size={14} />
                         </Box>
