@@ -1,36 +1,11 @@
 FROM ubuntu:noble
 
-#
-# Systemd installation
-#
-RUN apt-get update &&                            \
-    apt-get install -y --no-install-recommends   \
-            systemd                              \
-            systemd-sysv                         \
-            libsystemd0                          \
-            ca-certificates                      \
-            dbus                                 \
-            iptables                             \
-            iproute2                             \
-            kmod                                 \
-            locales                              \
-            sudo                                 \
-            udev &&                              \
-                                                 \
+
+RUN apt-get update && apt-get install -y \
+    systemd systemd-sysv libsystemd0 ca-certificates dbus iptables \
+    iproute2 kmod locales sudo udev && \
+    echo "ReadKMsg=no" >> /etc/systemd/journald.conf
     # Prevents journald from reading kernel messages from /dev/kmsg
-    echo "ReadKMsg=no" >> /etc/systemd/journald.conf &&               \
-                                                                      \
-    # Housekeeping
-    apt-get clean -y &&                                               \
-    rm -rf                                                            \
-       /var/cache/debconf/*                                           \
-       /var/lib/apt/lists/*                                           \
-       /var/log/*                                                     \
-       /tmp/*                                                         \
-       /var/tmp/*                                                     \
-       /usr/share/doc/*                                               \
-       /usr/share/man/*                                               \
-       /usr/share/local/*
 
 # Disable systemd services/units that are unnecessary within a container.
 RUN systemctl mask systemd-udevd.service \
@@ -46,7 +21,7 @@ STOPSIGNAL SIGRTMIN+3
 
 RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime 
 
-# Install Docker
+# Install Utils and Docker
 RUN apt-get update && apt-get -y upgrade \
     && apt-get install -y curl openssh-server\
     iproute2 vim nano tcpdump iputils-ping \

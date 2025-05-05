@@ -770,8 +770,10 @@ def main():
                     
                 if len(config.teams) > 0:
                     vm_dir_hash = dir_sha_hash("./vm")
-                    old_vm_dir_hash = get_deploy_info().get("vm_dir_hash", "")
-                    if not prebuilt_exists() or vm_dir_hash != old_vm_dir_hash:
+                    info = get_deploy_info()
+                    old_vm_dir_hash = info.get("vm_dir_hash", "")
+                    was_privileged = info.get("privileged_build", False)
+                    if not prebuilt_exists() or vm_dir_hash != old_vm_dir_hash or was_privileged != config.unsafe_privileged:
                         puts("Need to build the team VM image", color=colors.yellow)
                         remove_prebuilded()
                         remove_prebuilt()
@@ -789,7 +791,7 @@ def main():
                             exit(1)
                         puts("Clear unused images", color=colors.yellow)
                         remove_prebuilded()
-                    set_deploy_info({"vm_dir_hash": vm_dir_hash})
+                    set_deploy_info({"vm_dir_hash": vm_dir_hash, "privileged_build": config.unsafe_privileged})
                 if not config_exists():
                     puts(f"Config file not found! please run {sys.argv[0]} start", color=colors.red)
                 
