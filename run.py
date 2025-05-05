@@ -294,7 +294,7 @@ def remove_database_volume():
     return cmd_check(f'docker volume rm -f {g.project_name}_db-data')
 
 def check_database_volume():
-    return f"{g.project_name}-data" in cmd_check(f'docker volume ls --filter "name={g.project_name}_db-data"', get_output=True)
+    return f"{g.project_name}_db-data" in cmd_check(f'docker volume ls --filter "name={g.project_name}_db-data"', get_output=True)
 
 def build_prebuilder():
     return cmd_check(f'docker build -t {g.prebuild_image} -f ./vm/Dockerfile.prebuilder ./vm/', print_output=True)
