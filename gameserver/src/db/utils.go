@@ -13,7 +13,7 @@ import (
 )
 
 func ConnectDB() *bun.DB {
-	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN("postgres://ctfbox:ctfbox@database:5432/ctfbox?sslmode=disable")))
+	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN("postgres://user:pass@database:5432/db?sslmode=disable")))
 	if sqldb == nil {
 		panic("failed to connect to database")
 	}

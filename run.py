@@ -100,15 +100,17 @@ def dir_sha_hash(path: str) -> str:
     
 class g:
     keep_file = False
-    composefile = ".ctfbox-compose.yml"
-    container_name = "ctfbox_gameserver"
-    compose_project_name = "ctfbox"
     name = "CTFBox"
-    config_file = "config.json"
-    prebuild_image = "ctfbox-prebuilder"
-    prebuilded_container = "ctfbox-prebuilded"
-    prebuilt_image = "ctfbox-vm-base"
-    secrets_dir = ".ctfbox-secrets-tmp"
+    project_name = "ctfbox"
+    composefile = f".{project_name}-compose.yml"
+    container_name = f"{project_name}-gameserver"
+    config_file = f"config.json"
+    prebuild_image = f"{project_name}-prebuilder"
+    prebuilded_container = f"{project_name}-prebuilded"
+    prebuilt_image = f"{project_name}-vm-base" # this is dynamic here, but it needs to be
+                                               # manually changed in the FROM in vm/Dockerfile
+                                               # and in the .gitignore
+    secrets_dir = f".{project_name}-secrets-tmp"
 
 use_build_on_compose = True
 
@@ -187,7 +189,7 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_start.add_argument('--max-vm-cpus', type=str, default="1", help='Max CPUs for VMs')
     parser_start.add_argument('--wireguard-profiles', type=int, default=30, help='Number of wireguard profiles')
     parser_start.add_argument('--dns', type=str, default="1.1.1.1", help='DNS server')
-    parser_start.add_argument('--server-addr', type=str, help='CTFBox public ip address')
+    parser_start.add_argument('--server-addr', type=str, help=f'{g.name} public ip address')
     parser_start.add_argument('--submission-timeout', type=float, default=0.03, help='Submission timeout rate limit') # 30 req/s
     parser_start.add_argument('--flag-expire-ticks', type=int, default=5, help='Flag expire ticks')
     parser_start.add_argument('--initial-service-score', type=int, default=5000, help='Initial service score')
@@ -264,9 +266,9 @@ def composecmd(cmd, composefile=None):
     elif not cmd_check("docker ps"):
         return puts("Cannot use docker, the user hasn't the permission or docker isn't running", color=colors.red)
     elif cmd_check("docker compose --version"):
-        return os.system(f"docker compose -p {g.compose_project_name} {cmd}")
+        return os.system(f"docker compose -p {g.project_name} {cmd}")
     elif cmd_check("docker-compose --version"):
-        return os.system(f"docker-compose -p {g.compose_project_name} {cmd}")
+        return os.system(f"docker-compose -p {g.project_name} {cmd}")
     else:
         return puts("docker compose not found! please install docker compose!", color=colors.red)
 
@@ -289,10 +291,10 @@ def remove_prebuilded():
     return cmd_check(f'docker container rm {g.prebuilded_container}')
 
 def remove_database_volume():
-    return cmd_check('docker volume rm -f ctfbox_db-data')
+    return cmd_check(f'docker volume rm -f {g.project_name}_db-data')
 
 def check_database_volume():
-    return "ctfbox_db-data" in cmd_check('docker volume ls --filter "name=ctfbox_db-data"', get_output=True)
+    return f"{g.project_name}-data" in cmd_check(f'docker volume ls --filter "name={g.project_name}_db-data"', get_output=True)
 
 def build_prebuilder():
     return cmd_check(f'docker build -t {g.prebuild_image} -f ./vm/Dockerfile.prebuilder ./vm/', print_output=True)
@@ -375,14 +377,14 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                     ],
                 },
                 "database": {
-                    "hostname": "ctfbox-database",
+                    "hostname": f"{g.project_name}-database",
                     "dns": [config.dns],
                     "image": "postgres:17",
                     "restart": "unless-stopped",
                     "environment": {
-                        "POSTGRES_USER": "ctfbox",
-                        "POSTGRES_PASSWORD": "ctfbox",
-                        "POSTGRES_DB": "ctfbox"
+                        "POSTGRES_USER": "user",
+                        "POSTGRES_PASSWORD": "pass",
+                        "POSTGRES_DB": "db"
                     },
                     "volumes": [
                         "db-data:/var/lib/postgresql/data"
