@@ -257,17 +257,6 @@
             .team-image-container .d-flex {
                 flex-direction: column;
             }
-            
-            .mode-description {
-                padding: 0.4rem;
-                font-size: 0.75rem;
-                margin-top: 0.4rem;
-            }
-            
-            .mode-description ul {
-                padding-left: 0.8rem;
-                margin-top: 0.3rem;
-            }
         }
         
         .json-preview {
@@ -575,14 +564,31 @@
             }
         }
 
-        .mode-description {
-            padding: 0.5rem;
-            margin-top: 0.5rem;
+        /* Hide number input spinners for grace time */
+        .grace-time-input::-webkit-inner-spin-button, 
+        .grace-time-input::-webkit-outer-spin-button { 
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        .grace-time-input {
+            -moz-appearance: textfield;
+            text-align: center;
+        }
+        
+        .grace-time-group .input-group-text {
+            padding-left: 6px;
+            padding-right: 6px;
+            font-weight: 400;
+            background-color: var(--secondary);
             color: var(--text-secondary);
-            border-left: 1px solid var(--warning);
-            background-color: rgba(232, 188, 84, 0.01);
-            font-size: 0.85rem;
-            line-height: 1.3;
+            border-color: var(--border-color);
+        }
+        
+        .grace-time-label {
+            font-weight: 400;
+            margin-bottom: 0.3rem;
+            color: var(--text-secondary);
         }
     </style>
 </head>
@@ -630,7 +636,16 @@
             
             <div class="section card section-card">
                 <div class="card-header">
-                    <h3 class="section-title mb-0">Time Settings</h3>
+                    <h3 class="section-title mb-0 d-flex align-items-center">
+                        Time Settings
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" 
+                             class="bi bi-info-circle ms-2 text-info cursor-pointer" 
+                             viewBox="0 0 16 16" data-bs-toggle="modal" data-bs-target="#timeSettingsInfoModal" 
+                             style="cursor: pointer;">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                            <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                        </svg>
+                    </h3>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -648,7 +663,26 @@
                             </div>
                             <div class="time-note">Uses your current time zone</div>
                         </div>
-                        <div class="col-12 mt-3">
+                        <div class="col-lg-6 mt-3">
+                            <label for="graceTimeInputs" class="form-label grace-time-label">Grace Time</label>
+                            <input type="hidden" id="graceTime" value="300">
+                            <div class="d-flex align-items-center gap-2" id="graceTimeInputs">
+                                <div class="input-group grace-time-group">
+                                    <input type="number" class="form-control grace-time-input" id="graceTimeHours" value="0" min="0" onchange="updateGraceTime()">
+                                    <span class="input-group-text">h</span>
+                                </div>
+                                <div class="input-group grace-time-group">
+                                    <input type="number" class="form-control grace-time-input" id="graceTimeMinutes" value="5" min="0" max="59" onchange="updateGraceTime()">
+                                    <span class="input-group-text">m</span>
+                                </div>
+                                <div class="input-group grace-time-group">
+                                    <input type="number" class="form-control grace-time-input" id="graceTimeSeconds" value="0" min="0" max="59" onchange="updateGraceTime()">
+                                    <span class="input-group-text">s</span>
+                                </div>
+                            </div>
+                            <small class="text-muted">Time players can access their own VMs before the competition starts</small>
+                        </div>
+                        <div class="col-lg-6 mt-3">
                             <div class="form-floating">
                                 <input type="number" class="form-control" id="tickTime" value="120" min="1">
                                 <label for="tickTime">Tick Time (seconds)</label>
@@ -985,6 +1019,127 @@
         </div>
     </div>
 
+    <!-- Time Settings Info Modal with enhanced layout -->
+    <div class="modal fade" id="timeSettingsInfoModal" tabindex="-1" aria-labelledby="timeSettingsInfoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="timeSettingsInfoModalLabel">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clock-history me-2" viewBox="0 0 16 16">
+                            <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0v1z"/>
+                            <path d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5z"/>
+                        </svg>
+                        Network States Timeline
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <!-- Timeline visualization -->
+                    <div class="timeline-viz mb-4 px-4 py-3" style="background-color: var(--input-bg); border-radius: 8px;">
+                        <div class="d-flex align-items-center justify-content-between position-relative mx-3" style="height: 60px;">
+                            <!-- Timeline bar -->
+                            <div class="position-absolute" style="height: 4px; background-color: var(--border-color); left: 0; right: 0; top: 50%;"></div>
+                            
+                            <!-- Timeline points -->
+                            <div class="position-relative" style="z-index: 1;">
+                                <div class="rounded-circle bg-danger" style="width: 14px; height: 14px;"></div>
+                                <div class="position-absolute text-center" style="font-size: 0.75rem; width: 100px; left: -45px; top: 24px;">Pre-Grace</div>
+                            </div>
+                            
+                            <div class="position-relative" style="z-index: 1;">
+                                <div class="rounded-circle bg-warning" style="width: 12px; height: 12px;"></div>
+                                <div class="position-absolute text-center" style="font-size: 0.75rem; width: 100px; left: -45px; top: 18px;">Grace Period</div>
+                            </div>
+                            
+                            <div class="position-relative" style="z-index: 1;">
+                                <div class="rounded-circle bg-success" style="width: 12px; height: 12px;"></div>
+                                <div class="position-absolute text-center" style="font-size: 0.75rem; width: 100px; left: -45px; top: 18px;">Competition</div>
+                            </div>
+                            
+                            <div class="position-relative" style="z-index: 1;">
+                                <div class="rounded-circle bg-secondary" style="width: 12px; height: 12px;"></div>
+                                <div class="position-absolute text-center" style="font-size: 0.75rem; width: 100px; left: -45px; top: 18px;">Post-End</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Timeline labels -->
+                        <div class="d-flex justify-content-between text-muted px-1 mt-4" style="font-size: 0.7rem; margin-left: 13px;">
+                            <span>-∞</span>
+                            <span>Start Time - Grace</span>
+                            <span>Start Time</span>
+                            <span>End Time</span>
+                        </div>
+                    </div>
+                    
+                    <h6 class="mb-2" style="color: var(--accent);">Grace Time Explained</h6>
+                    <p class="mb-3">Grace time is a preparation period before the competition officially begins, allowing teams to set up their infrastructure without attacks.</p>
+                    
+                    <!-- Network states with detailed explanations -->
+                    <div class="state-cards">
+                        <div class="card mb-2 border-danger">
+                            <div class="card-body py-2 px-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-danger rounded-circle me-2 flex-shrink-0" style="width: 10px; height: 10px;"></div>
+                                    <h6 class="mb-0 text-danger fw-bold">Frozen Network</h6>
+                                </div>
+                                <div class="ms-3 mt-1" style="font-size: 0.85rem;">
+                                    <p class="mb-1"><strong>When:</strong> Before <code>start_time - grace_time</code></p>
+                                    <p class="mb-0"><strong>Access:</strong> Players can only connect to the gameserver, not to any VMs</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-2 border-warning">
+                            <div class="card-body py-2 px-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-warning rounded-circle me-2 flex-shrink-0" style="width: 10px; height: 10px;"></div>
+                                    <h6 class="mb-0 text-warning fw-bold">Locked Network (Grace Period)</h6>
+                                </div>
+                                <div class="ms-3 mt-1" style="font-size: 0.85rem;">
+                                    <p class="mb-1"><strong>When:</strong> Between <code>start_time - grace_time</code> and <code>start_time</code></p>
+                                    <p class="mb-0"><strong>Access:</strong> Teams can only access their own VMs, not other teams' services</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-2 border-success">
+                            <div class="card-body py-2 px-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-success rounded-circle me-2 flex-shrink-0" style="width: 10px; height: 10px;"></div>
+                                    <h6 class="mb-0 text-success fw-bold">Unlocked Network (Competition)</h6>
+                                </div>
+                                <div class="ms-3 mt-1" style="font-size: 0.85rem;">
+                                    <p class="mb-1"><strong>When:</strong> Between <code>start_time</code> and <code>end_time</code></p>
+                                    <p class="mb-0"><strong>Access:</strong> Full network access, teams can attack other teams' services</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-2">
+                            <div class="card-body py-2 px-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-secondary rounded-circle me-2 flex-shrink-0" style="width: 10px; height: 10px;"></div>
+                                    <h6 class="mb-0 fw-bold">Finished</h6>
+                                </div>
+                                <div class="ms-3 mt-1" style="font-size: 0.85rem;">
+                                    <p class="mb-1"><strong>When:</strong> After <code>end_time</code></p>
+                                    <p class="mb-0"><strong>Access:</strong> Teams can only access their own VMs, competition is over</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3 mb-0 py-2" style="font-size: 0.85rem;">
+                        <strong>Note:</strong> If no <code>start_time</code> is set, the competition starts after <code>grace_time</code> seconds from CTFBox startup.
+                    </div>
+                </div>
+                <div class="modal-footer pt-2 pb-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         function debounce(func, wait) {
             let timeout;
@@ -1017,6 +1172,10 @@
                     dns: document.getElementById('dns').value,
                     startTime: document.getElementById('startTime').value,
                     endTime: document.getElementById('endTime').value,
+                    graceTimeHours: document.getElementById('graceTimeHours').value,
+                    graceTimeMinutes: document.getElementById('graceTimeMinutes').value,
+                    graceTimeSeconds: document.getElementById('graceTimeSeconds').value,
+                    graceTime: document.getElementById('graceTime').value,
                     tickTime: document.getElementById('tickTime').value,
                     flagExpireTicks: document.getElementById('flagExpireTicks').value,
                     initialServiceScore: document.getElementById('initialServiceScore').value,
@@ -1077,6 +1236,17 @@
                 if (formData.dns) document.getElementById('dns').value = formData.dns;
                 if (formData.startTime) document.getElementById('startTime').value = formData.startTime;
                 if (formData.endTime) document.getElementById('endTime').value = formData.endTime;
+                if (formData.graceTimeHours !== undefined) {
+                    document.getElementById('graceTimeHours').value = formData.graceTimeHours;
+                }
+                if (formData.graceTimeMinutes !== undefined) {
+                    document.getElementById('graceTimeMinutes').value = formData.graceTimeMinutes;
+                }
+                if (formData.graceTimeSeconds !== undefined) {
+                    document.getElementById('graceTimeSeconds').value = formData.graceTimeSeconds;
+                } else if (formData.graceTime) {
+                    setGraceTimeInputs(parseInt(formData.graceTime));
+                }
                 if (formData.tickTime) document.getElementById('tickTime').value = formData.tickTime;
                 if (formData.flagExpireTicks) document.getElementById('flagExpireTicks').value = formData.flagExpireTicks;
                 if (formData.initialServiceScore) document.getElementById('initialServiceScore').value = formData.initialServiceScore;
@@ -1319,6 +1489,11 @@
             
             if (document.getElementById('autoRefresh').checked) {
                 updatePreview();
+            }
+
+            // Initialize grace time inputs on page load
+            if (!loadStateFromLocalStorage()) {
+                setGraceTimeInputs(300);
             }
         });
         
@@ -1730,6 +1905,7 @@
                 wireguard_profiles: parseInt(document.getElementById('wireguardProfiles').value),
                 server_addr: serverAddr,
                 dns: document.getElementById('dns').value,
+                grace_time: parseInt(document.getElementById('graceTime').value),
                 tick_time: parseInt(document.getElementById('tickTime').value),
                 flag_expire_ticks: parseInt(document.getElementById('flagExpireTicks').value),
                 initial_service_score: parseInt(document.getElementById('initialServiceScore').value),
@@ -1912,6 +2088,11 @@
                 if (config.server_addr) document.getElementById('serverAddr').value = config.server_addr;
                 if (config.dns) document.getElementById('dns').value = config.dns;
                 
+                if (config.grace_time !== undefined) {
+                    document.getElementById('graceTime').value = config.grace_time;
+                    setGraceTimeInputs(config.grace_time);
+                }
+                
                 if (config.tick_time) document.getElementById('tickTime').value = config.tick_time;
                 
                 if (config.start_time) {
@@ -2000,6 +2181,10 @@
             
             document.getElementById('startTime').value = '';
             document.getElementById('endTime').value = '';
+            document.getElementById('graceTimeHours').value = 0;
+            document.getElementById('graceTimeMinutes').value = 5;
+            document.getElementById('graceTimeSeconds').value = 0;
+            document.getElementById('graceTime').value = 300;
             document.getElementById('tickTime').value = 120;
             
             document.getElementById('flagExpireTicks').value = 5;
@@ -2034,6 +2219,30 @@
             const minutes = String(date.getMinutes()).padStart(2, '0');
             
             return `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+
+        function updateGraceTime() {
+            const hours = parseInt(document.getElementById('graceTimeHours').value) || 0;
+            const minutes = parseInt(document.getElementById('graceTimeMinutes').value) || 0;
+            const seconds = parseInt(document.getElementById('graceTimeSeconds').value) || 0;
+            
+            // Convert to total seconds
+            const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+            
+            document.getElementById('graceTime').value = totalSeconds;
+            updatePreviewDebounced();
+            saveStateDebounced();
+        }
+        
+        function setGraceTimeInputs(totalSeconds) {
+            // Convert from total seconds to h/m/s
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            
+            document.getElementById('graceTimeHours').value = hours;
+            document.getElementById('graceTimeMinutes').value = minutes;
+            document.getElementById('graceTimeSeconds').value = seconds;
         }
 
         document.getElementById('importModal').addEventListener('hidden.bs.modal', function() {
