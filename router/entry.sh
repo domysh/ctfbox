@@ -77,7 +77,7 @@ wg-quick up players
 #----- SETTING UP CTFROUTE SERVER -----
 
 if [[ "$VM_NET_LOCKED" != "n" ]]; then
-    ctfroute lock
+    ctfroute freeze
 fi
 
 rm -f /unixsk/ctfroute.sock

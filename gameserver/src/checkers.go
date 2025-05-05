@@ -161,6 +161,13 @@ func waitForRound(round uint) {
 	}
 }
 
+func waitForGraceTime() {
+	timeToWait := time.Until(conf.GameStartTime.Add(-conf.GraceDuration))
+	if timeToWait > 0 {
+		time.Sleep(timeToWait)
+	}
+}
+
 // return error if the flag is already submitted
 func calcSLA(team string, service string) (sla float64, totSla uint, upSla uint, err error) {
 	var ctx context.Context = context.Background()
@@ -203,7 +210,8 @@ func checkerRoutine() {
 		return
 	}
 
-	preUnlocked := false
+	wasRunning := false
+	isInGrace := false
 
 	if time.Now().After(conf.GameStartTime) {
 		//Game already started
@@ -211,8 +219,14 @@ func checkerRoutine() {
 		if err := CtfRouteUnlock(); err != nil {
 			log.Errorf("Error unlocking routes: %v", err)
 		}
-		preUnlocked = true
+		wasRunning = true
 		currentRound = uint(time.Since(conf.GameStartTime) / conf.RoundLen)
+	} else if time.Now().After(conf.GameStartTime.Add(-conf.GraceDuration)) {
+		log.Infof("Game in grace period!")
+		if err := CtfRouteLock(); err != nil {
+			log.Errorf("Error locking routes: %v", err)
+		}
+		isInGrace = true
 	}
 
 	if currentRound > 0 {
@@ -226,14 +240,25 @@ func checkerRoutine() {
 		}
 		//Wait for the next round (probably game server restarted)
 		currentRound++
-	}
-
-	waitForRound(currentRound) // Wait for the first/next round
-	if !preUnlocked {
+		waitForRound(currentRound) // Wait for the next round
+		if !wasRunning {
+			if err := CtfRouteUnlock(); err != nil {
+				log.Errorf("Error unlocking routes: %v", err)
+			}
+		}
+	} else {
+		if !isInGrace {
+			waitForGraceTime()
+			if err := CtfRouteLock(); err != nil {
+				log.Errorf("Error locking routes: %v", err)
+			}
+		}
+		waitForRound(0)
 		if err := CtfRouteUnlock(); err != nil {
 			log.Errorf("Error unlocking routes: %v", err)
 		}
 	}
+
 	log.Infof("Starting checker loop with round %v", currentRound)
 
 	for {

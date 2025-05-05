@@ -59,3 +59,7 @@ func CtfRouteUnlock() error {
 func CtfRouteLock() error {
 	return ctfRouteCommand("LOCK")
 }
+
+func CtfRouteFreeze() error {
+	return ctfRouteCommand("FREEZE")
+}

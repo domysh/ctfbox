@@ -21,7 +21,7 @@ func ConnectDB() *bun.DB {
 	return db
 }
 
-func GetStartTime() time.Time {
+func GetStartTime() *time.Time {
 	db := ConnectDB()
 	ctx := context.Background()
 	defer db.Close()
@@ -30,15 +30,7 @@ func GetStartTime() time.Time {
 
 	if err := db.NewSelect().Model(envVar).Where("key = ?", "START_TIME").Scan(ctx); err != nil {
 		if err == sql.ErrNoRows {
-			nowTime := time.Now().UTC()
-			_, err := db.NewInsert().Model(&Environment{
-				Key:   "START_TIME",
-				Value: nowTime.Format(time.RFC3339),
-			}).Exec(context.Background())
-			if err != nil {
-				log.Panicf("Error inserting start time: %v", err)
-			}
-			return nowTime
+			return nil
 		} else {
 			log.Panicf("Error fetching start time: %v", err)
 		}
@@ -47,7 +39,7 @@ func GetStartTime() time.Time {
 	if err != nil {
 		log.Panicf("Error parsing start time: %v", err)
 	}
-	return startTime
+	return &startTime
 }
 
 func SetStartTime(startTime time.Time) {
@@ -56,11 +48,28 @@ func SetStartTime(startTime time.Time) {
 	defer db.Close()
 
 	envVar := new(Environment)
-	GetStartTime() // Ensure the start time is created if it doesn't exist in the database
 
-	_, err := db.NewUpdate().Model(envVar).Set("value = ?", startTime.Format(time.RFC3339)).Where("key = ?", "START_TIME").Exec(ctx)
+	// Check if the record exists
+	err := db.NewSelect().Model(envVar).Where("key = ?", "START_TIME").Scan(ctx)
 	if err != nil {
-		log.Panicf("Error updating start time: %v", err)
+		if err == sql.ErrNoRows {
+			// Record doesn't exist, insert it
+			_, err := db.NewInsert().Model(&Environment{
+				Key:   "START_TIME",
+				Value: startTime.Format(time.RFC3339),
+			}).Exec(ctx)
+			if err != nil {
+				log.Panicf("Error inserting start time: %v", err)
+			}
+		} else {
+			log.Panicf("Error checking start time: %v", err)
+		}
+	} else {
+		// Record exists, update it
+		_, err = db.NewUpdate().Model(envVar).Set("value = ?", startTime.Format(time.RFC3339)).Where("key = ?", "START_TIME").Exec(ctx)
+		if err != nil {
+			log.Panicf("Error updating start time: %v", err)
+		}
 	}
 }
 

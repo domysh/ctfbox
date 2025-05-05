@@ -545,6 +545,7 @@ type StatusAPIResponse struct {
 	Teams               []TeamStatus    `json:"teams"`
 	Services            []ServiceStatus `json:"services"`
 	StartTime           string          `json:"start"`
+	StartGraceTime      string          `json:"start_grace"`
 	EndTime             *string         `json:"end"`
 	RoundLen            uint            `json:"roundTime"`
 	FlagExpireTicks     uint            `json:"flag_expire_ticks"`
@@ -596,6 +597,7 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 		Teams:               teams,
 		Services:            services,
 		StartTime:           conf.GameStartTime.Format(time.RFC3339),
+		StartGraceTime:      conf.GameStartTime.Add(-conf.GraceDuration).Format(time.RFC3339),
 		EndTime:             endTime,
 		RoundLen:            uint(conf.RoundLen / time.Second),
 		FlagExpireTicks:     uint(conf.FlagExpireTicks),

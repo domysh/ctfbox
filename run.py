@@ -57,6 +57,7 @@ class Config:
     gameserver_exposed_port: Optional[str] = None
     credential_server: Optional[str] = None
     debug: bool = False
+    grace_time: int = 0
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> Config:
@@ -205,6 +206,7 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_start.add_argument('--credential-server-port', help='Credential server port', default=None)
     parser_start.add_argument('--config-only', '-C', action='store_true', help='Only generate config file')
     parser_start.add_argument('--disk-limit', '-D', action='store_true', help='Limit disk size for VMs (NEED TO ENABLE QUOTAS)')
+    parser_start.add_argument('--grace-time', '-G', type=int, default=0, help='Grace time in seconds')
 
     #Stop Command
     subcommands.add_parser('stop', help=f'Stop {g.name}')
@@ -650,6 +652,7 @@ def config_input() -> Config:
 
     args.start_time              = get_input('Start time, in RFC 3339 (YYYY-mm-dd HH:MM:SS+/-zz:zz)')
     args.end_time                = get_input('End time, in RFC 3339 (YYYY-mm-dd HH:MM:SS+/-zz:zz)')
+    args.grace_time              = abs(int(get_input('Grace time in seconds (before start_time - grace time the router is fronzen)', args.grace_time)))
     args.tick_time               = abs(int(get_input('Tick time in seconds', args.tick_time)))
     args.flag_expire_ticks       = abs(int(get_input('Number of ticks after which each flag expires', args.flag_expire_ticks)))
 
@@ -711,7 +714,8 @@ def config_input() -> Config:
         gameserver_exposed_port=gameserver_exposed_port,
         credential_server=credential_server,
         debug=False,
-        teams=teams
+        teams=teams,
+        grace_time=args.grace_time,
     )
 
 def create_config(data: Union[Dict[str, Any], Config]) -> Config:

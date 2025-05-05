@@ -62,11 +62,17 @@ To manage the game network run:
 ./run.py compose exec router ctfroute freeze|lock|unlock
 ```
 
-This will be automatically handled by the game server based on the configuration given (start_time, end_time, customizable from the ctfbox json). For special cases, you can use this command.
+This will be automatically handled by the game server based on the configuration given (start_time, end_time, grace_time customizable from the ctfbox json). For special cases, you can use this command.
 
 - freeze: freeze the network, no one can connect to the VMs (but only to the gameserver)
 - lock: the network is frozen, but now every team can access to their own VM
 - unlock: the network is unlocked, every team can access to every VM
+
+Workflow:
+- now() < start_time - grace_time: the network is frozen
+- start_time - grace_time < now() < start_time: the network is locked (player can access to their own VM)
+- start_time < now() < end_time: the network is unlocked (player can access to every VM)
+- now() > end_time: the network is locked and the game is finished (players can access to their own VM)
 
 ## Configuration
 
@@ -102,6 +108,7 @@ Before run the competition, you can customize additional settings in the `config
 - `max_flags_per_request`: The maximum number of flags that can be submitted in a single request.
 - `start_time`: The start time of the competition (can be null of an string with the ISO format).
 - `end_time`: The end time of the competition (can be null of an string with the ISO format).
+- `grace_time`: The grace time for the competition (in seconds), if start time is not specified it will be now()+grace_time.
 - `submission_timeout`: The timeout for flag submissions in seconds.
 - `server_addr`: The public address of the server (used for the wireguard config).
 - `network_limit_bandwidth`: The bandwidth limit for each server (e.g., "20mbit").

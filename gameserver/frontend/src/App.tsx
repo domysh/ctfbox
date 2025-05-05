@@ -25,8 +25,8 @@ export default function App() {
             <Route path="/scoreboard" element={<MainLayout page='scoreboard' />} />
             <Route path="/scoreboard/team/:teamId" element={<MainLayout page='scoreboard-team' />} />
             <Route path="*" element={<MainLayout page='not-found' />} />
-        </Routes>
-      </BrowserRouter>
+          </Routes>
+        </BrowserRouter>
       </QueryClientProvider>
     </ModalsProvider>
   </MantineProvider> 

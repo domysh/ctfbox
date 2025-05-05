@@ -15,6 +15,7 @@ export type TeamStatusInfo = {
 type Status = {
     teams: TeamStatusInfo[],
     services: {name: string}[],
+    start_grace: string,
     start: string,
     end?: string,
     roundTime: number,
