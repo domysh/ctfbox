@@ -161,7 +161,7 @@
         }
         
         .btn-lg {
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 3rem;
             font-size: 1.1rem;
             min-height: 54px;
         }
@@ -602,7 +602,7 @@
         <div class="grid-layout">
             <div class="section card section-card">
                 <div class="card-header">
-                    <h3 class="section-title mb-0">Basic Settings</h3>
+                    <h3 class="section-title mb-0">Wireguard Settings</h3>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -653,20 +653,20 @@
                             <div class="form-floating">
                                 <input type="datetime-local" class="form-control" id="startTime">
                                 <label for="startTime">Start Time (Optional)</label>
+                                <small class="time-note">Uses your current time zone</small>
                             </div>
-                            <div class="time-note">Uses your current time zone</div>
                         </div>
                         <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="datetime-local" class="form-control" id="endTime">
                                 <label for="endTime">End Time (Optional)</label>
+                                <small class="time-note">Uses your current time zone</small>
                             </div>
-                            <div class="time-note">Uses your current time zone</div>
                         </div>
-                        <div class="col-lg-6 mt-3">
+                        <div class="col-lg-6">
                             <label for="graceTimeInputs" class="form-label grace-time-label">Grace Time</label>
                             <input type="hidden" id="graceTime" value="300">
-                            <div class="d-flex align-items-center gap-2" id="graceTimeInputs">
+                            <div class="d-flex align-items-center gap-3" id="graceTimeInputs">
                                 <div class="input-group grace-time-group">
                                     <input type="number" class="form-control grace-time-input" id="graceTimeHours" value="0" min="0" onchange="updateGraceTime()">
                                     <span class="input-group-text">h</span>
@@ -680,9 +680,8 @@
                                     <span class="input-group-text">s</span>
                                 </div>
                             </div>
-                            <small class="text-muted">Time players can access their own VMs before the competition starts</small>
                         </div>
-                        <div class="col-lg-6 mt-3">
+                        <div class="col-lg-6">
                             <div class="form-floating">
                                 <input type="number" class="form-control" id="tickTime" value="120" min="1">
                                 <label for="tickTime">Tick Time (seconds)</label>
@@ -898,10 +897,6 @@
                     <div class="preview-header d-flex flex-wrap justify-content-between align-items-center">
                         <h3 class="section-title mb-0">Configuration Preview</h3>
                         <div class="preview-actions d-flex flex-wrap align-items-center gap-3">
-                            <div class="form-check form-switch form-switch-lg me-2">
-                                <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
-                                <label class="form-check-label" for="autoRefresh">Auto-Refresh</label>
-                            </div>
                             <button class="btn btn-outline-info" id="copyConfig">Copy to Clipboard</button>
                             <button class="btn btn-outline-success" id="copyCompressedConfig">Copy Compressed Config</button>
                         </div>
@@ -915,9 +910,8 @@
             </div>
         </div>
         
-        <div class="d-grid gap-3 d-lg-flex justify-content-lg-between mb-4">
+        <div class="d-grid gap-3 d-lg-flex justify-content-lg-between mb-2">
             <div class="d-grid gap-3 d-lg-flex">
-                <button class="btn btn-primary btn-lg flex-grow-1" id="generateConfig">Generate Configuration</button>
                 <button class="btn btn-outline-info btn-lg" id="importConfig">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-upload me-2" viewBox="0 0 16 16">
                         <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
@@ -1153,9 +1147,7 @@
         }
 
         let updatePreviewDebounced = debounce(function() {
-            if (document.getElementById('autoRefresh').checked) {
-                updatePreview();
-            }
+            updatePreview();
         }, 300);
 
         // Add a debounced function for saving state
@@ -1194,8 +1186,7 @@
                     credentialServerPort: document.getElementById('credentialServerPort').value,
                     debugMode: document.getElementById('debugMode').checked,
                     numberOfTeams: document.getElementById('numberOfTeams').value,
-                    enableNopTeam: document.getElementById('enableNopTeam').checked,
-                    autoRefresh: document.getElementById('autoRefresh').checked
+                    enableNopTeam: document.getElementById('enableNopTeam').checked
                 };
 
                 // Get teams data
@@ -1236,18 +1227,27 @@
                 if (formData.dns) document.getElementById('dns').value = formData.dns;
                 if (formData.startTime) document.getElementById('startTime').value = formData.startTime;
                 if (formData.endTime) document.getElementById('endTime').value = formData.endTime;
-                if (formData.graceTimeHours !== undefined) {
-                    document.getElementById('graceTimeHours').value = formData.graceTimeHours;
-                }
-                if (formData.graceTimeMinutes !== undefined) {
-                    document.getElementById('graceTimeMinutes').value = formData.graceTimeMinutes;
-                }
-                if (formData.graceTimeSeconds !== undefined) {
-                    document.getElementById('graceTimeSeconds').value = formData.graceTimeSeconds;
-                } else if (formData.graceTime) {
+                
+                // Fix grace time handling
+                if (formData.graceTime) {
+                    // First set the hidden graceTime value
+                    document.getElementById('graceTime').value = formData.graceTime;
+                    
+                    // Then set the individual time inputs
                     setGraceTimeInputs(parseInt(formData.graceTime));
+                } else if (formData.graceTimeHours !== undefined && 
+                          formData.graceTimeMinutes !== undefined && 
+                          formData.graceTimeSeconds !== undefined) {
+                    // If we have h/m/s values but no total, set them and calculate the total
+                    document.getElementById('graceTimeHours').value = formData.graceTimeHours;
+                    document.getElementById('graceTimeMinutes').value = formData.graceTimeMinutes;
+                    document.getElementById('graceTimeSeconds').value = formData.graceTimeSeconds;
+                    // Calculate and set the total
+                    updateGraceTime();
                 }
+                
                 if (formData.tickTime) document.getElementById('tickTime').value = formData.tickTime;
+                
                 if (formData.flagExpireTicks) document.getElementById('flagExpireTicks').value = formData.flagExpireTicks;
                 if (formData.initialServiceScore) document.getElementById('initialServiceScore').value = formData.initialServiceScore;
                 if (formData.maxFlagsPerRequest) document.getElementById('maxFlagsPerRequest').value = formData.maxFlagsPerRequest;
@@ -1276,7 +1276,6 @@
                 if (formData.debugMode !== undefined) document.getElementById('debugMode').checked = formData.debugMode;
                 if (formData.numberOfTeams) document.getElementById('numberOfTeams').value = formData.numberOfTeams;
                 if (formData.enableNopTeam !== undefined) document.getElementById('enableNopTeam').checked = formData.enableNopTeam;
-                if (formData.autoRefresh !== undefined) document.getElementById('autoRefresh').checked = formData.autoRefresh;
                 
                 // Handle teams if they exist
                 if (formData.teams && Array.isArray(formData.teams) && formData.teams.length > 0) {
@@ -1417,19 +1416,6 @@
                 resetConfiguration();
             });
 
-            document.getElementById('generateConfig').addEventListener('click', function() {
-                try {
-                    const config = buildConfigObject();
-                    const jsonStr = JSON.stringify(config, null, 4);
-                    const coloredJson = syntaxHighlight(jsonStr);
-                    document.getElementById('configPreview').innerHTML = coloredJson;
-                    showToast('Configuration generated successfully!');
-                } catch (error) {
-                    console.error(error);
-                    showErrorModal(`Error: ${error.message}`);
-                }
-            });
-            
             document.getElementById('downloadConfig').addEventListener('click', function() {
                 try {
                     let config;
@@ -1460,12 +1446,6 @@
             
             document.getElementById('processImport').addEventListener('click', processImportConfig);
             
-            document.getElementById('autoRefresh').addEventListener('change', function() {
-                if (this.checked) {
-                    updatePreview();
-                }
-            });
-            
             generateTeamFields();
             
             const observer = new MutationObserver(function(mutations) {
@@ -1487,14 +1467,18 @@
             
             setupFormListeners(document);
             
-            if (document.getElementById('autoRefresh').checked) {
-                updatePreview();
-            }
+            // Always update preview initially
+            updatePreview();
 
             // Initialize grace time inputs on page load
             if (!loadStateFromLocalStorage()) {
                 setGraceTimeInputs(300);
             }
+
+            // Add event listeners to grace time inputs to ensure they update the preview
+            document.getElementById('graceTimeHours').addEventListener('input', updateGraceTime);
+            document.getElementById('graceTimeMinutes').addEventListener('input', updateGraceTime);
+            document.getElementById('graceTimeSeconds').addEventListener('input', updateGraceTime);
         });
         
         function setupFormListeners(rootElement) {
