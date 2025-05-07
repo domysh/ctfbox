@@ -356,8 +356,7 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                     },
                     "volumes": [
                         "unixsk:/unixsk:z",
-                        "./router/configs:/app/configs:z",
-                        #"/lib/modules:/lib/modules:ro",
+                        "./router/configs:/app/configs:z"
                     ],
                     "restart": "unless-stopped",
                     "networks": {

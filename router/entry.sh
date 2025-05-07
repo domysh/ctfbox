@@ -64,13 +64,23 @@ wg-quick up servers
 #----- NETWORK TRIM BANDWIDTH -----
 # Define the traffic control parameters
 if [[ -n "$RATE_NET" ]]; then
-    tc qdisc add dev players ingress
-    tc qdisc add dev servers ingress
+    # Check if the police action module is available
+    # Using HTB qdisc as a simpler alternative
+    tc qdisc add dev players root handle 1: htb default 10 r2q 100
+    tc qdisc add dev servers root handle 1: htb default 10 r2q 100
+    tc class add dev players parent 1: classid 1:1 htb rate $RATE_NET burst 100k
+    tc class add dev servers parent 1: classid 1:1 htb rate $RATE_NET burst 100k
+    
+    # Add classes for each team
     for i in "${TEAM_ID_ARRAY[@]}" ; do
-        tc filter add dev players protocol ip ingress prio 2 u32 match ip dst 10.80.$i.0/24 action police rate $RATE_NET burst 100kbit
-        tc filter add dev players protocol ip ingress prio 2 u32 match ip src 10.80.$i.0/24 action police rate $RATE_NET burst 100kbit
-        tc filter add dev servers protocol ip ingress prio 2 u32 match ip dst 10.60.$i.0/24 action police rate $RATE_NET burst 100kbit
-        tc filter add dev servers protocol ip ingress prio 2 u32 match ip src 10.60.$i.0/24 action police rate $RATE_NET burst 100kbit
+        tc class add dev players parent 1:1 classid 1:1$i htb rate $RATE_NET burst 50k
+        tc class add dev servers parent 1:1 classid 1:1$i htb rate $RATE_NET burst 50k
+        
+        # Add filters to match traffic
+        tc filter add dev players parent 1: protocol ip prio 1 u32 match ip dst 10.80.$i.0/24 flowid 1:1$i
+        tc filter add dev players parent 1: protocol ip prio 1 u32 match ip src 10.80.$i.0/24 flowid 1:1$i
+        tc filter add dev servers parent 1: protocol ip prio 1 u32 match ip dst 10.60.$i.0/24 flowid 1:1$i
+        tc filter add dev servers parent 1: protocol ip prio 1 u32 match ip src 10.60.$i.0/24 flowid 1:1$i
     done
 fi
 
