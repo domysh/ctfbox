@@ -11,13 +11,16 @@ import json
 class Team:
     id: int
     name: str
+    nop: bool = False
 
 @dataclass
 class Config:
     teams: List[Team]
     server_addr: str
     wireguard_port: int
+    wireguard_servers_port: int
     wireguard_profiles: int
+    external_servers: bool
 
 generated_pins = set()
 
@@ -29,7 +32,6 @@ def generate_pin():
     pin = str(pin).rjust(6, '0')
     generated_pins.add(pin)
     return pin
-
 
 def generate_keypair():
     """Generate a WireGuard private and public key pair."""
@@ -45,23 +47,36 @@ def generate_preshared_key():
 def load_config_from_env():
     """Load configuration from environment variables."""
     team_ids = os.environ.get("TEAM_IDS", "").split(",")
+    nop_teams = map(lambda x: int(x.strip()), [ele for ele in os.environ.get("NOP_TEAMS", "").split(",") if ele.strip()])
     teams = []
     
     for team_id in team_ids:
-        if team_id.strip():
-            teams.append(Team(id=int(team_id.strip()), name=f"Team {team_id.strip()}"))
+        team_id = team_id.strip()
+        if team_id:
+            team_id = int(team_id)
+            teams.append(Team(id=team_id, name=f"Team {team_id}", nop=(team_id in nop_teams)))
     
     return Config(
         teams=teams,
         server_addr=os.environ.get("PUBLIC_IP", ""),
         wireguard_port=int(os.environ.get("PUBLIC_PORT", "51820")),
-        wireguard_profiles=int(os.environ.get("CONFIG_PER_TEAM", "1"))
+        wireguard_profiles=int(os.environ.get("CONFIG_PER_TEAM", "1")),
+        external_servers=os.environ.get("EXTERNAL_SERVERS", "0").strip().lower() == "1",
+        wireguard_servers_port = int(os.environ.get("WIREGUARD_SERVERS_PORT", "51821")),
     )
 
-def generate_server_interface(private_key):
+def generate_players_interface(private_key):
     return f"""[Interface]
 Address = 10.80.252.252/16
 ListenPort = 51820
+PrivateKey = {private_key}
+MTU = 1400
+"""
+
+def generate_servers_interface(private_key):
+    return f"""[Interface]
+Address = 10.60.252.252/16
+ListenPort = 51821
 PrivateKey = {private_key}
 MTU = 1400
 """
@@ -90,14 +105,12 @@ Endpoint = {server_addr}:{server_port}
 
 def main():
     
-    if os.path.exists("configs/.created"):
+    if os.path.exists("configs/servers.conf") and os.path.exists("configs/clients.conf"):
         print("Configuration already generated. Exiting.")
         return
     
     shutil.rmtree("configs", ignore_errors=True)
     os.makedirs("configs", exist_ok=True)
-    with open("configs/.created", "w") as f:
-        f.write("Deleting this file the wireguard configs will be generated again.\n")
     
     try:
         # Load config from environment variables
@@ -105,16 +118,15 @@ def main():
 
         # Generate server keys
         server_private_key, server_public_key = generate_keypair()
-        
         # Create server config
-        server_config = generate_server_interface(server_private_key)
+        server_config = generate_players_interface(server_private_key)
         
-        
-
         # Generate configs for each team
         for team in config.teams:
+            if team.nop:
+                continue
             pins_config = []
-            team_dir = os.path.join("configs", f"team{team.id}")
+            team_dir = f"configs/team{team.id}"
             os.makedirs(team_dir, exist_ok=True)
             
             # Create peer configs for this team
@@ -143,7 +155,7 @@ def main():
             with open(os.path.join(team_dir, "pins.json"), 'w') as f:
                 json.dump(pins_config, f, indent=4)
         
-        team_dir = os.path.join("configs", "admins")
+        team_dir = "configs/admins"
         os.makedirs(team_dir, exist_ok=True)
         for profile_id in range(1, config.wireguard_profiles + 1):
             client_private_key, client_public_key = generate_keypair()
@@ -160,9 +172,34 @@ def main():
                 f.write(client_config)
         
         # Save server config
-        with open(os.path.join("configs", "wg0.conf"), 'w') as f:
+        with open("configs/players.conf", 'w') as f:
             f.write(server_config)
         
+        # Generate server keys
+        server_private_key, server_public_key = generate_keypair()
+        # Create server config
+        server_config = generate_players_interface(server_private_key)
+        
+        wg_server_ip = config.server_addr if config.external_servers else "router"
+        wg_server_port = config.wireguard_servers_port if config.external_servers else 51821
+        
+        for team in config.teams:
+            os.makedirs("configs/servers", exist_ok=True)
+            client_private_key, client_public_key = generate_keypair()
+            preshared_key = generate_preshared_key()
+            client_ip = f"10.60.{team.id}.1"
+            # Add peer to server config
+            server_config += generate_server_peer(client_public_key, preshared_key, client_ip)
+            # Create client config
+            client_config = generate_client_config(client_private_key, client_ip, server_public_key, preshared_key, wg_server_ip, wg_server_port)  
+            # Save client config
+            with open(f"./configs/servers/server-{team.id}.conf", 'w') as f:
+                f.write(client_config)
+        
+        # Save server config
+        with open("configs/servers.conf", 'w') as f:
+            f.write(server_config)
+            
         print("WireGuard configurations successfully generated in configs directory.")
         
     except Exception as e:

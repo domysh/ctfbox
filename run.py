@@ -104,15 +104,13 @@ class g:
     project_name = "ctfbox"
     composefile = f".{project_name}-compose.yml"
     container_name = f"{project_name}-gameserver"
-    config_file = f"config.json"
+    config_file = "config.json"
     prebuild_image = f"{project_name}-prebuilder"
     prebuilded_container = f"{project_name}-prebuilded"
     prebuilt_image = f"{project_name}-vm-base" # this is dynamic here, but it needs to be
                                                # manually changed in the FROM in vm/Dockerfile
                                                # and in the .gitignore
     secrets_dir = f".{project_name}-secrets-tmp"
-
-use_build_on_compose = True
 
 def is_linux():
     return "linux" in sys.platform and 'microsoft-standard' not in platform.uname().release
@@ -346,7 +344,8 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         "PUID": os.getuid() if is_linux() else 0,
                         "PGID": os.getgid() if is_linux() else 0,
                         "RATE_NET": config.network_limit_bandwidth,
-                        "TEAM_IDS": ",".join(str(team.id) for team in config.teams if not team.nop),
+                        "TEAM_IDS": ",".join(str(team.id) for team in config.teams),
+                        "NOP_TEAMS": ",".join(str(team.id) for team in config.teams if team.nop),
                         "CONFIG_PER_TEAM": config.wireguard_profiles,
                         "PUBLIC_IP": config.server_addr,
                         "PUBLIC_PORT": config.wireguard_port,
@@ -355,12 +354,14 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         "unixsk:/unixsk",
                         "./router/configs:/app/configs:z"
                     ],
+                    "healthcheck": {
+                        "test": "(ls /app/configs/clients.conf || exit 1) && (ls /app/configs/servers.conf || exit 1)",
+                        "interval": "1s",
+                        "timeout": "30s",
+                        "retries": 30,
+                    },
                     "restart": "unless-stopped",
                     "networks": {
-                        **{f"vm-team{team.id}": {
-                            "priority": 10,
-                            "ipv4_address": f"10.60.{team.id}.250"
-                        } for team in config.teams},
                         "gameserver": {
                             "priority": 10,
                             "ipv4_address": "10.10.0.250"
@@ -432,9 +433,7 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         f"{config.credential_server}:4040"
                     ],
                     "depends_on": [ "router" ],
-                    "networks": {
-                        "internalnet": {},
-                    },
+                    "networks": ["internalnet"],
                     "volumes": [
                         "./config.json:/app/config.json:ro",
                         "./router:/app/router:ro"
@@ -457,11 +456,10 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         **({ "storage_opt": {"size":config.max_disk_size} } if config.max_disk_size else {}),
                         **({"privileged": "true"} if config.unsafe_privileged else { "runtime": "sysbox-runc" }),
                         "restart": "unless-stopped",
-                        "networks": {
-                            f"vm-team{team.id}": {
-                                "ipv4_address": f"10.60.{team.id}.1"
-                            }
-                        },
+                        "depends_on": [
+                            "router",
+                        ],
+                        "networks": [f"vm-team{team.id}"],
                         "deploy":{
                             "resources":{
                                 "limits":{
@@ -500,21 +498,7 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         ]
                     }
                 },
-                **{
-                    f"vm-team{team.id}": {
-                        "internal": "true",
-                        "driver": "macvlan",
-                        "ipam": {
-                            "driver": "default",
-                            "config": [
-                                {
-                                    "subnet": f"10.60.{team.id}.0/24",
-                                    "gateway": f"10.60.{team.id}.254",
-                                }
-                            ]
-                        }
-                    } for team in config.teams
-                },
+                **{ f"vm-team{team.id}": "" for team in config.teams}
             }
         }))
 
@@ -804,8 +788,8 @@ def main():
                 else:
                     puts(f"{g.name} is starting!", color=colors.yellow)
                     write_compose(read_config())
-                    puts(f"Running 'docker compose up -d{' --build' if use_build_on_compose else ''}'\n", color=colors.green)
-                    composecmd(f"up -d{' --build' if use_build_on_compose else ''} --remove-orphans", g.composefile)
+                    puts("Running 'docker compose up -d --build\n", color=colors.green)
+                    composecmd("up -d --build --remove-orphans", g.composefile)
             case "compose":
                 if not config_exists():
                     puts(f"Config file not found! please run {sys.argv[0]} start", color=colors.red)
@@ -826,12 +810,9 @@ def main():
             case "stop":
                 if not config_exists():
                     puts(f"Config file not found! please run {sys.argv[0]} start", color=colors.red)
-                elif check_already_running():
-                    write_compose(read_config())
-                    puts("Running 'docker compose down'\n", color=colors.green)
-                    composecmd("down --remove-orphans", g.composefile)
-                else:
-                    puts(f"{g.name} is not running!" , color=colors.red, is_bold=True, flush=True)
+                write_compose(read_config())
+                puts("Running 'docker compose down'\n", color=colors.green)
+                composecmd("down --remove-orphans", g.composefile)
             case "clear":
                 if check_already_running():
                     puts(f"{g.name} is running! please stop it before clearing the data", color=colors.red)

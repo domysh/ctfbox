@@ -23,16 +23,32 @@ RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime
 
 # Install Utils and Docker
 RUN apt-get update && apt-get -y upgrade \
-    && apt-get install -y curl openssh-server\
-    iproute2 vim nano tcpdump iputils-ping \
-    python3-pip python3-venv screen netcat-openbsd btop htop neovim \
-    nano curl git wget unzip zip traceroute net-tools binfmt-support qemu-user-static \
+    && apt-get install -y curl openssh-server wireguard \
+    iproute2 vim nano tcpdump iputils-ping python3-pip python3-venv screen \
+    netcat-openbsd btop htop neovim nano curl git wget unzip zip traceroute \
+    net-tools binfmt-support qemu-user-static \
     && curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh && apt-get update
 
 # SSH
 RUN mkdir /var/run/sshd
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
+
+
+# SUDO
+RUN echo 'Defaults   !visiblepw' > /etc/sudoers &&\
+    echo 'Defaults   always_set_home' >> /etc/sudoers &&\
+    echo 'Defaults   match_group_by_gid' >> /etc/sudoers &&\
+    echo 'Defaults   always_query_group_plugin' >> /etc/sudoers &&\
+    echo 'Defaults   env_reset' >> /etc/sudoers &&\
+    echo 'Defaults   env_keep =  "COLORS DISPLAY HOSTNAME HISTSIZE KDEDIR LS_COLORS"' >> /etc/sudoers &&\
+    echo 'Defaults   env_keep += "MAIL QTDIR USERNAME LANG LC_ADDRESS LC_CTYPE"' >> /etc/sudoers &&\
+    echo 'Defaults   env_keep += "LC_COLLATE LC_IDENTIFICATION LC_MEASUREMENT LC_MESSAGES"' >> /etc/sudoers &&\
+    echo 'Defaults   env_keep += "LC_MONETARY LC_NAME LC_NUMERIC LC_PAPER LC_TELEPHONE"' >> /etc/sudoers &&\
+    echo 'Defaults   env_keep += "LC_TIME LC_ALL LANGUAGE LINGUAS _XKB_CHARSET XAUTHORITY"' >> /etc/sudoers &&\
+    echo 'Defaults   secure_path = /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/var/lib/snapd/snap/bin' >> /etc/sudoers &&\
+    echo 'root	ALL=(ALL) 	ALL' >> /etc/sudoers &&\
+    echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
 # Services
 WORKDIR /root/
@@ -43,7 +59,7 @@ RUN chmod +x /usr/bin/_entry_vm_init
 ENV COMPOSE_BAKE=true
 # Create init service
 COPY ./init-vm.service /etc/systemd/system/init-vm.service
-RUN systemctl enable init-vm.service
+RUN systemctl enable wg-quick@game && systemctl enable init-vm.service
 
 ADD https://raw.githubusercontent.com/docker/docker-ce/master/components/cli/contrib/completion/bash/docker /etc/bash_completion.d/docker.sh
 

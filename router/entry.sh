@@ -4,22 +4,7 @@
 
 PUID=${PUID:-0}
 PGID=${PGID:-0}
-DEFAULT_IFACES=$(ip route | grep default | awk '{print $5}' | sort | uniq)
 IFS=',' read -ra TEAM_ID_ARRAY <<< "$TEAM_IDS"
-
-#----- NETWORK TRIM BANDWIDTH -----
-# Define the traffic control parameters
-if [[ -n "$RATE_NET" ]]; then
-    # Loop through all network interfaces except 'lo' and default route interfaces
-    for iface in $(ip -o link show | awk -F': ' '{print $2}' | grep -Ev "^lo" | cut -d'@' -f1); do
-
-        # Only apply tc if the interface is not part of the default routes
-        if ip addr show "$iface" | grep -q "inet " && ! echo "$DEFAULT_IFACES" | grep -q "$iface"; then
-            echo "Applying traffic control on interface $iface..."
-            tc qdisc add dev "$iface" root tbf rate $RATE_NET burst 32kbit latency 400ms
-        fi
-    done
-fi
 
 #----- GAMESERVER SCOREBOARD EXPOSE -----
 iptables -t nat -N SCOREBOARD_EXPOSE
@@ -71,8 +56,23 @@ python3 confgen.py
 chown -R $PUID:$PGID /app/configs
 # Starting wireguard
 mkdir -p /etc/wireguard
-ln -s /app/configs/wg0.conf /etc/wireguard/players.conf
+ln -s /app/configs/players.conf /etc/wireguard/players.conf
+ln -s /app/configs/servers.conf /etc/wireguard/servers.conf
 wg-quick up players
+wg-quick up servers
+
+#----- NETWORK TRIM BANDWIDTH -----
+# Define the traffic control parameters
+if [[ -n "$RATE_NET" ]]; then
+    tc qdisc add dev players ingress
+    tc qdisc add dev servers ingress
+    for i in "${TEAM_ID_ARRAY[@]}" ; do
+        tc filter add dev players protocol ip ingress prio 2 u32 match ip dst 10.80.$i.0/24 action police rate $RATE_NET burst 100kbit
+        tc filter add dev players protocol ip ingress prio 2 u32 match ip src 10.80.$i.0/24 action police rate $RATE_NET burst 100kbit
+        tc filter add dev servers protocol ip ingress prio 2 u32 match ip dst 10.60.$i.0/24 action police rate $RATE_NET burst 100kbit
+        tc filter add dev servers protocol ip ingress prio 2 u32 match ip src 10.60.$i.0/24 action police rate $RATE_NET burst 100kbit
+    done
+fi
 
 #----- SETTING UP CTFROUTE SERVER -----
 
