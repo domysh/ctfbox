@@ -2,11 +2,12 @@ FROM ctfbox-vm-base:latest
 
 ARG TEAM_ID
 ENV TEAM_ID=$TEAM_ID
-RUN echo $TEAM_ID >> /etc/teamid
 
 ARG TEAM_NAME
 ENV TEAM_NAME=$TEAM_NAME
-RUN echo $TEAM_NAME >> /etc/teamname
+
+RUN mkdir -p /etc/wireguard
+COPY router/configs/servers/server-${TEAM_ID}.conf /etc/wireguard/game.conf
 
 # Regenerate SSH server keys
 RUN rm /etc/ssh/ssh_host* && ssh-keygen -A

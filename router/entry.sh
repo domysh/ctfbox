@@ -4,22 +4,7 @@
 
 PUID=${PUID:-0}
 PGID=${PGID:-0}
-DEFAULT_IFACES=$(ip route | grep default | awk '{print $5}' | sort | uniq)
 IFS=',' read -ra TEAM_ID_ARRAY <<< "$TEAM_IDS"
-
-#----- NETWORK TRIM BANDWIDTH -----
-# Define the traffic control parameters
-if [[ -n "$RATE_NET" ]]; then
-    # Loop through all network interfaces except 'lo' and default route interfaces
-    for iface in $(ip -o link show | awk -F': ' '{print $2}' | grep -Ev "^lo" | cut -d'@' -f1); do
-
-        # Only apply tc if the interface is not part of the default routes
-        if ip addr show "$iface" | grep -q "inet " && ! echo "$DEFAULT_IFACES" | grep -q "$iface"; then
-            echo "Applying traffic control on interface $iface..."
-            tc qdisc add dev "$iface" root tbf rate $RATE_NET burst 32kbit latency 400ms
-        fi
-    done
-fi
 
 #----- GAMESERVER SCOREBOARD EXPOSE -----
 iptables -t nat -N SCOREBOARD_EXPOSE
@@ -71,8 +56,33 @@ python3 confgen.py
 chown -R $PUID:$PGID /app/configs
 # Starting wireguard
 mkdir -p /etc/wireguard
-ln -s /app/configs/wg0.conf /etc/wireguard/players.conf
+ln -s /app/configs/players.conf /etc/wireguard/players.conf
+ln -s /app/configs/servers.conf /etc/wireguard/servers.conf
 wg-quick up players
+wg-quick up servers
+
+#----- NETWORK TRIM BANDWIDTH -----
+# Define the traffic control parameters
+if [[ -n "$RATE_NET" ]]; then
+    # Check if the police action module is available
+    # Using HTB qdisc as a simpler alternative
+    tc qdisc add dev players root handle 1: htb default 10 r2q 100
+    tc qdisc add dev servers root handle 1: htb default 10 r2q 100
+    tc class add dev players parent 1: classid 1:1 htb rate $RATE_NET burst 100k
+    tc class add dev servers parent 1: classid 1:1 htb rate $RATE_NET burst 100k
+    
+    # Add classes for each team
+    for i in "${TEAM_ID_ARRAY[@]}" ; do
+        tc class add dev players parent 1:1 classid 1:1$i htb rate $RATE_NET burst 50k
+        tc class add dev servers parent 1:1 classid 1:1$i htb rate $RATE_NET burst 50k
+        
+        # Add filters to match traffic
+        tc filter add dev players parent 1: protocol ip prio 1 u32 match ip dst 10.80.$i.0/24 flowid 1:1$i
+        tc filter add dev players parent 1: protocol ip prio 1 u32 match ip src 10.80.$i.0/24 flowid 1:1$i
+        tc filter add dev servers parent 1: protocol ip prio 1 u32 match ip dst 10.60.$i.0/24 flowid 1:1$i
+        tc filter add dev servers parent 1: protocol ip prio 1 u32 match ip src 10.60.$i.0/24 flowid 1:1$i
+    done
+fi
 
 #----- SETTING UP CTFROUTE SERVER -----
 
@@ -81,4 +91,5 @@ if [[ "$VM_NET_LOCKED" != "n" ]]; then
 fi
 
 rm -f /unixsk/ctfroute.sock
+touch /running
 socat UNIX-LISTEN:/unixsk/ctfroute.sock,reuseaddr,fork EXEC:"bash /app/ctfroute-handle.sh"
