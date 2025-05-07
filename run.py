@@ -36,19 +36,19 @@ class Team:
 
 @dataclass
 class Config:
-    wireguard_port: int
-    wireguard_profiles: int
-    server_addr: str
-    dns: str
-    tick_time: int
-    flag_expire_ticks: int
-    initial_service_score: int
-    max_flags_per_request: int
-    submission_timeout: float
-    network_limit_bandwidth: str
-    max_vm_cpus: str
-    max_vm_mem: str
     gameserver_token: str
+    wireguard_port: int = 51000
+    wireguard_profiles: int = 10
+    server_addr: str = "127.0.0.1"
+    dns: str = "1.1.1.1"
+    tick_time: int = 120
+    flag_expire_ticks: int = 5
+    initial_service_score: int = 5000
+    max_flags_per_request: int = 3000
+    submission_timeout: float = 0
+    network_limit_bandwidth: str = "50mbit"
+    max_vm_cpus: str = "1"
+    max_vm_mem: str = "2G"
     teams: List[Team] = field(default_factory=list)
     unsafe_privileged: bool = False
     start_time: Optional[str] = None
@@ -210,6 +210,8 @@ def gen_args(args_to_parse: list[str]|None = None):
 
     #Stop Command
     subcommands.add_parser('stop', help=f'Stop {g.name}')
+    #Wg config gen command
+    subcommands.add_parser('wg-gen', help='Generate wireguard configs if not exists or config changed')
     
     #Restart Command
     parser_restart = subcommands.add_parser('restart', help=f'Restart {g.name}')
@@ -264,9 +266,11 @@ def composecmd(cmd, composefile=None):
     elif not cmd_check("docker ps"):
         return puts("Cannot use docker, the user hasn't the permission or docker isn't running", color=colors.red)
     elif cmd_check("docker compose --version"):
-        return os.system(f"docker compose -p {g.project_name} {cmd}")
+        if os.system(f"docker compose -p {g.project_name} {cmd}") != 0:
+            exit(1)
     elif cmd_check("docker-compose --version"):
-        return os.system(f"docker-compose -p {g.project_name} {cmd}")
+        if os.system(f"docker-compose -p {g.project_name} {cmd}") != 0:
+            exit(1)
     else:
         return puts("docker compose not found! please install docker compose!", color=colors.red)
 
@@ -351,15 +355,10 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         "PUBLIC_PORT": config.wireguard_port,
                     },
                     "volumes": [
-                        "unixsk:/unixsk",
-                        "./router/configs:/app/configs:z"
+                        "unixsk:/unixsk:z",
+                        "./router/configs:/app/configs:z",
+                        #"/lib/modules:/lib/modules:ro",
                     ],
-                    "healthcheck": {
-                        "test": "(ls /app/configs/clients.conf || exit 1) && (ls /app/configs/servers.conf || exit 1)",
-                        "interval": "1s",
-                        "timeout": "30s",
-                        "retries": 30,
-                    },
                     "restart": "unless-stopped",
                     "networks": {
                         "gameserver": {
@@ -369,6 +368,7 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         "externalnet": {
                             "priority": 1,
                         },
+                        **{ f"vm-team{team.id}": {} for team in config.teams }
                     },
                     "ports": [
                         f"{config.wireguard_port}:51820/udp",
@@ -444,7 +444,8 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         "hostname": f"team{team.id}",
                         "dns": [config.dns],
                         "build": {
-                            "context": "./vm",
+                            "context": "./",
+                            "dockerfile": "./vm/Dockerfile",
                             "secrets": [
                                 f"token_team_{team.id}"
                             ],
@@ -471,13 +472,13 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                     } for team in config.teams
                 },
             },
-            "secrets":{
+            **({ "secrets":{
                 **{
                     f"token_team_{team.id}": {
                         "file": f"{g.secrets_dir}/token_{team.id}"
                     } for team in config.teams
                 },
-            },
+            }} if config.teams else {}),
             "volumes": {
                 "unixsk": "",
                 "db-data": ""
@@ -720,7 +721,41 @@ def cleanup_secrets():
     if os.path.exists(g.secrets_dir):
         shutil.rmtree(g.secrets_dir)
 
+def vpn_config_hash(config: Config):
+    data = []
+    for team in config.teams:
+        data.append(f"{team.id}:{'1' if team.nop else '0'}")
+    data.append(f"{config.wireguard_profiles}")
+    data.append(f"{config.wireguard_port}")
+    data.append(f"{config.server_addr}")
+    data.sort()
+    return hashlib.sha256(("::".join(data)).encode()).hexdigest()
+        
+
+def router_generate_configs(config: Config, down_after_gen: bool = True):
+    info = get_deploy_info()
+    old_hash = info.get("vpn_config_hash", None)
+    current_hash = vpn_config_hash(config)
+    if not os.path.isfile("./router/configs/players.conf") \
+        or not os.path.isfile("./router/configs/servers.conf")\
+        or old_hash != current_hash:
+        if check_already_running():
+            puts(f"Can't generate configs if {g.project_name} is already running!", color=colors.red)
+            exit(1)
+        clear_data_only(remove_wireguard=True)
+        puts("Generating wireguard configuration", color=colors.yellow)
+        composecmd("down router --remove-orphans", g.composefile)
+        composecmd("up router -d --build --remove-orphans --wait", g.composefile)
+        set_deploy_info({ "vpn_config_hash": current_hash })
+        if down_after_gen:
+            composecmd("down router --remove-orphans", g.composefile)
+    else:
+        if not down_after_gen:
+            composecmd("up router -d --build --remove-orphans --wait", g.composefile)
+        puts("Wireguard configs already generated!")
+
 def main():
+    
     if args.command == "start":
         if args.config_only:
             if config_exists():
@@ -742,6 +777,14 @@ def main():
     
     if args.command:
         match args.command:
+            case "wg-gen":
+                if not config_exists():
+                    puts("Config file not found! please create config.json first", color=colors.red)
+                else:
+                    puts(f"{g.name} is starting!", color=colors.yellow)
+                    config = read_config()
+                    write_compose(config)
+                    router_generate_configs()
             case "start":
                 if check_already_running():
                     puts(f"{g.name} is already running!", color=colors.yellow)
@@ -784,10 +827,11 @@ def main():
                     set_deploy_info({"vm_dir_hash": vm_dir_hash, "privileged_build": config.unsafe_privileged})
                 if not config_exists():
                     puts(f"Config file not found! please run {sys.argv[0]} start", color=colors.red)
-                
                 else:
                     puts(f"{g.name} is starting!", color=colors.yellow)
-                    write_compose(read_config())
+                    config = read_config()
+                    write_compose(config)
+                    router_generate_configs(config, down_after_gen=False)
                     puts("Running 'docker compose up -d --build\n", color=colors.green)
                     composecmd("up -d --build --remove-orphans", g.composefile)
             case "compose":
@@ -809,8 +853,10 @@ def main():
                     puts(f"{g.name} is not running!" , color=colors.red, is_bold=True, flush=True)
             case "stop":
                 if not config_exists():
-                    puts(f"Config file not found! please run {sys.argv[0]} start", color=colors.red)
-                write_compose(read_config())
+                    #Foolish config (--remove-orphans will delete what is needed)
+                    write_compose(Config(gameserver_token=""))
+                else:
+                    write_compose(read_config())
                 puts("Running 'docker compose down'\n", color=colors.green)
                 composecmd("down --remove-orphans", g.composefile)
             case "clear":

@@ -81,4 +81,5 @@ if [[ "$VM_NET_LOCKED" != "n" ]]; then
 fi
 
 rm -f /unixsk/ctfroute.sock
+touch /running
 socat UNIX-LISTEN:/unixsk/ctfroute.sock,reuseaddr,fork EXEC:"bash /app/ctfroute-handle.sh"

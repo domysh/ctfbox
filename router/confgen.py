@@ -100,12 +100,13 @@ PublicKey = {server_pub}
 PresharedKey = {preshared_key}
 AllowedIPs = 10.10.0.0/16, 10.60.0.0/16, 10.80.0.0/16
 Endpoint = {server_addr}:{server_port}
+PersistentKeepalive = 15
 """
 
 
 def main():
     
-    if os.path.exists("configs/servers.conf") and os.path.exists("configs/clients.conf"):
+    if os.path.exists("configs/servers.conf") and os.path.exists("configs/players.conf"):
         print("Configuration already generated. Exiting.")
         return
     
@@ -178,7 +179,7 @@ def main():
         # Generate server keys
         server_private_key, server_public_key = generate_keypair()
         # Create server config
-        server_config = generate_players_interface(server_private_key)
+        server_config = generate_servers_interface(server_private_key)
         
         wg_server_ip = config.server_addr if config.external_servers else "router"
         wg_server_port = config.wireguard_servers_port if config.external_servers else 51821
