@@ -18,7 +18,6 @@ class Config:
     teams: List[Team]
     server_addr: str
     wireguard_port: int
-    wireguard_servers_port: int
     wireguard_profiles: int
     external_servers: bool
 
@@ -61,22 +60,13 @@ def load_config_from_env():
         server_addr=os.environ.get("PUBLIC_IP", ""),
         wireguard_port=int(os.environ.get("PUBLIC_PORT", "51820")),
         wireguard_profiles=int(os.environ.get("CONFIG_PER_TEAM", "1")),
-        external_servers=os.environ.get("EXTERNAL_SERVERS", "0").strip().lower() == "1",
-        wireguard_servers_port = int(os.environ.get("WIREGUARD_SERVERS_PORT", "51821")),
+        external_servers=os.environ.get("EXTERNAL_SERVERS", "0").strip().lower() == "1"
     )
 
-def generate_players_interface(private_key):
+def generate_wg_server_interface(private_key):
     return f"""[Interface]
-Address = 10.80.252.252/16
+Address = 10.10.252.252/32
 ListenPort = 51820
-PrivateKey = {private_key}
-MTU = 1400
-"""
-
-def generate_servers_interface(private_key):
-    return f"""[Interface]
-Address = 10.60.252.252/16
-ListenPort = 51821
 PrivateKey = {private_key}
 MTU = 1400
 """
@@ -106,7 +96,7 @@ PersistentKeepalive = 15
 
 def main():
     
-    if os.path.exists("configs/servers.conf") and os.path.exists("configs/players.conf"):
+    if os.path.exists("configs/wg0.conf"):
         print("Configuration already generated. Exiting.")
         return
     
@@ -120,7 +110,7 @@ def main():
         # Generate server keys
         server_private_key, server_public_key = generate_keypair()
         # Create server config
-        server_config = generate_players_interface(server_private_key)
+        server_config = generate_wg_server_interface(server_private_key)
         
         # Generate configs for each team
         for team in config.teams:
@@ -171,18 +161,9 @@ def main():
             # Save client config
             with open(os.path.join(team_dir, f"admin-{profile_id}.conf"), 'w') as f:
                 f.write(client_config)
-        
-        # Save server config
-        with open("configs/players.conf", 'w') as f:
-            f.write(server_config)
-        
-        # Generate server keys
-        server_private_key, server_public_key = generate_keypair()
-        # Create server config
-        server_config = generate_servers_interface(server_private_key)
-        
+                
         wg_server_ip = config.server_addr if config.external_servers else "router"
-        wg_server_port = config.wireguard_servers_port if config.external_servers else 51821
+        wg_server_port = config.wireguard_port if config.external_servers else 51820
         
         for team in config.teams:
             os.makedirs("configs/servers", exist_ok=True)
@@ -198,7 +179,7 @@ def main():
                 f.write(client_config)
         
         # Save server config
-        with open("configs/servers.conf", 'w') as f:
+        with open("configs/wg0.conf", 'w') as f:
             f.write(server_config)
             
         print("WireGuard configurations successfully generated in configs directory.")

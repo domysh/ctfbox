@@ -46,9 +46,9 @@ for i in "${TEAM_ID_ARRAY[@]}" ; do
     iptables -A FORWARD -s 10.80.$i.0/24 -d 10.80.$i.0/24 -j ACCEPT
 done
 # Other traffic to team members is rejected
-iptables -A FORWARD -d 10.80.0.0/16 -j REJECT
+iptables -A FORWARD -d 10.80.0.0/16 -j DROP
 # Trop VPN traffic not allowed by players
-iptables -A FORWARD -s 10.80.0.0/16 ! -d 10.60.0.0/16 -j REJECT
+iptables -A FORWARD -s 10.80.0.0/16 ! -d 10.60.0.0/16 -j DROP
 
 #Generating wireguard configs
 python3 confgen.py
@@ -56,36 +56,35 @@ python3 confgen.py
 chown -R $PUID:$PGID /app/configs
 # Starting wireguard
 mkdir -p /etc/wireguard
-ln -s /app/configs/players.conf /etc/wireguard/players.conf
-ln -s /app/configs/servers.conf /etc/wireguard/servers.conf
-wg-quick up players
-wg-quick up servers
+ln -s /app/configs/wg0.conf /etc/wireguard/wg0.conf
+wg-quick up wg0
+ip addr add 10.60.253.253/16 dev wg0
+ip addr add 10.80.253.253/16 dev wg0
 
 #----- NETWORK TRIM BANDWIDTH -----
 # Define the traffic control parameters
 if [[ -n "$RATE_NET" ]]; then
-    # Check if the police action module is available
-    # Using HTB qdisc as a simpler alternative
-    tc qdisc add dev players root handle 1: htb default 10 r2q 100
-    tc qdisc add dev servers root handle 1: htb default 10 r2q 100
-    tc class add dev players parent 1: classid 1:1 htb rate $RATE_NET burst 100k
-    tc class add dev servers parent 1: classid 1:1 htb rate $RATE_NET burst 100k
+    # Using HTB qdisc to allocate dedicated bandwidth per network
+    tc qdisc add dev wg0 root handle 1: htb default 999 r2q 100
     
-    # Add classes for each team
+    # Create default class for unclassified traffic
+    tc class add dev wg0 parent 1: classid 1:999 htb rate 1mbit burst 50k
+    
+    # Add dedicated classes for each team network
     for i in "${TEAM_ID_ARRAY[@]}" ; do
-        tc class add dev players parent 1:1 classid 1:1$i htb rate $RATE_NET burst 50k
-        tc class add dev servers parent 1:1 classid 1:1$i htb rate $RATE_NET burst 50k
+        # Create classes for player network (10.80.x.0/24) with full bandwidth
+        tc class add dev wg0 parent 1: classid 1:8$i htb rate $RATE_NET burst 100k
+        tc filter add dev wg0 parent 1: protocol ip prio 1 u32 match ip dst 10.80.$i.0/24 flowid 1:8$i
+        tc filter add dev wg0 parent 1: protocol ip prio 1 u32 match ip src 10.80.$i.0/24 flowid 1:8$i
         
-        # Add filters to match traffic
-        tc filter add dev players parent 1: protocol ip prio 1 u32 match ip dst 10.80.$i.0/24 flowid 1:1$i
-        tc filter add dev players parent 1: protocol ip prio 1 u32 match ip src 10.80.$i.0/24 flowid 1:1$i
-        tc filter add dev servers parent 1: protocol ip prio 1 u32 match ip dst 10.60.$i.0/24 flowid 1:1$i
-        tc filter add dev servers parent 1: protocol ip prio 1 u32 match ip src 10.60.$i.0/24 flowid 1:1$i
+        # Create classes for team VM network (10.60.x.0/24) with full bandwidth
+        tc class add dev wg0 parent 1: classid 1:6$i htb rate $RATE_NET burst 100k
+        tc filter add dev wg0 parent 1: protocol ip prio 1 u32 match ip dst 10.60.$i.0/24 flowid 1:6$i
+        tc filter add dev wg0 parent 1: protocol ip prio 1 u32 match ip src 10.60.$i.0/24 flowid 1:6$i
     done
 fi
 
 #----- SETTING UP CTFROUTE SERVER -----
-
 if [[ "$VM_NET_LOCKED" != "n" ]]; then
     ctfroute freeze
 fi

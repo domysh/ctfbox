@@ -8,6 +8,7 @@ ENV TEAM_NAME=$TEAM_NAME
 
 RUN mkdir -p /etc/wireguard
 COPY router/configs/servers/server-${TEAM_ID}.conf /etc/wireguard/game.conf
+RUN systemctl enable wg-quick@game
 
 # Regenerate SSH server keys
 RUN rm /etc/ssh/ssh_host* && ssh-keygen -A

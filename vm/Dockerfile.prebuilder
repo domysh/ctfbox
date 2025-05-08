@@ -59,7 +59,7 @@ RUN chmod +x /usr/bin/_entry_vm_init
 ENV COMPOSE_BAKE=true
 # Create init service
 COPY ./init-vm.service /etc/systemd/system/init-vm.service
-RUN systemctl enable wg-quick@game && systemctl enable init-vm.service
+RUN systemctl enable init-vm.service
 
 ADD https://raw.githubusercontent.com/docker/docker-ce/master/components/cli/contrib/completion/bash/docker /etc/bash_completion.d/docker.sh
 
