@@ -10,7 +10,6 @@ import shutil
 import base64
 import zlib
 import hashlib
-from datetime import datetime
 import platform
 from dataclasses import dataclass, field, asdict
 from typing import List, Optional, Dict, Any, Union
@@ -36,21 +35,21 @@ class Team:
 
 @dataclass
 class Config:
-    gameserver_token: str
+    gameserver_token: str = ""
+    server_addr: str = ""
     wireguard_port: int = 51000
     wireguard_profiles: int = 10
-    server_addr: str = "127.0.0.1"
     dns: str = "1.1.1.1"
     tick_time: int = 120
     flag_expire_ticks: int = 5
     initial_service_score: int = 5000
     max_flags_per_request: int = 3000
-    submission_timeout: float = 0
+    submission_timeout: float = 0.03
     network_limit_bandwidth: str = "50mbit"
     max_vm_cpus: str = "1"
     max_vm_mem: str = "2G"
     teams: List[Team] = field(default_factory=list)
-    unsafe_privileged: bool = False
+    vm_mode: str = "sysbox"
     start_time: Optional[str] = None
     end_time: Optional[str] = None
     max_disk_size: Optional[str] = None
@@ -179,35 +178,8 @@ def gen_args(args_to_parse: list[str]|None = None):
     
     #Start Command
     parser_start = subcommands.add_parser('start', help=f'Start {g.name}')
-    parser_start.add_argument('--logs', required=False, action="store_true", help=f'Show {g.name} logs', default=False)
-    #Gameserver options
-    parser_start.add_argument('--wireguard-port', type=int, default=51000, help='Wireguard start port')
-    parser_start.add_argument('--gameserver-token', type=str, help='Gameserver token')
-    parser_start.add_argument('--max-vm-mem', type=str, default="2G", help='Max memory for VMs')
-    parser_start.add_argument('--max-vm-cpus', type=str, default="1", help='Max CPUs for VMs')
-    parser_start.add_argument('--wireguard-profiles', type=int, default=30, help='Number of wireguard profiles')
-    parser_start.add_argument('--dns', type=str, default="1.1.1.1", help='DNS server')
-    parser_start.add_argument('--server-addr', type=str, help=f'{g.name} public ip address')
-    parser_start.add_argument('--submission-timeout', type=float, default=0.03, help='Submission timeout rate limit') # 30 req/s
-    parser_start.add_argument('--flag-expire-ticks', type=int, default=5, help='Flag expire ticks')
-    parser_start.add_argument('--initial-service-score', type=int, default=5000, help='Initial service score')
-    parser_start.add_argument('--max-flags-per-request', type=int, default=3000, help='Max flags per request')
-    parser_start.add_argument('--start-time', type=str, help='Start time (RFC 3339, see https://ijmacd.github.io/rfc3339-iso8601/)')
-    parser_start.add_argument('--end-time', type=str, help='End time (RFC 3339, see https://ijmacd.github.io/rfc3339-iso8601/)')
-    parser_start.add_argument('--max-disk-size', type=str, default="30G", help='Max disk size for VMs')
-    parser_start.add_argument('--network-limit-bandwidth', type=str, default="50mbit", help='Network limit bandwidth')
-    parser_start.add_argument('--tick-time', type=int, default=120, help='Tick time in seconds')
-    parser_start.add_argument('--number-of-teams', type=int, default=4, help='Number of teams')
-    parser_start.add_argument('--enable-nop-team', action='store_true', help='Enable NOP team')
-    parser_start.add_argument('--privileged', '-P', action='store_true', help='Use privileged mode for VMs')
-    parser_start.add_argument('--expose-gameserver', '-E', action='store_true', help='Expose gameserver port')
-    parser_start.add_argument('--gameserver-port', default="127.0.0.1:8888", help='Gameserver port')
-    parser_start.add_argument('--enable-credential-service', help='Enable credential service', action='store_true')
-    parser_start.add_argument('--credential-server-port', help='Credential server port', default=None)
     parser_start.add_argument('--config-only', '-C', action='store_true', help='Only generate config file')
-    parser_start.add_argument('--disk-limit', '-D', action='store_true', help='Limit disk size for VMs (NEED TO ENABLE QUOTAS)')
-    parser_start.add_argument('--grace-time', '-G', type=int, default=0, help='Grace time in seconds')
-
+    
     #Stop Command
     subcommands.add_parser('stop', help=f'Stop {g.name}')
     #Wg config gen command
@@ -310,21 +282,39 @@ def kill_builder():
 def commit_prebuilt():
     return cmd_check(f'docker commit {g.prebuilded_container} {g.prebuilt_image}:latest', print_output=True)
 
+def invalid_vm_mode(do_exit:bool=True):
+    puts("Invalid vm mode, please use 'privileged' or 'sysbox' or 'none'", color=colors.red)
+    if do_exit:
+        exit(1)
 
 def write_compose(config: Union[Dict[str, Any], Config]):
     # Convert dict to Config object if needed
     if not isinstance(config, Config):
         config = Config.from_dict(config)
+        
+    is_privileged = False
+    spawn_docker_teams = False
+    external_wg_server_configs = False
+    if config.vm_mode == "privileged":
+        is_privileged = True
+        spawn_docker_teams = True
+    elif config.vm_mode == "sysbox":
+        spawn_docker_teams = True
+    elif config.vm_mode == "none":
+        external_wg_server_configs = True
+    else:
+        invalid_vm_mode()
     
     cleanup_secrets()
-    # Create temporary directory for secrets if it doesn't exist
-    if not os.path.exists(g.secrets_dir):
-        os.makedirs(g.secrets_dir)
     
-    # Create token secret files for each team
-    for team in config.teams:
-        with open(f"{g.secrets_dir}/token_{team.id}", "w") as f:
-            f.write(team.token)
+    if spawn_docker_teams:
+        # Create temporary directory for secrets if it doesn't exist
+        if not os.path.exists(g.secrets_dir):
+            os.makedirs(g.secrets_dir)
+        # Create token secret files for each team
+        for team in config.teams:
+            with open(f"{g.secrets_dir}/token_{team.id}", "w") as f:
+                f.write(team.token)
         
     with open(g.composefile,"wt") as compose:
         compose.write(dict_to_yaml({
@@ -353,6 +343,8 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         "CONFIG_PER_TEAM": config.wireguard_profiles,
                         "PUBLIC_IP": config.server_addr,
                         "PUBLIC_PORT": config.wireguard_port,
+                        "EXTERNAL_SERVERS": "1" if external_wg_server_configs else "0",
+                        
                     },
                     "volumes": [
                         "unixsk:/unixsk:z",
@@ -367,7 +359,7 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         "externalnet": {
                             "priority": 1,
                         },
-                        **{ f"vm-team{team.id}": {} for team in config.teams }
+                        **({f"vm-team{team.id}": {} for team in config.teams} if spawn_docker_teams else {}),
                     },
                     "ports": [
                         f"{config.wireguard_port}:51820/udp",
@@ -405,7 +397,6 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                     "depends_on": [
                         "router",
                         "database",
-                        *[f"team{team.id}" for team in config.teams]
                     ],
                     "networks": {
                         "internalnet": {
@@ -438,7 +429,7 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         "./router:/app/router:ro"
                     ]
                 }} if config.credential_server is not None else {}),
-                **{
+                **({
                     f"team{team.id}": {
                         "hostname": f"team{team.id}",
                         "dns": [config.dns],
@@ -454,7 +445,7 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                             }
                         },
                         **({ "storage_opt": {"size":config.max_disk_size} } if config.max_disk_size else {}),
-                        **({"privileged": "true"} if config.unsafe_privileged else { "runtime": "sysbox-runc" }),
+                        **({"privileged": "true"} if is_privileged else { "runtime": "sysbox-runc" }),
                         "restart": "unless-stopped",
                         "depends_on": [
                             "router",
@@ -469,7 +460,7 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                             }
                         }
                     } for team in config.teams
-                },
+                } if spawn_docker_teams else {}),
             },
             **({ "secrets":{
                 **{
@@ -477,7 +468,7 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         "file": f"{g.secrets_dir}/token_{team.id}"
                     } for team in config.teams
                 },
-            }} if config.teams else {}),
+            }} if config.teams and spawn_docker_teams else {}),
             "volumes": {
                 "unixsk": "",
                 "db-data": ""
@@ -498,7 +489,7 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                         ]
                     }
                 },
-                **{ f"vm-team{team.id}": "" for team in config.teams}
+                **({f"vm-team{team.id}": "" for team in config.teams} if spawn_docker_teams else {}),
             }
         }))
 
@@ -621,88 +612,73 @@ def config_input() -> Config:
     
     # Original config input flow
     # abs() put for consistency with the other options
-    default_number_of_teams = args.number_of_teams
-    args.number_of_teams = abs(int(get_input('Number of teams, >= 0 and < 250', default_number_of_teams)))
-    while args.number_of_teams < 0 or args.number_of_teams >= 250:
-        args.number_of_teams = abs(int(get_input('Number of teams, >= 0 and < 250', default_number_of_teams)))
+    default_configs = Config()
+    c = Config()
+    
+    number_of_teams = abs(int(get_input('Number of teams, >= 0 and < 250', 4)))
+    while number_of_teams < 0 or number_of_teams >= 250:
+        number_of_teams = abs(int(get_input('Number of teams, >= 0 and < 250', 4)))
+    enable_nop_team = get_input('Enable NOP team?', 'yes').lower().startswith('y')
 
     # abs() put for consistency with the other options
-    default_wireguard_port = args.wireguard_port
-    args.wireguard_port = abs(int(get_input(f'Wireguard port, >= 1 and <= {65535-args.number_of_teams}', default_wireguard_port)))
-    while args.wireguard_port < 1 or args.wireguard_port > 65535-args.number_of_teams:
-        args.wireguard_port = abs(int(get_input(f'Wireguard start port, >= 1 and <= {65535-args.number_of_teams}', default_wireguard_port)))
+    c.wireguard_port = abs(int(get_input(f'Wireguard port, >= 1 and <= {65535-number_of_teams}', default_configs.wireguard_port)))
+    while c.wireguard_port < 1 or c.wireguard_port > 65535-number_of_teams:
+        c.wireguard_port = abs(int(get_input(f'Wireguard port, >= 1 and <= {65535-number_of_teams}', default_configs.wireguard_port)))
 
-    args.wireguard_profiles      = abs(int(get_input('Number of wireguard profiles for each team', args.wireguard_profiles)))
-    args.server_addr             = get_input('Server address', is_required=True)
-    args.dns                     = get_input('DNS', args.dns)
+    c.wireguard_profiles      = abs(int(get_input('Number of wireguard profiles for each team', default_configs.wireguard_profiles)))
+    c.server_addr             = get_input('Server address', is_required=True)
+    c.dns                     = get_input('DNS', default_configs.dns)
+    
+    while True:
+        c.vm_mode = get_input('VM mode (privileged/sysbox/none)', default_configs.vm_mode)
+        if c.vm_mode.lower() == "privileged":
+            c.vm_mode = "privileged"
+            break
+        elif c.vm_mode.lower() == "sysbox":
+            c.vm_mode = "sysbox"
+            break
+        elif c.vm_mode.lower() == "none":
+            c.vm_mode = "none"
+            break
+        else:
+            invalid_vm_mode(do_exit=False)
+    
+    if c.vm_mode in ["privileged", "sysbox"]:
+        c.max_vm_cpus             = get_input('Max VM CPUs', default_configs.max_vm_cpus)
+        c.max_vm_mem              = get_input('Max VM Memory', default_configs.max_vm_mem)
+        if get_input('Enable disk limit? (REQUIRES XFS FILESYSTEM)', 'yes').lower().startswith('y'):
+            c.max_disk_size       = get_input('Max VM disk size', "30G")
+        else:
+            c.max_disk_size = None
 
-    args.start_time              = get_input('Start time, in RFC 3339 (YYYY-mm-dd HH:MM:SS+/-zz:zz)')
-    args.end_time                = get_input('End time, in RFC 3339 (YYYY-mm-dd HH:MM:SS+/-zz:zz)')
-    args.grace_time              = abs(int(get_input('Grace time in seconds (before start_time - grace time the router is fronzen)', args.grace_time)))
-    args.tick_time               = abs(int(get_input('Tick time in seconds', args.tick_time)))
-    args.flag_expire_ticks       = abs(int(get_input('Number of ticks after which each flag expires', args.flag_expire_ticks)))
+    c.start_time              = get_input('Start time, in RFC 3339 (YYYY-mm-dd HH:MM:SS+/-zz:zz)')
+    c.end_time                = get_input('End time, in RFC 3339 (YYYY-mm-dd HH:MM:SS+/-zz:zz)')
+    c.grace_time              = abs(int(get_input('Grace time in seconds (before start_time - grace time the router is fronzen)', default_configs.grace_time)))
+    c.tick_time               = abs(int(get_input('Tick time in seconds', default_configs.tick_time)))
+    c.flag_expire_ticks       = abs(int(get_input('Number of ticks after which each flag expires', default_configs.flag_expire_ticks)))
 
-    args.initial_service_score   = abs(int(get_input('Initial service score', args.initial_service_score)))
-    args.max_flags_per_request   = abs(int(get_input('Max flags per request', args.max_flags_per_request)))
-    args.submission_timeout      = abs(float(get_input('Submission timeout', args.submission_timeout)))
-    args.network_limit_bandwidth = get_input('Network limit bandwidth', args.network_limit_bandwidth)
-
-    args.max_vm_cpus             = get_input('Max VM CPUs', args.max_vm_cpus)
-    args.max_vm_mem              = get_input('Max VM Memory', args.max_vm_mem)
-    if get_input('Enable disk limit? (REQUIRES XFS FILESYSTEM)', 'yes').lower().startswith('y'):
-        args.max_disk_size       = get_input('Max VM disk size', args.max_disk_size)
+    c.initial_service_score   = abs(int(get_input('Initial service score', default_configs.initial_service_score)))
+    c.max_flags_per_request   = abs(int(get_input('Max flags per request', default_configs.max_flags_per_request)))
+    c.submission_timeout      = abs(float(get_input('Submission timeout', default_configs.submission_timeout)))
+    c.network_limit_bandwidth = get_input('Network limit bandwidth', default_configs.network_limit_bandwidth)
+    
+    if get_input('Expose externally the gameserver scoreboard?', 'no').lower().startswith('y'):
+        c.gameserver_exposed_port = get_input('Insert with witch port or ip:port to expose the gameserver scoreboard', "127.0.0.1:8888")
     else:
-        args.max_disk_size = None
-    args.expose_gameserver = get_input('Expose externally the gameserver scoreboard?', 'yes' if args.expose_gameserver else 'no').lower().startswith('y')
-    if args.expose_gameserver:
-        args.gameserver_port = get_input('Insert with witch port or ip:port to expose the gameserver scoreboard', args.gameserver_port)
+        c.gameserver_exposed_port = None
     
-    args.enable_credential_service = get_input('Enable credential service?', 'yes' if args.enable_credential_service else 'no').lower().startswith('y')
-    if args.enable_credential_service:
-        args.credential_server_port = get_input('Insert the port to expose the credential server', args.credential_server_port)
+    if get_input('Enable credential service?', 'no').lower().startswith('y'):
+        c.credential_server = get_input('Insert the port to expose the credential server', "127.0.0.1:4040")
+    else:
+        c.credential_server = None
     
-    args.gameserver_token        = get_input('Gameserver token', default_prompt='randomly generated')
-    args.enable_nop_team         = get_input('Enable NOP team?', 'yes').lower().startswith('y')
-    args.privileged              = not get_input('Use sysbox to run the VMs? (to prevent docker escape)', 'yes').lower().startswith('y')
-    if args.privileged:
-        puts("Privileged mode enabled (DO NOT USE THIS IN PRODUCTION)", color=colors.yellow)
-
-    gameserver_exposed_port = None
-    if args.expose_gameserver:
-        gameserver_exposed_port = args.gameserver_port
-        
-    credential_server = None
-    if args.enable_credential_service:
-        credential_server = args.credential_server_port
-
+    c.gameserver_token = get_input('Gameserver token', default_prompt='randomly generated', default=secrets.token_hex(32))    
+    
     # Create teams
-    teams = generate_teams_array(args.number_of_teams, args.enable_nop_team)
+    c.teams = generate_teams_array(number_of_teams, enable_nop_team)
     
     # Create and return the Config object
-    return Config(
-        wireguard_port=args.wireguard_port,
-        wireguard_profiles=args.wireguard_profiles,
-        server_addr=args.server_addr,
-        dns=args.dns,
-        start_time=datetime.fromisoformat(args.start_time).isoformat() if args.start_time else None,
-        end_time=datetime.fromisoformat(args.end_time).isoformat() if args.end_time else None,
-        tick_time=args.tick_time,
-        flag_expire_ticks=args.flag_expire_ticks,
-        initial_service_score=args.initial_service_score,
-        max_flags_per_request=args.max_flags_per_request,
-        submission_timeout=args.submission_timeout,
-        network_limit_bandwidth=args.network_limit_bandwidth,
-        max_vm_cpus=args.max_vm_cpus,
-        max_vm_mem=args.max_vm_mem,
-        max_disk_size=args.max_disk_size,
-        gameserver_token=args.gameserver_token if args.gameserver_token else secrets.token_hex(32),
-        unsafe_privileged=args.privileged,
-        gameserver_exposed_port=gameserver_exposed_port,
-        credential_server=credential_server,
-        debug=False,
-        teams=teams,
-        grace_time=args.grace_time,
-    )
+    return c
 
 def create_config(data: Union[Dict[str, Any], Config]) -> Config:
     if not isinstance(data, Config):
@@ -723,10 +699,11 @@ def cleanup_secrets():
 def vpn_config_hash(config: Config):
     data = []
     for team in config.teams:
-        data.append(f"{team.id}:{'1' if team.nop else '0'}")
-    data.append(f"{config.wireguard_profiles}")
-    data.append(f"{config.wireguard_port}")
-    data.append(f"{config.server_addr}")
+        data.append(f"teamid={team.id}&nop={'1' if team.nop else '0'}")
+    data.append(f"wg_profiles={config.wireguard_profiles}")
+    data.append(f"wg_port={config.wireguard_port}")
+    data.append(f"server_addr={config.server_addr}")
+    data.append(f"vm_mode={config.vm_mode}")
     data.sort()
     return hashlib.sha256(("::".join(data)).encode()).hexdigest()
         
@@ -735,8 +712,7 @@ def router_generate_configs(config: Config, down_after_gen: bool = True):
     info = get_deploy_info()
     old_hash = info.get("vpn_config_hash", None)
     current_hash = vpn_config_hash(config)
-    if not os.path.isfile("./router/configs/players.conf") \
-        or not os.path.isfile("./router/configs/servers.conf")\
+    if not os.path.isfile("./router/configs/wg0.conf") \
         or old_hash != current_hash:
         if check_already_running():
             puts(f"Can't generate configs if {g.project_name} is already running!", color=colors.red)
@@ -804,26 +780,30 @@ def main():
                     vm_dir_hash = dir_sha_hash("./vm")
                     info = get_deploy_info()
                     old_vm_dir_hash = info.get("vm_dir_hash", "")
-                    was_privileged = info.get("privileged_build", False)
-                    if not prebuilt_exists() or vm_dir_hash != old_vm_dir_hash or was_privileged != config.unsafe_privileged:
+                    was_built_with = info.get("vm_mode_build", False)
+                    if not prebuilt_exists() or vm_dir_hash != old_vm_dir_hash or was_built_with != config.vm_mode:
                         puts("Need to build the team VM image", color=colors.yellow)
-                        remove_prebuilded()
-                        remove_prebuilt()
-                        puts("Building the prebuilder image", color=colors.yellow)
-                        if not build_prebuilder():
-                            puts("Error building prebuilder image", color=colors.red)
-                            exit(1)
-                        puts("Executing prebuilder to create VMs' base image", color=colors.yellow)
-                        if not build_prebuilt(config.unsafe_privileged):
-                            puts("Error building prebuilt image", color=colors.red)
-                            exit(1)
-                        puts("Saving base VM container as image to be used to build the CTF services\n(this action can take a while and produces no output)", color=colors.yellow)
-                        if not commit_prebuilt():
-                            puts("Error commiting prebuilt image", color=colors.red)
-                            exit(1)
-                        puts("Clear unused images", color=colors.yellow)
-                        remove_prebuilded()
-                    set_deploy_info({"vm_dir_hash": vm_dir_hash, "privileged_build": config.unsafe_privileged})
+                        clear_data_only(remove_prebuilded_container=True, remove_prebuilt_image=True, remove_prebuilder_image=True)
+                        if config.vm_mode == "privileged" or config.vm_mode == "sysbox":
+                            puts("Building the prebuilder image", color=colors.yellow)
+                            if not build_prebuilder():
+                                puts("Error building prebuilder image", color=colors.red)
+                                exit(1)
+                            puts("Executing prebuilder to create VMs' base image", color=colors.yellow)
+                            if not build_prebuilt(config.vm_mode == "privileged"):
+                                puts("Error building prebuilt image", color=colors.red)
+                                exit(1)
+                            puts("Saving base VM container as image to be used to build the CTF services\n(this action can take a while and produces no output)", color=colors.yellow)
+                            if not commit_prebuilt():
+                                puts("Error commiting prebuilt image", color=colors.red)
+                                exit(1)
+                            puts("Clear unused images", color=colors.yellow)
+                            remove_prebuilded()
+                        elif config.vm_mode == "none":
+                            puts("VM 'none' mode selected, skipping VM image build", color=colors.yellow)
+                        else:
+                            invalid_vm_mode()
+                    set_deploy_info({"vm_dir_hash": vm_dir_hash, "vm_mode_build": config.vm_mode})
                 if not config_exists():
                     puts(f"Config file not found! please run {sys.argv[0]} start", color=colors.red)
                 else:
@@ -853,7 +833,7 @@ def main():
             case "stop":
                 if not config_exists():
                     #Foolish config (--remove-orphans will delete what is needed)
-                    write_compose(Config(gameserver_token=""))
+                    write_compose(Config())
                 else:
                     write_compose(read_config())
                 puts("Running 'docker compose down'\n", color=colors.green)

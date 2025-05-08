@@ -13,6 +13,6 @@ RUN chmod +x /app/entry.sh
 RUN chmod +x /usr/sbin/ctfroute
 
 HEALTHCHECK --retries=5 --interval=2s --timeout=30s --start-period=1s --start-interval=1s \
-    CMD ls /app/configs/players.conf || exit 1; ls /app/configs/servers.conf || exit 1; ls /running || exit 1;
+    CMD ls /app/configs/wg0.conf || exit 1; ls /running || exit 1;
 
 CMD [ "/app/entry.sh" ]

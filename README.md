@@ -25,20 +25,7 @@ cd CTFBox
 
 For running CTFBox, you need docker and have correctly installed and configured [sysbox](https://github.com/nestybox/sysbox).
 
-You can install sysbox with the official .deb files in the repository, or using AUR for Arch Linux, or even [using dnf copr](https://copr.fedorainfracloud.org/coprs/karellen/karellen-sysbox/) for Fedora. (The only official supported way is the .deb files, but the other methods are also working)
-
-Remember that after installing you need to enable sysbox services, and also config docker adding the following lines to `/etc/docker/daemon.json`:
-```json
-{
-    "runtimes": {
-        "sysbox-runc": {
-            "path": "/usr/bin/sysbox-runc"
-        }
-    }
-}
-```
-
-After that, restart the docker service.
+You can follow the instructions in the [Sysbox Setup Guide](./docs/sysbox-setup.md) to install and configure Sysbox.
 
 Now you can run CTFBox using the following command:
 
@@ -112,7 +99,7 @@ Before run the competition, you can customize additional settings in the `config
 - `submission_timeout`: The timeout for flag submissions in seconds.
 - `server_addr`: The public address of the server (used for the wireguard config).
 - `network_limit_bandwidth`: The bandwidth limit for each server (e.g., "20mbit").
-- `unsafe_privileged`: If true, runs containers in privileged mode instead of using sysbox.
+- `vm-mode`: The mode for running the VMs (e.g., "sysbox" or "privileged"). See [Sysbox Setup Guide](./docs/sysbox-setup.md) for detailed instructions on installing and configuring Sysbox.
 - `debug`: Enable debug mode for the game server.
 - `tick_time`: The time in seconds for each tick.
 - `teams`: A list of teams with their respective configurations:
