@@ -22,7 +22,7 @@
             --text-primary: #eaeaea;
             --text-secondary: #9ba3af;
             --team-card-bg: #181a28;
-            --nop-team-border: #3a9188;  /* Un verde-blu tenue (teal) */
+            --nop-team-border: #3a9188;
             --nop-team-gradient-start: rgba(58, 145, 136, 0.12);
             --nop-team-gradient-mid: rgba(58, 145, 136, 0.06);
             --nop-team-gradient-end: rgba(58, 145, 136, 0.02);
@@ -234,7 +234,6 @@
             margin-top: 1rem;
         }
         
-        /* Add responsive styles for team image container on mobile */
         @media (max-width: 576px) {
             .team-image-preview-wrap {
                 display: flex;
@@ -564,7 +563,6 @@
             }
         }
 
-        /* Hide number input spinners for grace time */
         .grace-time-input::-webkit-inner-spin-button, 
         .grace-time-input::-webkit-outer-spin-button { 
             -webkit-appearance: none;
@@ -602,7 +600,16 @@
         <div class="grid-layout">
             <div class="section card section-card">
                 <div class="card-header">
-                    <h3 class="section-title mb-0">Wireguard Settings</h3>
+                    <h3 class="section-title mb-0 d-flex align-items-center">
+                        Wireguard Settings
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" 
+                             class="bi bi-info-circle ms-2 text-info cursor-pointer" 
+                             viewBox="0 0 16 16" data-bs-toggle="modal" data-bs-target="#wireguardSettingsInfoModal" 
+                             style="cursor: pointer;">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                            <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                        </svg>
+                    </h3>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -691,9 +698,117 @@
                 </div>
             </div>
             
-            <div class="section card section-card">
+            <div class="section card section-card section-full-width">
                 <div class="card-header">
-                    <h3 class="section-title mb-0">Game Settings</h3>
+                    <h3 class="section-title mb-0 d-flex align-items-center">
+                        Server Settings
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" 
+                             class="bi bi-info-circle ms-2 text-info cursor-pointer" 
+                             viewBox="0 0 16 16" data-bs-toggle="modal" data-bs-target="#serverSettingsInfoModal" 
+                             style="cursor: pointer;">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                            <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                        </svg>
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-lg-6">
+                            <div class="form-floating">
+                                <select class="form-select" id="vmMode">
+                                    <option value="sysbox" selected>Sysbox Mode</option>
+                                    <option value="privileged">Privileged Mode</option>
+                                    <option value="none">No Containers (External)</option>
+                                </select>
+                                <label for="vmMode">VM Mode</label>
+                                <small class="text-muted d-block mt-1">
+                                    Sysbox is recommended. Privileged is less secure (testing only). None disables VMs containers.
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="gameserverToken" placeholder="Auto-generated if empty">
+                                <label for="gameserverToken">Gameserver Token (Optional)</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-lg-6">
+                            <div class="checkbox-wrapper">
+                                <div class="form-check form-switch form-switch-lg">
+                                    <input class="form-check-input" type="checkbox" id="debugMode">
+                                    <label class="form-check-label" for="debugMode">Debug Mode</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-lg-6 mb-lg-0">
+                            <div class="card h-100">
+                                <div class="card-header d-flex align-items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-hdd-network me-2" viewBox="0 0 16 16">
+                                        <path d="M4.5 5.1a.5.5 0 0 0-.5.5v1a.5.5 0 0 1-1 0v-1A1.5 1.5 0 0 1 4.5 4h7A1.5 1.5 0 0 1 13 5.5v1a.5.5 0 0 1-1 0v-1a.5.5 0 0 0-.5-.5h-7ZM4.5 10.1a.5.5 0 0 0-.5.5v1a.5.5 0 0 1-1 0v-1A1.5 1.5 0 0 1 4.5 9h7A1.5 1.5 0 0 1 13 10.5v1a.5.5 0 0 1-1 0v-1a.5.5 0 0 0-.5-.5h-7Z"/>
+                                        <path d="M2 2a2 2 0 0 0-2 2v1a2 2 0 0 0 1 1.73V7.5h-.5A1.5 1.5 0 0 0 0 9v1.5a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 16 10.5V9a1.5 1.5 0 0 0-1.5-1.5H14V6.73A2 2 0 0 0 15 5V3a2 2 0 0 0-2-2H2Zm.5 3a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Zm2 0a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Zm-1.5 7a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Zm2 0a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1ZM9 3a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/>
+                                    </svg>
+                                    <span class="fs-5">Gameserver Options</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-check form-switch form-check-centered mb-3">
+                                        <input class="form-check-input" type="checkbox" id="exposeGameserver">
+                                        <label class="form-check-label fs-5" for="exposeGameserver">Expose Gameserver</label>
+                                    </div>
+                                    <div id="gameserverPortField" style="display: none;">
+                                        <div class="form-floating">
+                                            <input type="text" class="form-control" id="gameserverExposedPort" value="127.0.0.1:8888">
+                                            <label for="gameserverExposedPort">Gameserver Port</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-6">
+                            <div class="card h-100">
+                                <div class="card-header d-flex align-items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-key me-2" viewBox="0 0 16 16">
+                                        <path d="M0 8a4 4 0 0 1 7.465-2H14a.5.5 0 0 1 .354.146l1.5 1.5a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0L13 9.207l-.646.647a.5.5 0 0 1-.708 0L11 9.207l-.646.647a.5.5 0 0 1-.708 0L9 9.207l-.646.647A.5.5 0 0 1 8 10h-.535A4 4 0 0 1 0 8zm4-3a3 3 0 1 0 2.712 4.285A.5.5 0 0 1 7.163 9h.63l.853-.854a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.793-.793-1-1h-6.63a.5.5 0 0 1-.451-.285A3 3 0 0 0 4 5z"/>
+                                        <path d="M4 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                                    </svg>
+                                    <span class="fs-5">Credential Server Options</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-check form-switch form-check-centered mb-3">
+                                        <input class="form-check-input" type="checkbox" id="enableCredentialServer">
+                                        <label class="form-check-label fs-5" for="enableCredentialServer">Enable Credential Server</label>
+                                    </div>
+                                    <div id="credentialServerField" style="display: none;">
+                                        <div class="form-floating">
+                                            <input type="text" class="form-control" id="credentialServerPort" value="127.0.0.1:4040">
+                                            <label for="credentialServerPort">Credential Server Address</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section card section-card" id="gameSettingsCard">
+                <div class="card-header">
+                    <h3 class="section-title mb-0 d-flex align-items-center">
+                        Game Settings
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" 
+                             class="bi bi-info-circle ms-2 text-info cursor-pointer" 
+                             viewBox="0 0 16 16" data-bs-toggle="modal" data-bs-target="#gameSettingsInfoModal" 
+                             style="cursor: pointer;">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                            <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                        </svg>
+                    </h3>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -725,9 +840,18 @@
                 </div>
             </div>
             
-            <div class="section card section-card">
+            <div class="section card section-card" id="resourceSettingsCard">
                 <div class="card-header">
-                    <h3 class="section-title mb-0">Resource Settings</h3>
+                    <h3 class="section-title mb-0 d-flex align-items-center">
+                        Resource Settings
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" 
+                             class="bi bi-info-circle ms-2 text-info cursor-pointer" 
+                             viewBox="0 0 16 16" data-bs-toggle="modal" data-bs-target="#resourceSettingsInfoModal" 
+                             style="cursor: pointer;">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                            <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                        </svg>
+                    </h3>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -770,90 +894,16 @@
             
             <div class="section card section-card section-full-width">
                 <div class="card-header">
-                    <h3 class="section-title mb-0">Server Settings</h3>
-                </div>
-                <div class="card-body">
-                    <div class="row mb-4">
-                        <div class="col-lg-6">
-                            <div class="form-floating">
-                                <input type="text" class="form-control" id="gameserverToken" placeholder="Auto-generated if empty">
-                                <label for="gameserverToken">Gameserver Token (Optional)</label>
-                            </div>
-                        </div>
-                        <div class="col-lg-6">
-                            <div class="checkbox-wrapper">
-                                <div class="form-check form-switch form-switch-lg">
-                                    <input class="form-check-input" type="checkbox" id="debugMode">
-                                    <label class="form-check-label" for="debugMode">Debug Mode</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-lg-6 mb-lg-0">
-                            <div class="card h-100">
-                                <div class="card-header d-flex align-items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-hdd-network me-2" viewBox="0 0 16 16">
-                                        <path d="M4.5 5.1a.5.5 0 0 0-.5.5v1a.5.5 0 0 1-1 0v-1A1.5 1.5 0 0 1 4.5 4h7A1.5 1.5 0 0 1 13 5.5v1a.5.5 0 0 1-1 0v-1a.5.5 0 0 0-.5-.5h-7ZM4.5 10.1a.5.5 0 0 0-.5.5v1a.5.5 0 0 1-1 0v-1A1.5 1.5 0 0 1 4.5 9h7A1.5 1.5 0 0 1 13 10.5v1a.5.5 0 0 1-1 0v-1a.5.5 0 0 0-.5-.5h-7Z"/>
-                                        <path d="M2 2a2 2 0 0 0-2 2v1a2 2 0 0 0 1 1.73V7.5h-.5A1.5 1.5 0 0 0 0 9v1.5a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 16 10.5V9a1.5 1.5 0 0 0-1.5-1.5H14V6.73A2 2 0 0 0 15 5V3a2 2 0 0 0-2-2H2Zm.5 3a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Zm2 0a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Zm-1.5 7a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1Zm2 0a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1ZM9 3a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/>
-                                    </svg>
-                                    <span class="fs-5">Gameserver Options</span>
-                                </div>
-                                <div class="card-body">
-                                    <div class="form-check form-switch form-check-centered mb-3 row">
-                                        <div class="col-lg-6 mb-lg-0" style="display: flex; align-items: center;">
-                                            <input class="form-check-input" type="checkbox" id="unsafePrivileged">
-                                            <label class="form-check-label fs-5" for="unsafePrivileged">Use Privileged Mode (Not Recommended)</label>
-                                        </div>
-                                        <small class="col-lg-6 mb-lg-0">
-                                            Containers run in privileged mode instead of sysbox. Less secure, no sysbox needed, for testing only.
-                                        </small>
-                                    </div>
-                                    <div class="form-check form-switch form-check-centered mb-3">
-                                        <input class="form-check-input" type="checkbox" id="exposeGameserver">
-                                        <label class="form-check-label fs-5" for="exposeGameserver">Expose Gameserver</label>
-                                    </div>
-                                    <div id="gameserverPortField" style="display: none;">
-                                        <div class="form-floating">
-                                            <input type="text" class="form-control" id="gameserverExposedPort" value="127.0.0.1:8888">
-                                            <label for="gameserverExposedPort">Gameserver Port</label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-lg-6">
-                            <div class="card h-100">
-                                <div class="card-header d-flex align-items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-key me-2" viewBox="0 0 16 16">
-                                        <path d="M0 8a4 4 0 0 1 7.465-2H14a.5.5 0 0 1 .354.146l1.5 1.5a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0L13 9.207l-.646.647a.5.5 0 0 1-.708 0L11 9.207l-.646.647a.5.5 0 0 1-.708 0L9 9.207l-.646.647A.5.5 0 0 1 8 10h-.535A4 4 0 0 1 0 8zm4-3a3 3 0 1 0 2.712 4.285A.5.5 0 0 1 7.163 9h.63l.853-.854a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.793-.793-1-1h-6.63a.5.5 0 0 1-.451-.285A3 3 0 0 0 4 5z"/>
-                                        <path d="M4 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
-                                    </svg>
-                                    <span class="fs-5">Credential Server Options</span>
-                                </div>
-                                <div class="card-body">
-                                    <div class="form-check form-switch form-check-centered mb-3">
-                                        <input class="form-check-input" type="checkbox" id="enableCredentialServer">
-                                        <label class="form-check-label fs-5" for="enableCredentialServer">Enable Credential Server</label>
-                                    </div>
-                                    <div id="credentialServerField" style="display: none;">
-                                        <div class="form-floating">
-                                            <input type="text" class="form-control" id="credentialServerPort" value="0.0.0.0:4040">
-                                            <label for="credentialServerPort">Credential Server Address</label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="section card section-card section-full-width">
-                <div class="card-header">
-                    <h3 class="section-title mb-0">Team Configuration</h3>
+                    <h3 class="section-title mb-0 d-flex align-items-center">
+                        Team Configuration
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" 
+                             class="bi bi-info-circle ms-2 text-info cursor-pointer" 
+                             viewBox="0 0 16 16" data-bs-toggle="modal" data-bs-target="#teamConfigInfoModal" 
+                             style="cursor: pointer;">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                            <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                        </svg>
+                    </h3>
                 </div>
                 <div class="card-body">
                     <div class="row align-items-center mb-4" style="justify-content: center;">
@@ -928,7 +978,6 @@
         </div>
     </div>
     
-    <!-- Add the floating reset button -->
     <button class="floating-reset-btn" id="resetConfig" title="Reset Configuration">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
             <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z"/>
@@ -1013,7 +1062,6 @@
         </div>
     </div>
 
-    <!-- Time Settings Info Modal with enhanced layout -->
     <div class="modal fade" id="timeSettingsInfoModal" tabindex="-1" aria-labelledby="timeSettingsInfoModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -1028,13 +1076,10 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-3">
-                    <!-- Timeline visualization -->
                     <div class="timeline-viz mb-4 px-4 py-3" style="background-color: var(--input-bg); border-radius: 8px;">
                         <div class="d-flex align-items-center justify-content-between position-relative mx-3" style="height: 60px;">
-                            <!-- Timeline bar -->
                             <div class="position-absolute" style="height: 4px; background-color: var(--border-color); left: 0; right: 0; top: 50%;"></div>
                             
-                            <!-- Timeline points -->
                             <div class="position-relative" style="z-index: 1;">
                                 <div class="rounded-circle bg-danger" style="width: 14px; height: 14px;"></div>
                                 <div class="position-absolute text-center" style="font-size: 0.75rem; width: 100px; left: -45px; top: 24px;">Pre-Grace</div>
@@ -1056,7 +1101,6 @@
                             </div>
                         </div>
                         
-                        <!-- Timeline labels -->
                         <div class="d-flex justify-content-between text-muted px-1 mt-4" style="font-size: 0.7rem; margin-left: 13px;">
                             <span>-∞</span>
                             <span>Start Time - Grace</span>
@@ -1068,7 +1112,6 @@
                     <h6 class="mb-2" style="color: var(--accent);">Grace Time Explained</h6>
                     <p class="mb-3">Grace time is a preparation period before the competition officially begins, allowing teams to set up their infrastructure without attacks.</p>
                     
-                    <!-- Network states with detailed explanations -->
                     <div class="state-cards">
                         <div class="card mb-2 border-danger">
                             <div class="card-body py-2 px-3">
@@ -1134,6 +1177,324 @@
         </div>
     </div>
 
+    <div class="modal fade" id="wireguardSettingsInfoModal" tabindex="-1" aria-labelledby="wireguardSettingsInfoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="wireguardSettingsInfoModalLabel">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-shield-lock me-2" viewBox="0 0 16 16">
+                            <path d="M5.338 1.59a61.44 61.44 0 0 0-2.837.856.481.481 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.725 10.725 0 0 0 2.287 2.233c.346.244.652.42.893.533.12.057.218.095.293.118a.55.55 0 0 0 .101.025.615.615 0 0 0 .1-.025c.076-.023.174-.061.294-.118.24-.113.547-.29.893-.533a10.726 10.726 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.775 11.775 0 0 1-2.517 2.453 7.159 7.159 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7.158 7.158 0 0 1-1.048-.625 11.777 11.777 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 62.456 62.456 0 0 1 5.072.56z"/>
+                            <path d="M9.5 6.5a1.5 1.5 0 0 1-1 1.415l.385 1.99a.5.5 0 0 1-.491.595h-.788a.5.5 0 0 1-.49-.595l.384-1.99a1.5 1.5 0 1 1 2-1.415z"/>
+                        </svg>
+                        Wireguard VPN Settings
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <h6 class="mb-2" style="color: var(--accent);">About Wireguard</h6>
+                    <p class="mb-3">Wireguard is a modern VPN protocol that provides a secure network connection between CTFBox competitors. This section configures the VPN network settings for your CTF competition.</p>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Wireguard Port</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">The UDP port that the Wireguard server will listen on. The default is 51000, but you can change it if needed.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Wireguard Profiles</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">The number of VPN profiles to generate per team. Teams can use these to connect to the CTF network.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Server Address</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">The public IP address or hostname of your CTFBox server. This is required for VPN configuration.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">DNS Server</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">The DNS server that will be used by VPN clients. Default is 1.1.1.1 (Cloudflare DNS).</p>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3 mb-0 py-2" style="font-size: 0.85rem;">
+                        <strong>Note:</strong> The Wireguard VPN settings are essential for team connectivity. Make sure your server address is correct and that the specified port is open in your firewall.
+                    </div>
+                </div>
+                <div class="modal-footer pt-2 pb-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="serverSettingsInfoModal" tabindex="-1" aria-labelledby="serverSettingsInfoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="serverSettingsInfoModalLabel">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-server me-2" viewBox="0 0 16 16">
+                            <path d="M1.333 2.667C1.333 1.194 4.318 0 8 0s6.667 1.194 6.667 2.667V4c0 1.473-2.985 2.667-6.667 2.667S1.333 5.473 1.333 4V2.667z"/>
+                            <path d="M1.333 6.334v3C1.333 10.805 4.318 12 8 12s6.667-1.194 6.667-2.667V6.334a6.51 6.51 0 0 1-1.458.79C11.81 7.684 9.967 8 8 8c-1.966 0-3.809-.317-5.208-.876a6.508 6.508 0 0 1-1.458-.79z"/>
+                            <path d="M14.667 11.668a6.51 6.51 0 0 1-1.458.789c-1.4.56-3.242.876-5.21.876-1.966 0-3.809-.316-5.208-.876a6.51 6.51 0 0 1-1.458-.79v1.666C1.333 14.806 4.318 16 8 16s6.667-1.194 6.667-2.667v-1.665z"/>
+                        </svg>
+                        Server Settings
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <h6 class="mb-2" style="color: var(--accent);">VM Mode Options</h6>
+                    <p class="mb-3">These settings control how team services are deployed and managed on the CTFBox server.</p>
+                    
+                    <div class="card mb-3 border-primary">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Sysbox Mode</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">
+                                Recommended. Provides secure container isolation using the Sysbox runtime. Offers strong security boundaries between teams.
+                                You need to install sysbox on your server. <a href="https://github.com/domysh/ctfbox/blob/main/docs/sysbox-setup.md" target="_blank">Click here</a> for instructions.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3 border-warning">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Privileged Mode</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">Testing only. Uses privileged Docker containers with reduced security isolation. Not recommended for production CTF events.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">No Containers (External)</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">
+                                Use this if you're managing your own team VMs outside of CTFBox. Disables internal container management.
+                                You have to create externally, and connect using VM wireguard dedicated profiles, and olso deploy services on your own.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <h6 class="mt-4 mb-2" style="color: var(--accent);">Other Server Settings</h6>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Gameserver Token</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">Authentication token for the gameserver API. Auto-generated if left empty, but you can set a fixed value for consistency.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Debug Mode</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">Enables verbose logging for troubleshooting. Useful during setup but can generate large log files.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Gameserver Options</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">When exposed, the gameserver web interface is accessible at the specified address. By default, it's only available locally.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3 border-info">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Credential Server</h6>
+                            <p style="font-size: 0.9rem;">A service that provides secure access to team credentials via a user-friendly interface. When enabled:</p>
+                            <ul style="font-size: 0.9rem;">
+                                <li>Each team receives a unique PIN code (in <code>router/configs/team&lt;id&gt;/pins.json</code>)</li>
+                                <li>Teams use their PIN to access their Wireguard VPN configuration files</li>
+                                <li>Teams can also view their team token (used for flag submission)</li>
+                            </ul>
+                            <p class="mb-0 mt-2" style="font-size: 0.85rem;"><strong>Address format:</strong> <code>ip:port</code> - Use 0.0.0.0 to listen on all interfaces</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer pt-2 pb-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="gameSettingsInfoModal" tabindex="-1" aria-labelledby="gameSettingsInfoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="gameSettingsInfoModalLabel">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-flag me-2" viewBox="0 0 16 16">
+                            <path d="M14.778.085A.5.5 0 0 1 15 .5V8a.5.5 0 0 1-.314.464L14.5 8l.186.464-.003.001-.006.003-.023.009a12.435 12.435 0 0 1-.397.15c-.264.095-.631.223-1.047.35-.816.252-1.879.523-2.71.523-.847 0-1.548-.28-2.158-.525l-.028-.01C7.68 8.71 7.14 8.5 6.5 8.5c-.7 0-1.638.23-2.437.477A19.626 19.626 0 0 0 3 9.342V15.5a.5.5 0 0 1-1 0V.5a.5.5 0 0 1 1 0v.282c.226-.079.496-.17.79-.26C4.606.272 5.67 0 6.5 0c.84 0 1.524.277 2.121.519l.043.018C9.286.788 9.828 1 10.5 1c.7 0 1.638-.23 2.437-.477a19.587 19.587 0 0 0 1.349-.476l.019-.007.004-.002h.001M14 1.221c-.22.078-.48.167-.766.255-.81.252-1.872.523-2.734.523-.886 0-1.592-.286-2.203-.534l-.008-.003C7.662 1.21 7.139 1 6.5 1c-.669 0-1.606.229-2.415.478A21.294 21.294 0 0 0 3 1.845v6.433c.22-.078.48-.167.766-.255C4.576 7.77 5.638 7.5 6.5 7.5c.847 0 1.548.28 2.158.525l.028.01C9.32 8.29 9.86 8.5 10.5 8.5c.668 0 1.606-.229 2.415-.478A21.317 21.317 0 0 0 14 7.655V1.222z"/>
+                        </svg>
+                        Game Settings
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <h6 class="mb-2" style="color: var(--accent);">CTF Game Mechanics</h6>
+                    <p class="mb-3">These settings control the core gameplay mechanics of the CTF competition, including how flags expire and how services are scored.</p>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Flag Expire Ticks</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">The number of game ticks after which flags expire. Higher values make flags valid for longer periods.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Initial Service Score</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">The starting score for each service. This value will decrease over time as attacks occur or service checks fail.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Max Flags Per Request</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">The maximum number of flags that can be submitted in a single API request. Prevents API abuse.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Submission Timeout</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">Time limit in seconds for processing each flag submission. Helps prevent server overload during mass submissions.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3 mb-0 py-2" style="font-size: 0.85rem;">
+                        <strong>Tip:</strong> The relationship between tick time and flag expire ticks determines how long flags remain valid. For example, with a tick time of 120 seconds and flag expire ticks of 5, flags will expire after 10 minutes.
+                    </div>
+                </div>
+                <div class="modal-footer pt-2 pb-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="resourceSettingsInfoModal" tabindex="-1" aria-labelledby="resourceSettingsInfoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resourceSettingsInfoModalLabel">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-cpu me-2" viewBox="0 0 16 16">
+                            <path d="M5 0a.5.5 0 0 1 .5.5V2h1V.5a.5.5 0 0 1 1 0V2h1V.5a.5.5 0 0 1 1 0V2h1V.5a.5.5 0 0 1 1 0V2A2.5 2.5 0 0 1 14 4.5h1.5a.5.5 0 0 1 0 1H14v1h1.5a.5.5 0 0 1 0 1H14v1h1.5a.5.5 0 0 1 0 1H14v1h1.5a.5.5 0 0 1 0 1H14a2.5 2.5 0 0 1-2.5 2.5v1.5a.5.5 0 0 1-1 0V14h-1v1.5a.5.5 0 0 1-1 0V14h-1v1.5a.5.5 0 0 1-1 0V14h-1v1.5a.5.5 0 0 1-1 0V14A2.5 2.5 0 0 1 2 11.5H.5a.5.5 0 0 1 0-1H2v-1H.5a.5.5 0 0 1 0-1H2v-1H.5a.5.5 0 0 1 0-1H2v-1H.5a.5.5 0 0 1 0-1H2A2.5 2.5 0 0 1 4.5 2V.5A.5.5 0 0 1 5 0zm-.5 3A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 11.5 3h-7zM5 6.5A1.5 1.5 0 0 1 6.5 5h3A1.5 1.5 0 0 1 11 6.5v3A1.5 1.5 0 0 1 9.5 11h-3A1.5 1.5 0 0 1 5 9.5v-3zM6.5 6a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3z"/>
+                        </svg>
+                        Resource Settings
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <h6 class="mb-2" style="color: var(--accent);">Resource Limitations</h6>
+                    <p class="mb-3">These settings control the computational resources allocated to each team's virtual machines. Properly configuring these limits helps ensure fair gameplay and prevents server overload.</p>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Network Limit Bandwidth</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">Sets bandwidth limitations for each team's VM. Use values like "50mbit" or "1gbit". Prevents network flooding attacks.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Max VM CPUs</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">Maximum number of CPU cores allocated to each team's VM. Higher values allow more computational power but require more server resources.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Max VM Memory</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">Maximum RAM allocated to each team's VM. Use values like "2G" or "4G". Higher values allow teams to run more memory-intensive services.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Disk Limits</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">Optional restriction on disk space usage. Prevents teams from filling up the host's storage. Requires XFS filesystem with project quota support.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning mt-3 mb-0 py-2" style="font-size: 0.85rem;">
+                        <strong>Important:</strong> When setting resource limits, ensure your host server has enough capacity for all teams. Sum up all VM resources and add overhead for the host system itself.
+                    </div>
+                </div>
+                <div class="modal-footer pt-2 pb-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="teamConfigInfoModal" tabindex="-1" aria-labelledby="teamConfigInfoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="teamConfigInfoModalLabel">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-people me-2" viewBox="0 0 16 16">
+                            <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8Zm-7.978-1A.261.261 0 0 1 7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002a.274.274 0 0 1-.014.002H7.022ZM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM6.936 9.28a5.88 5.88 0 0 0-1.23-.247A7.35 7.35 0 0 0 5 9c-4 0-5 3-5 4 0 .667.333 1 1 1h4.216A2.238 2.238 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816ZM4.92 10A5.493 5.493 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275ZM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0Zm3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/>
+                        </svg>
+                        Team Configuration
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <h6 class="mb-2" style="color: var(--accent);">Team Setup</h6>
+                    <p class="mb-3">This section allows you to configure the teams participating in your CTF competition, including regular teams and the optional NOP (Non-Playing) team.</p>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Number of Teams</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">The total number of competing teams in your CTF event. You can have up to 249 teams.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">NOP Team</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">A special non-playing team (Team ID 0) whose services are checked but not attackable. Useful for reference implementations.</p>
+                        </div>
+                    </div>
+                    
+                    <h6 class="mt-4 mb-2" style="color: var(--accent);">Team Properties</h6>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Team Name</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">The display name for each team that will appear on the scoreboard.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Team Token</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">Authentication token for team API access. Auto-generated if left empty. Teams use this to submit flags, and it is used as the default password of the related VM.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Team Image</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">Optional logo or image for the team. Will be displayed on the scoreboard. Maximum size is 1MB.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3 mb-0 py-2" style="font-size: 0.85rem;">
+                        <strong>Tip:</strong> You can generate teams automatically using the "Generate Teams" button, or add them one by one with "Add Team".
+                    </div>
+                </div>
+                <div class="modal-footer pt-2 pb-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         function debounce(func, wait) {
             let timeout;
@@ -1150,10 +1511,38 @@
             updatePreview();
         }, 300);
 
-        // Add a debounced function for saving state
         let saveStateDebounced = debounce(function() {
             saveStateToLocalStorage();
         }, 500);
+
+        let cachedGameserverToken = null;
+        const teamTokensCache = {};
+
+        function generateRandomToken() {
+            const array = new Uint8Array(32);
+            window.crypto.getRandomValues(array);
+            return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+        }
+
+        function getOrGenerateGameserverToken() {
+            const userToken = document.getElementById('gameserverToken').value;
+            if (userToken) return userToken;
+
+            if (!cachedGameserverToken) {
+                cachedGameserverToken = generateRandomToken();
+            }
+            return cachedGameserverToken;
+        }
+
+        function getOrGenerateTeamToken(teamId) {
+            const userToken = document.getElementById(`teamToken-${teamId}`).value;
+            if (userToken) return userToken;
+
+            if (!teamTokensCache[teamId]) {
+                teamTokensCache[teamId] = generateRandomToken();
+            }
+            return teamTokensCache[teamId];
+        }
 
         function saveStateToLocalStorage() {
             try {
@@ -1179,9 +1568,8 @@
                     enableDiskLimit: document.getElementById('enableDiskLimit').checked,
                     maxDiskSize: document.getElementById('maxDiskSize').value,
                     gameserverToken: document.getElementById('gameserverToken').value,
-                    unsafePrivileged: document.getElementById('unsafePrivileged').checked,
+                    vmMode: document.getElementById('vmMode').value,
                     exposeGameserver: document.getElementById('exposeGameserver').checked,
-                    gameserverExposedPort: document.getElementById('gameserverExposedPort').value,
                     enableCredentialServer: document.getElementById('enableCredentialServer').checked,
                     credentialServerPort: document.getElementById('credentialServerPort').value,
                     debugMode: document.getElementById('debugMode').checked,
@@ -1189,7 +1577,6 @@
                     enableNopTeam: document.getElementById('enableNopTeam').checked
                 };
 
-                // Get teams data
                 formData.teams = [];
                 document.querySelectorAll('.team-card').forEach(teamCard => {
                     const teamId = parseInt(teamCard.getAttribute('data-team-id'));
@@ -1213,6 +1600,20 @@
             }
         }
 
+        function updateResourceSettingsVisibility() {
+            const vmMode = document.getElementById('vmMode').value;
+            const resourceSettingsCard = document.getElementById('resourceSettingsCard');
+            const gameSettingsCard = document.getElementById('gameSettingsCard');
+            
+            if (vmMode === 'none') {
+                resourceSettingsCard.style.display = 'none';
+                gameSettingsCard.className = 'section card section-card section-full-width';
+            } else {
+                resourceSettingsCard.style.display = 'block';
+                gameSettingsCard.className = 'section card section-card';
+            }
+        }
+
         function loadStateFromLocalStorage() {
             try {
                 const savedState = localStorage.getItem('ctfboxEditorState');
@@ -1220,7 +1621,6 @@
                 
                 const formData = JSON.parse(savedState);
                 
-                // Load basic form fields
                 if (formData.wireguardPort) document.getElementById('wireguardPort').value = formData.wireguardPort;
                 if (formData.wireguardProfiles) document.getElementById('wireguardProfiles').value = formData.wireguardProfiles;
                 if (formData.serverAddr) document.getElementById('serverAddr').value = formData.serverAddr;
@@ -1228,21 +1628,15 @@
                 if (formData.startTime) document.getElementById('startTime').value = formData.startTime;
                 if (formData.endTime) document.getElementById('endTime').value = formData.endTime;
                 
-                // Fix grace time handling
                 if (formData.graceTime) {
-                    // First set the hidden graceTime value
                     document.getElementById('graceTime').value = formData.graceTime;
-                    
-                    // Then set the individual time inputs
                     setGraceTimeInputs(parseInt(formData.graceTime));
                 } else if (formData.graceTimeHours !== undefined && 
                           formData.graceTimeMinutes !== undefined && 
                           formData.graceTimeSeconds !== undefined) {
-                    // If we have h/m/s values but no total, set them and calculate the total
                     document.getElementById('graceTimeHours').value = formData.graceTimeHours;
                     document.getElementById('graceTimeMinutes').value = formData.graceTimeMinutes;
                     document.getElementById('graceTimeSeconds').value = formData.graceTimeSeconds;
-                    // Calculate and set the total
                     updateGraceTime();
                 }
                 
@@ -1262,22 +1656,27 @@
                 }
                 if (formData.maxDiskSize) document.getElementById('maxDiskSize').value = formData.maxDiskSize;
                 if (formData.gameserverToken) document.getElementById('gameserverToken').value = formData.gameserverToken;
-                if (formData.unsafePrivileged !== undefined) document.getElementById('unsafePrivileged').checked = formData.unsafePrivileged;
+                
+                if (formData.vmMode) {
+                    document.getElementById('vmMode').value = formData.vmMode;
+                } else if (formData.unsafePrivileged !== undefined) {
+                    document.getElementById('vmMode').value = formData.unsafePrivileged ? 'privileged' : 'sysbox';
+                }
+                
+                updateResourceSettingsVisibility();
+                
                 if (formData.exposeGameserver !== undefined) {
                     document.getElementById('exposeGameserver').checked = formData.exposeGameserver;
                     document.getElementById('gameserverPortField').style.display = formData.exposeGameserver ? 'block' : 'none';
                 }
                 if (formData.gameserverExposedPort) document.getElementById('gameserverExposedPort').value = formData.gameserverExposedPort;
-                if (formData.enableCredentialServer !== undefined) {
-                    document.getElementById('enableCredentialServer').checked = formData.enableCredentialServer;
-                    document.getElementById('credentialServerField').style.display = formData.enableCredentialServer ? 'block' : 'none';
-                }
+                if (formData.enableCredentialServer !== undefined) document.getElementById('enableCredentialServer').checked = formData.enableCredentialServer;
+                document.getElementById('credentialServerField').style.display = formData.enableCredentialServer ? 'block' : 'none';
                 if (formData.credentialServerPort) document.getElementById('credentialServerPort').value = formData.credentialServerPort;
                 if (formData.debugMode !== undefined) document.getElementById('debugMode').checked = formData.debugMode;
                 if (formData.numberOfTeams) document.getElementById('numberOfTeams').value = formData.numberOfTeams;
                 if (formData.enableNopTeam !== undefined) document.getElementById('enableNopTeam').checked = formData.enableNopTeam;
                 
-                // Handle teams if they exist
                 if (formData.teams && Array.isArray(formData.teams) && formData.teams.length > 0) {
                     document.getElementById('teamsContainer').innerHTML = '';
                     
@@ -1323,6 +1722,8 @@
             document.getElementById('teamsContainer').innerHTML = '';
             generateTeamFields();
             updateTeamCount();
+            cachedGameserverToken = null;
+            Object.keys(teamTokensCache).forEach(key => delete teamTokensCache[key]);
             updatePreview();
             clearLocalStorage();
             showToast('Configuration has been reset to default values');
@@ -1372,12 +1773,19 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Load state from local storage if available
             const stateLoaded = loadStateFromLocalStorage();
             if (stateLoaded) {
                 console.log('State loaded from localStorage');
                 updatePreview();
             }
+
+            document.getElementById('vmMode').addEventListener('change', function() {
+                updateResourceSettingsVisibility();
+                updatePreviewDebounced();
+                saveStateDebounced();
+            });
+
+            updateResourceSettingsVisibility();
 
             document.getElementById('enableDiskLimit').addEventListener('change', function() {
                 document.getElementById('diskLimitField').style.display = this.checked ? 'block' : 'none';
@@ -1467,15 +1875,12 @@
             
             setupFormListeners(document);
             
-            // Always update preview initially
             updatePreview();
 
-            // Initialize grace time inputs on page load
             if (!loadStateFromLocalStorage()) {
                 setGraceTimeInputs(300);
             }
 
-            // Add event listeners to grace time inputs to ensure they update the preview
             document.getElementById('graceTimeHours').addEventListener('input', updateGraceTime);
             document.getElementById('graceTimeMinutes').addEventListener('input', updateGraceTime);
             document.getElementById('graceTimeSeconds').addEventListener('input', updateGraceTime);
@@ -1898,8 +2303,8 @@
                 network_limit_bandwidth: document.getElementById('networkLimitBandwidth').value,
                 max_vm_cpus: document.getElementById('maxVmCpus').value,
                 max_vm_mem: document.getElementById('maxVmMem').value,
-                gameserver_token: document.getElementById('gameserverToken').value || generateRandomToken(),
-                unsafe_privileged: document.getElementById('unsafePrivileged').checked,
+                gameserver_token: getOrGenerateGameserverToken(),
+                vm_mode: document.getElementById('vmMode').value,
                 debug: document.getElementById('debugMode').checked
             };
             
@@ -1916,7 +2321,7 @@
                 config.end_time = endDate.toISOString();
             }
             
-            if (document.getElementById('enableDiskLimit').checked) {
+            if (document.getElementById('enableDiskLimit').checked && config.vm_mode !== 'none') {
                 config.max_disk_size = document.getElementById('maxDiskSize').value;
             }
             
@@ -1951,7 +2356,7 @@
                 const team = {
                     id: i,
                     name: teamNameElement.value,
-                    token: document.getElementById(`teamToken-${i}`).value || generateRandomToken(),
+                    token: getOrGenerateTeamToken(i),
                     nop: document.getElementById(`teamNop-${i}`).checked,
                     image: document.getElementById(`teamImage-${i}`).value || ""
                 };
@@ -1983,12 +2388,6 @@
             });
         }
         
-        function generateRandomToken() {
-            const array = new Uint8Array(32);
-            window.crypto.getRandomValues(array);
-            return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-        }
-        
         function downloadJSON(data, filename) {
             const jsonStr = JSON.stringify(data, null, 4);
             const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -2014,7 +2413,7 @@
                         const content = e.target.result;
                         const config = JSON.parse(content);
                         applyImportedConfig(config);
-                        saveStateDebounced(); // Save imported config to localStorage
+                        saveStateDebounced();
                         
                         const importModal = bootstrap.Modal.getInstance(document.getElementById('importModal'));
                         importModal.hide();
@@ -2050,7 +2449,7 @@
                     }
                     
                     applyImportedConfig(config);
-                    saveStateDebounced(); // Save imported config to localStorage
+                    saveStateDebounced();
                     
                     const importModal = bootstrap.Modal.getInstance(document.getElementById('importModal'));
                     importModal.hide();
@@ -2065,6 +2464,9 @@
         
         function applyImportedConfig(config) {
             try {
+                cachedGameserverToken = null;
+                Object.keys(teamTokensCache).forEach(key => delete teamTokensCache[key]);
+
                 resetFormToDefaults();
                 
                 if (config.wireguard_port) document.getElementById('wireguardPort').value = config.wireguard_port;
@@ -2105,7 +2507,15 @@
                 }
                 
                 if (config.gameserver_token) document.getElementById('gameserverToken').value = config.gameserver_token;
-                if (config.unsafe_privileged !== undefined) document.getElementById('unsafePrivileged').checked = config.unsafe_privileged;
+                
+                if (config.vm_mode) {
+                    document.getElementById('vmMode').value = config.vm_mode;
+                } else if (config.unsafe_privileged !== undefined) {
+                    document.getElementById('vmMode').value = config.unsafe_privileged ? 'privileged' : 'sysbox';
+                }
+                
+                updateResourceSettingsVisibility();
+                
                 if (config.debug !== undefined) document.getElementById('debugMode').checked = config.debug;
                 
                 if (config.gameserver_exposed_port) {
@@ -2184,7 +2594,9 @@
             document.getElementById('maxDiskSize').value = '30G';
             
             document.getElementById('gameserverToken').value = '';
-            document.getElementById('unsafePrivileged').checked = false;
+            document.getElementById('vmMode').value = 'sysbox';
+            updateResourceSettingsVisibility();
+            
             document.getElementById('exposeGameserver').checked = false;
             document.getElementById('gameserverPortField').style.display = 'none';
             document.getElementById('gameserverExposedPort').value = '127.0.0.1:8888';
@@ -2192,7 +2604,7 @@
 
             document.getElementById('enableCredentialServer').checked = false;
             document.getElementById('credentialServerField').style.display = 'none';
-            document.getElementById('credentialServerPort').value = '0.0.0.0:4040';
+            document.getElementById('credentialServerPort').value = '127.0.0.1:4040';
         }
         
         function formatDateForInput(date) {
@@ -2210,7 +2622,6 @@
             const minutes = parseInt(document.getElementById('graceTimeMinutes').value) || 0;
             const seconds = parseInt(document.getElementById('graceTimeSeconds').value) || 0;
             
-            // Convert to total seconds
             const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
             
             document.getElementById('graceTime').value = totalSeconds;
@@ -2219,7 +2630,6 @@
         }
         
         function setGraceTimeInputs(totalSeconds) {
-            // Convert from total seconds to h/m/s
             const hours = Math.floor(totalSeconds / 3600);
             const minutes = Math.floor((totalSeconds % 3600) / 60);
             const seconds = totalSeconds % 60;
