@@ -7,3 +7,5 @@ volumes/
 /.ctfbox-secrets-tmp
 /.ctfbox-secrets-tmp/** */
 /.deploy_info
+incus/data/**
+incus/data

@@ -49,7 +49,7 @@ class Config:
     max_vm_cpus: str = "1"
     max_vm_mem: str = "2G"
     teams: List[Team] = field(default_factory=list)
-    vm_mode: str = "sysbox"
+    vm_mode: str = "incus"
     start_time: Optional[str] = None
     end_time: Optional[str] = None
     max_disk_size: Optional[str] = None
@@ -193,7 +193,7 @@ def gen_args(args_to_parse: list[str]|None = None):
     parser_clear = subcommands.add_parser('clear', help='Clear data')
     parser_clear.add_argument('--all', '-A', action='store_true', help='Clear everything')
     parser_clear.add_argument('--config', '-c', action='store_true', help='Clear config file')
-    parser_clear.add_argument('--team-containers', '-T', action='store_true', help='Clear all building phases of team containers')
+    parser_clear.add_argument('--team-vms', '-T', action='store_true', help='Clear all VMs related data')
     parser_clear.add_argument('--wireguard', '-W', action='store_true', help='Clear wireguard data')
     parser_clear.add_argument('--checkers-data', '-C', action='store_true', help='Clear checkers data')
     parser_clear.add_argument('--gameserver-data', '-G', action='store_true', help='Clear gameserver data')
@@ -234,9 +234,11 @@ def composecmd(cmd, composefile=None):
     if composefile:
         cmd = f"-f {composefile} {cmd}"
     if not cmd_check("docker --version"):
-        return puts("docker not found! please install docker!", color=colors.red)
+        puts("docker not found! please install docker!", color=colors.red)
+        exit(1)
     elif not cmd_check("docker ps"):
-        return puts("Cannot use docker, the user hasn't the permission or docker isn't running", color=colors.red)
+        puts("Cannot use docker, the user hasn't the permission or docker isn't running", color=colors.red)
+        exit(1)
     elif cmd_check("docker compose --version"):
         if os.system(f"docker compose -p {g.project_name} {cmd}") != 0:
             exit(1)
@@ -244,7 +246,8 @@ def composecmd(cmd, composefile=None):
         if os.system(f"docker-compose -p {g.project_name} {cmd}") != 0:
             exit(1)
     else:
-        return puts("docker compose not found! please install docker compose!", color=colors.red)
+        puts("docker compose not found! please install docker compose!", color=colors.red)
+        exit(1)
 
 def check_already_running():
     return g.container_name in cmd_check(f'docker ps --filter "name=^{g.container_name}$"', get_output=True)
@@ -287,7 +290,16 @@ def invalid_vm_mode(do_exit:bool=True):
     if do_exit:
         exit(1)
 
-def write_compose(config: Union[Dict[str, Any], Config]):
+def incus_data_exists():
+    return os.path.isfile("./incus/data/ready")
+
+def delete_incus_data():
+    shutil.rmtree("./incus/data", ignore_errors=True)
+
+def write_compose(
+        config: Union[Dict[str, Any], Config],
+        incus_unless_stopped: bool = True,
+    ):
     # Convert dict to Config object if needed
     if not isinstance(config, Config):
         config = Config.from_dict(config)
@@ -295,6 +307,7 @@ def write_compose(config: Union[Dict[str, Any], Config]):
     is_privileged = False
     spawn_docker_teams = False
     external_wg_server_configs = False
+    spawn_incus = False
     if config.vm_mode == "privileged":
         is_privileged = True
         spawn_docker_teams = True
@@ -302,6 +315,8 @@ def write_compose(config: Union[Dict[str, Any], Config]):
         spawn_docker_teams = True
     elif config.vm_mode == "none":
         external_wg_server_configs = True
+    elif config.vm_mode == "incus":
+        spawn_incus = len(config.teams) > 0
     else:
         invalid_vm_mode()
     
@@ -430,6 +445,30 @@ def write_compose(config: Union[Dict[str, Any], Config]):
                     ]
                 }} if config.credential_server is not None else {}),
                 **({
+                    "incus": {
+                        "dns": [config.dns],   
+                        "build": "./incus",
+                        "depends_on": [ "router" ],
+                        "networks": ["externalnet"],
+                        **({"restart": "unless-stopped"} if incus_unless_stopped else {}),
+                        "cgroup": "host",
+                        "pid": "host",
+                        "security_opt": [
+                            "seccomp=unconfined",
+                            "apparmor=unconfined",
+                        ],
+                        "volumes": [
+                            "./config.json:/config.json:ro",
+                            "./router:/router:ro",
+                            "./vm:/vmdata:ro",
+                            "/dev:/dev:z",
+                            "/lib/modules:/lib/modules:ro",
+                            "./incus/data:/var/lib/incus"
+                        ],
+                        "privileged": True,
+                    }
+                } if spawn_incus else {}),
+                **({
                     f"team{team.id}": {
                         "hostname": f"team{team.id}",
                         "dns": [config.dns],
@@ -506,7 +545,8 @@ def clear_data(
     remove_prebuilt_image=True,
     remove_wireguard=True,
     remove_checkers_data=True,
-    remove_gameserver_data=True
+    remove_gameserver_data=True,
+    remove_incus_data=True,
 ):
     if remove_gameserver_data:
         puts("Removing database volume", color=colors.yellow)
@@ -530,6 +570,9 @@ def clear_data(
         puts("Removing checkers data", color=colors.yellow)
         for service in os.listdir("./gameserver/checkers"):
             shutil.rmtree(f"./gameserver/checkers/{service}/flag_ids", ignore_errors=True)
+    if remove_incus_data:
+        puts("Removing incus data", color=colors.yellow)
+        delete_incus_data()
 
 def clear_data_only(
     remove_config=False,
@@ -538,7 +581,8 @@ def clear_data_only(
     remove_prebuilt_image=False,
     remove_wireguard=False,
     remove_checkers_data=False,
-    remove_gameserver_data=False
+    remove_gameserver_data=False,
+    remove_incus_data=False,
 ):
     clear_data(
         remove_config=remove_config,
@@ -547,7 +591,8 @@ def clear_data_only(
         remove_prebuilt_image=remove_prebuilt_image,
         remove_wireguard=remove_wireguard,
         remove_checkers_data=remove_checkers_data,
-        remove_gameserver_data=remove_gameserver_data
+        remove_gameserver_data=remove_gameserver_data,
+        remove_incus_data=remove_incus_data,
     )
 
 def try_mkdir(path):
@@ -630,7 +675,7 @@ def config_input() -> Config:
     c.dns                     = get_input('DNS', default_configs.dns)
     
     while True:
-        c.vm_mode = get_input('VM mode (privileged/sysbox/none)', default_configs.vm_mode)
+        c.vm_mode = get_input('VM mode (incus/privileged/sysbox/none)', default_configs.vm_mode)
         if c.vm_mode.lower() == "privileged":
             c.vm_mode = "privileged"
             break
@@ -640,13 +685,16 @@ def config_input() -> Config:
         elif c.vm_mode.lower() == "none":
             c.vm_mode = "none"
             break
+        elif c.vm_mode.lower() == "incus":
+            c.vm_mode = "incus"
+            break
         else:
             invalid_vm_mode(do_exit=False)
     
-    if c.vm_mode in ["privileged", "sysbox"]:
+    if c.vm_mode in ["privileged", "sysbox", "incus"]:
         c.max_vm_cpus             = get_input('Max VM CPUs', default_configs.max_vm_cpus)
         c.max_vm_mem              = get_input('Max VM Memory', default_configs.max_vm_mem)
-        if get_input('Enable disk limit? (REQUIRES XFS FILESYSTEM)', 'yes').lower().startswith('y'):
+        if c.vm_mode in ["incus"] or get_input('Enable disk limit? (REQUIRES XFS FILESYSTEM)', 'yes').lower().startswith('y'):
             c.max_disk_size       = get_input('Max VM disk size', "30G")
         else:
             c.max_disk_size = None
@@ -706,7 +754,9 @@ def vpn_config_hash(config: Config):
     data.append(f"vm_mode={config.vm_mode}")
     data.sort()
     return hashlib.sha256(("::".join(data)).encode()).hexdigest()
-        
+
+def server_config_hash(config: Config):
+    return dir_sha_hash("./router/configs/servers") 
 
 def router_generate_configs(config: Config, down_after_gen: bool = True):
     info = get_deploy_info()
@@ -724,10 +774,12 @@ def router_generate_configs(config: Config, down_after_gen: bool = True):
         set_deploy_info({ "vpn_config_hash": current_hash })
         if down_after_gen:
             composecmd("down router --remove-orphans", g.composefile)
+        return True
     else:
         if not down_after_gen:
             composecmd("up router -d --build --remove-orphans --wait", g.composefile)
         puts("Wireguard configs already generated!")
+    return False
 
 def main():
     
@@ -775,16 +827,27 @@ def main():
                     puts("The database volume already exists, you need to clear it before starting a new game", color=colors.red)
                     if get_input('Do you want to clear it before starting?', 'no').lower().startswith('y'):
                         clear_data_only(remove_gameserver_data=True, remove_checkers_data=True)
+                
+                if not config_exists():
+                    puts(f"Config file not found! please run {sys.argv[0]} start", color=colors.red)
+                    exit(1)
+                else:
+                    puts(f"{g.name} is starting!", color=colors.yellow)
+                    config = read_config()
+                    write_compose(config)
+                    router_generate_configs(config, down_after_gen=False)
                     
                 if len(config.teams) > 0:
                     vm_dir_hash = dir_sha_hash("./vm")
                     info = get_deploy_info()
                     old_vm_dir_hash = info.get("vm_dir_hash", "")
                     was_built_with = info.get("vm_mode_build", False)
-                    if not prebuilt_exists() or vm_dir_hash != old_vm_dir_hash or was_built_with != config.vm_mode:
-                        puts("Need to build the team VM image", color=colors.yellow)
-                        clear_data_only(remove_prebuilded_container=True, remove_prebuilt_image=True, remove_prebuilder_image=True)
-                        if config.vm_mode == "privileged" or config.vm_mode == "sysbox":
+                    vm_router_hash = info.get("vm_router_hash", None)
+                    current_router_hash = server_config_hash(config)
+                    if config.vm_mode == "privileged" or config.vm_mode == "sysbox":
+                        if not prebuilt_exists() or vm_dir_hash != old_vm_dir_hash or was_built_with != config.vm_mode:
+                            puts("Need to build the team VM image", color=colors.yellow)
+                            clear_data_only(remove_prebuilded_container=True, remove_prebuilt_image=True, remove_prebuilder_image=True, remove_incus_data=True)
                             puts("Building the prebuilder image", color=colors.yellow)
                             if not build_prebuilder():
                                 puts("Error building prebuilder image", color=colors.red)
@@ -799,20 +862,23 @@ def main():
                                 exit(1)
                             puts("Clear unused images", color=colors.yellow)
                             remove_prebuilded()
-                        elif config.vm_mode == "none":
-                            puts("VM 'none' mode selected, skipping VM image build", color=colors.yellow)
+                    elif config.vm_mode == "none":
+                        puts("VM 'none' mode selected, skipping VM image build", color=colors.yellow)
+                    elif config.vm_mode == "incus":
+                        if not incus_data_exists() or vm_dir_hash != old_vm_dir_hash or was_built_with != config.vm_mode or vm_router_hash != current_router_hash:
+                            write_compose(config, incus_unless_stopped=False)
+                            puts("Need to build the incus VMs", color=colors.yellow)
+                            clear_data_only(remove_prebuilded_container=True, remove_prebuilt_image=True, remove_prebuilder_image=True, remove_incus_data=True)
+                            puts("Building the incus VMs", color=colors.yellow)
+                            composecmd("up incus --build --remove-orphans --exit-code-from incus", g.composefile)
+                            write_compose(config)
                         else:
-                            invalid_vm_mode()
-                    set_deploy_info({"vm_dir_hash": vm_dir_hash, "vm_mode_build": config.vm_mode})
-                if not config_exists():
-                    puts(f"Config file not found! please run {sys.argv[0]} start", color=colors.red)
-                else:
-                    puts(f"{g.name} is starting!", color=colors.yellow)
-                    config = read_config()
-                    write_compose(config)
-                    router_generate_configs(config, down_after_gen=False)
-                    puts("Running 'docker compose up -d --build\n", color=colors.green)
-                    composecmd("up -d --build --remove-orphans", g.composefile)
+                            puts("Incus VMs already exists, skipping build", color=colors.yellow)
+                    else:
+                        invalid_vm_mode()
+                    set_deploy_info({"vm_dir_hash": vm_dir_hash, "vm_mode_build": config.vm_mode, "vm_router_hash": current_router_hash})
+                puts("Running 'docker compose up -d --build\n", color=colors.green)
+                composecmd("up -d --build --remove-orphans", g.composefile)
             case "compose":
                 if not config_exists():
                     puts(f"Config file not found! please run {sys.argv[0]} start", color=colors.red)
@@ -852,10 +918,13 @@ def main():
                     clear_data()
                 if args.config:
                     clear_data_only(remove_config=True)
-                if args.team_containers:
-                    clear_data_only(remove_prebuilded_container=True)
-                    clear_data_only(remove_prebuilder_image=True)
-                    clear_data_only(remove_prebuilt_image=True)
+                if args.team_vms:
+                    clear_data_only(
+                        remove_prebuilded_container=True,
+                        remove_prebuilt_image=True,
+                        remove_prebuilder_image=True,
+                        remove_incus_data=True,
+                    )
                 if args.wireguard:
                     clear_data_only(remove_wireguard=True)
                 if args.checkers_data:
