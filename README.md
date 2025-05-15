@@ -23,9 +23,8 @@ git clone https://github.com/yourusername/CTFBox.git
 cd CTFBox
 ```
 
-For running CTFBox, you need docker and have correctly installed and configured [sysbox](https://github.com/nestybox/sysbox).
-
-You can follow the instructions in the [Sysbox Setup Guide](./docs/sysbox-setup.md) to install and configure Sysbox.
+For running CTFBox, you need docker and have correctly installed.
+The default option to run the VMs is using incus (LXD), you don't need to install it, because of it will be managed by a CTFBox container that will manage an isolated instance of it. Also CTFBox include the support to run [sysbox](https://github.com/nestybox/sysbox) container. You can follow the instructions in the [Sysbox Setup Guide](./docs/sysbox-setup.md) to install and configure Sysbox.
 
 Now you can run CTFBox using the following command:
 
@@ -99,7 +98,7 @@ Before run the competition, you can customize additional settings in the `config
 - `submission_timeout`: The timeout for flag submissions in seconds.
 - `server_addr`: The public address of the server (used for the wireguard config).
 - `network_limit_bandwidth`: The bandwidth limit for each server (e.g., "20mbit").
-- `vm-mode`: The mode for running the VMs (e.g., "sysbox" or "privileged"). See [Sysbox Setup Guide](./docs/sysbox-setup.md) for detailed instructions on installing and configuring Sysbox.
+- `vm-mode`: The mode for running the VMs (e.g., "incus", "sysbox", "privileged" or "none").
 - `debug`: Enable debug mode for the game server.
 - `tick_time`: The time in seconds for each tick.
 - `teams`: A list of teams with their respective configurations:
