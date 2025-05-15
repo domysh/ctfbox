@@ -2,6 +2,7 @@
 
 chmod +x /incus.sh
 
+
 if [[ ! -f /var/lib/incus/ready ]]; then
   /incus.sh &
   # Wait for incus to be ready
@@ -18,29 +19,15 @@ if [[ ! -f /var/lib/incus/ready ]]; then
   touch /var/lib/incus/ready
   exit 0;
 else
-  # Start incus daemon in background
-  /incus.sh &
+  # Setup BTRFS storage before starting incus
+  python3 customize-vm.py setup || exit 1
   
-  # Wait for incus to be ready
-  echo "Waiting for incus to become ready on restart..."
-  while ! incus ls >/dev/null 2>&1; do
-    sleep 1
-  done
-  echo "incus is now ready"
-
-  # Start all existing VMs
-  echo "Starting all VMs..."
-  VM_LIST=$(incus list -f csv | grep "^vm" | cut -d',' -f1)
-  
-  for vm in $VM_LIST; do
-    echo "Starting VM: $vm"
-    incus start $vm || echo "Failed to start $vm"
-  done
-  
-  # Apply network rules
   echo "Applying network rules..."
-  iptables -t nat -s 10.10.100.0/24 -d 10.10.100.0/24 -A PREROUTING -j DROP
-  
+  iptables -t mangle -N INCUS_VM_CONNECTIONS
+  iptables -t mangle -A INCUS_VM_CONNECTIONS -s 10.10.100.0/24 -d 10.10.100.1/32 -j RETURN
+  iptables -t mangle -A INCUS_VM_CONNECTIONS -s 10.10.100.1/32 -d 10.10.100.0/24 -j RETURN
+  iptables -t mangle -A INCUS_VM_CONNECTIONS -s 10.10.100.0/24 -d 10.10.100.0/24 -j DROP
+  iptables -t mangle -A PREROUTING -j INCUS_VM_CONNECTIONS
   # Keep the service running
   exec /incus.sh
 fi

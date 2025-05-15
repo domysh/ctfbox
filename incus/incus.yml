@@ -10,7 +10,7 @@ networks:
   type: ""
   project: default
 storage_pools:
-- config: {}
+- config:
   description: ""
   name: default
   driver: btrfs

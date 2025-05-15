@@ -694,7 +694,8 @@ def config_input() -> Config:
     if c.vm_mode in ["privileged", "sysbox", "incus"]:
         c.max_vm_cpus             = get_input('Max VM CPUs', default_configs.max_vm_cpus)
         c.max_vm_mem              = get_input('Max VM Memory', default_configs.max_vm_mem)
-        if c.vm_mode in ["incus"] or get_input('Enable disk limit? (REQUIRES XFS FILESYSTEM)', 'yes').lower().startswith('y'):
+        disk_msg = "Enable disk limit? (requires kernel btrfs support)" if c.vm_mode == "incus" else 'Enable disk limit? (REQUIRES XFS FILESYSTEM!)'
+        if get_input(disk_msg, 'yes').lower().startswith('y'):
             c.max_disk_size       = get_input('Max VM disk size', "30G")
         else:
             c.max_disk_size = None

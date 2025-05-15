@@ -1,5 +1,6 @@
 import os
 import json
+import sys
 
 with open("/config.json") as f:
     config = json.load(f)
@@ -86,23 +87,24 @@ print(f"CPU assigned: {cpu_assigned}, RAM assigned: {ram_assigned_bytes} bytes, 
 
 def create_base_vm():
     """
-    Creates the base VM using the default storage pool and prepares it for cloning.
+    Creates the base VM with optimized storage settings and prepares it for cloning.
     """
-    print("Creating base VM...")
+    print("Creating base VM with optimized storage settings...")
     
-    # Create the base VM using the default storage pool
-    base_vm_command = f"""
-        # Launch the base VM with the default profile
-        incus launch images:ubuntu/noble base-vm || exit 1
+    # Create and configure base VM using the optimized default storage pool
+    base_vm_command = """
+        # Launch the base VM with base storage pool
+        incus init images:ubuntu/noble base-vm || exit 1
         
-        # Set resource limits for the base VM
-        incus config set base-vm limits.cpu={cpu_assigned} || exit 1
-        incus config set base-vm limits.memory={ram_assigned_bytes} || exit 1
+        # Start the VM
+        incus start base-vm || exit 1
         
         # Push required files
-        incus file push /vmdata/build.sh base-vm/ -r -p
-        incus file push /vmdata/entry.sh base-vm/ -r -p
-        incus file push /vmdata/services/ base-vm/ -r -p
+        incus file push /vmdata/build.sh base-vm/ -r -p || exit 1
+        incus file push /vmdata/entry.sh base-vm/ -r -p || exit 1
+        incus file push /vmdata/services/ base-vm/ -r -p || exit 1
+        
+        #incus exec base-vm -- bash -c "mkdir -p /etc/docker && echo '{\\"storage-driver\\": \\"btrfs\\"}' > /etc/docker/daemon.json"
         
         # Execute build script
         incus exec base-vm bash /build.sh || exit 1
@@ -113,6 +115,8 @@ def create_base_vm():
         
         # Initialize VM
         incus exec base-vm -- /usr/bin/_entry_vm_init prebuild || exit 1
+        
+        # Stop VM for cloning
         incus stop base-vm || exit 1
     """
     
@@ -122,50 +126,76 @@ def create_base_vm():
     
     print("Base VM created successfully and ready for cloning")
 
+def create_team_disks():
+    """
+    Creates dedicated BTRFS storage pools for each team directly through Incus
+    """
+    print("Creating separate storage pools for each team VM...")
+    
+    for ele in teams:
+        team_id = ele["id"]
+        
+        # Create a new storage pool directly with Incus
+        storage_command = f"""
+            # Create custom storage pool for this team using Incus
+            incus storage create team{team_id} btrfs size={disk_size_bytes} || exit 1
+        """
+        
+        if os.system(storage_command) != 0:
+            print(f"Error: Failed to create storage pool for team {team_id}")
+            exit(1)
+        
+        print(f"Created dedicated storage pool for team {team_id}")
+    
+    print("All team storage pools created successfully")
+
 def generate_customize_script(team_id:int, token:str):
     """
-    Creates a new VM by cloning the base VM and applying team-specific configurations.
-    Using default storage and applying memory limits.
+    Creates a new VM for each team using their dedicated storage pool.
     """
-    print(f"Creating VM for team {team_id}...")
+    print(f"Creating VM for team {team_id} with dedicated storage pool...")
     
-    # Create a new VM by copying the base VM using default storage
+    # Create a new VM using the team's dedicated storage pool
     vm_command = f"""
-        # Copy the base VM instance to create the new VM
-        incus copy base-vm vm{team_id} || exit 1
+        # Clone the base VM for this team with dedicated storage pool
+        incus copy base-vm vm{team_id} --storage team{team_id} || exit 1
         
-        # Set resource limits for the VM
+        # Configure resource limits
         incus config set vm{team_id} limits.cpu={cpu_assigned} || exit 1
         incus config set vm{team_id} limits.memory={ram_assigned_bytes} || exit 1
-        
-        # Set disk size limit if supported by the default storage backend
-        incus config device override vm{team_id} root size={disk_size_bytes}B || true
         
         # Start the VM
         incus start vm{team_id} || exit 1
         
-        # Configure VM
+        # Configure VM with team-specific settings
         echo "Configuring vm{team_id}..."
         incus exec vm{team_id} -- bash -c "rm /etc/ssh/ssh_host* && ssh-keygen -A" || exit 1
         incus exec vm{team_id} -- mkdir -p /etc/wireguard || exit 1
         incus file push /router/configs/servers/server-{team_id}.conf vm{team_id}/etc/wireguard/game.conf || exit 1
         incus exec vm{team_id} -- bash -c 'echo "root:{token}" | chpasswd' || exit 1
         
+        # Add router to hosts
+        incus exec vm{team_id} -- bash -c "echo '$(dig +short router) router' >> /etc/.hosts_extra" || exit 1
+        
         # Enable wireguard
         incus exec vm{team_id} -- systemctl enable wg-quick@game || exit 1
-        incus stop vm{team_id} || exit 1
     """
     
     if os.system(vm_command) != 0:
         print(f"Error: Failed to create and configure VM for team {team_id}")
         exit(1)
 
+if "setup" in sys.argv:
+    exit(0)
+
 # Main execution starts here
 if not os.path.exists("/var/lib/incus/ready"):
-    # Create the base VM first
+    # Create the base VM
     create_base_vm()
+    # Create disks for each team
+    create_team_disks()
 
-# Create team VMs by cloning the base VM
+# Create team VMs directly with their team disks
 for ele in teams:
     generate_customize_script(ele["id"], ele["token"])
     print(f"VM for team {ele['id']} generated successfully.")

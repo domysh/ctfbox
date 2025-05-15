@@ -9,27 +9,22 @@ cleanup() {
   pkill -TERM lxcfs
   fusermount -u /var/lib/incus-lxcfs
   echo "Stopped lxcfs."
- CHILD_PIDS=$(pgrep -P $$)
- if [ -n "$CHILD_PIDS" ]; then
-   pkill -TERM -P $$
-   echo "Stopped child processes with PIDs: $CHILD_PIDS"
- else
-   echo "No child processes found."
- fi
+  
+  # Unmount BTRFS filesystem if mounted
+  if mountpoint -q /var/lib/incus/storage-pools/btrfs; then
+    echo "Unmounting BTRFS filesystem..."
+    umount /var/lib/incus/storage-pools/btrfs
+    echo "BTRFS filesystem unmounted."
+  fi
+  
+  CHILD_PIDS=$(pgrep -P $$)
+  if [ -n "$CHILD_PIDS" ]; then
+    pkill -TERM -P $$
+    echo "Stopped child processes with PIDs: $CHILD_PIDS"
+  else
+    echo "No child processes found."
+  fi
 }
-
-#if ! iptables-legacy -C DOCKER-USER -j ACCEPT &>/dev/null; then
-#  iptables-legacy -I DOCKER-USER -j ACCEPT
-#fi
-#if ! ip6tables-legacy -C DOCKER-USER -j ACCEPT &>/dev/null; then
-#  ip6tables-legacy -I DOCKER-USER -j ACCEPT
-#fi
-#if ! iptables -C DOCKER-USER -j ACCEPT &>/dev/null; then
-#  iptables -I DOCKER-USER -j ACCEPT
-#fi
-#if ! ip6tables -C DOCKER-USER -j ACCEPT &>/dev/null; then
-#  ip6tables -I DOCKER-USER -j ACCEPT
-#fi
 
 mkdir -p /var/lib/incus-lxcfs
 

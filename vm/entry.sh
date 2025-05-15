@@ -31,14 +31,14 @@ if [[ "$1" == "prebuild" ]]; then
 fi
 if [[ "$1" == "entry" ]]; then
 
-    while [[ ! $(docker ps 2> /dev/null) ]]; do
-        sleep 1
-    done
-
     # Needed for incus
     if [[ -f /etc/.hosts_extra  ]]; then
         cat /etc/.hosts_extra >> /etc/hosts
     fi
+
+    while [[ ! $(docker ps 2> /dev/null) ]]; do
+        sleep 1
+    done
     
     find /root/ -maxdepth 1 -mindepth 1 -type d -print0 | while read -d $'\0' path
     do
