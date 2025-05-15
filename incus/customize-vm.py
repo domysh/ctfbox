@@ -104,9 +104,8 @@ def create_base_vm():
         incus file push /vmdata/entry.sh base-vm/ -r -p || exit 1
         incus file push /vmdata/services/ base-vm/ -r -p || exit 1
         
-        # Execute build script
-        incus exec base-vm -- bash -c 'mkdir -p /etc/systemd/ && echo -e "[Resolve]\\\\nDNS=10.10.100.1\\\\nFallbackDNS=1.1.1.1" > /etc/systemd/resolved.conf' || exit 1
-        incus exec base-vm -- bash -c 'ln -fsv /run/systemd/resolve/resolv.conf /etc/resolv.conf' || exit 1
+        # Configure VM for VPN access
+        incus exec base-vm -- bash -c "echo '10.10.100.1 router' >> /etc/.extra_hosts" || exit 1
         
         incus exec base-vm bash /build.sh || exit 1
         incus exec base-vm -- bash -c "mv /services/* /root/ && rm -rf /services" || exit 1

@@ -6,6 +6,14 @@
 
 export COMPOSE_BAKE=true
 
+
+if ! grep -q "# Extra Hosts DON'T REMOVE" /etc/hosts; then
+    echo "# Extra Hosts DON'T REMOVE" >> /etc/hosts
+    if [[ -f /etc/.extra_hosts ]]; then
+        cat /etc/.extra_hosts >> /etc/hosts
+    fi
+fi
+
 if [[ "$1" == "prebuild" ]]; then
     /usr/lib/systemd/systemd-binfmt
     dockerd > /var/log/dockerd.log 2>&1 &

@@ -457,6 +457,9 @@ def write_compose(
                             "seccomp=unconfined",
                             "apparmor=unconfined",
                         ],
+                        "sysctls": [
+                            "net.ipv4.ip_forward=1",
+                        ],
                         "volumes": [
                             "./config.json:/config.json:ro",
                             "./router:/router:ro",

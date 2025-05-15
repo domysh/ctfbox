@@ -13,6 +13,14 @@ cleanup() {
   fi
 }
 
+echo "Applying network rules..."
+iptables -t mangle -N INCUS_VM_CONNECTIONS
+iptables -t mangle -A INCUS_VM_CONNECTIONS -s 10.10.100.0/24 -d 10.10.100.1/32 -j RETURN
+iptables -t mangle -A INCUS_VM_CONNECTIONS -s 10.10.100.1/32 -d 10.10.100.0/24 -j RETURN
+iptables -t mangle -A INCUS_VM_CONNECTIONS -s 10.10.100.0/24 -d 10.10.100.0/24 -j DROP
+iptables -t mangle -A PREROUTING -j INCUS_VM_CONNECTIONS
+iptables -t nat -A POSTROUTING -p udp --dport 51820 -d $(dig +short router) -j MASQUERADE
+iptables -t nat -A PREROUTING -p udp --dport 51820 -j DNAT --to-destination $(dig +short router):51820
 
 if [[ ! -f /var/lib/incus/ready ]]; then
   /incus.sh &
@@ -33,12 +41,7 @@ else
   # Setup BTRFS storage before starting incus
   python3 customize-vm.py setup || exit 1
   
-  echo "Applying network rules..."
-  iptables -t mangle -N INCUS_VM_CONNECTIONS
-  iptables -t mangle -A INCUS_VM_CONNECTIONS -s 10.10.100.0/24 -d 10.10.100.1/32 -j RETURN
-  iptables -t mangle -A INCUS_VM_CONNECTIONS -s 10.10.100.1/32 -d 10.10.100.0/24 -j RETURN
-  iptables -t mangle -A INCUS_VM_CONNECTIONS -s 10.10.100.0/24 -d 10.10.100.0/24 -j DROP
-  iptables -t mangle -A PREROUTING -j INCUS_VM_CONNECTIONS
+
   # Keep the service running
   /incus.sh &
   echo "Waiting for incus to become ready..."
