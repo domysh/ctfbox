@@ -716,13 +716,14 @@
                         <div class="col-lg-6">
                             <div class="form-floating">
                                 <select class="form-select" id="vmMode">
-                                    <option value="sysbox" selected>Sysbox Mode</option>
+                                    <option value="incus" selected>Incus Mode</option>
+                                    <option value="sysbox">Sysbox Mode</option>
                                     <option value="privileged">Privileged Mode</option>
                                     <option value="none">No Containers (External)</option>
                                 </select>
                                 <label for="vmMode">VM Mode</label>
                                 <small class="text-muted d-block mt-1">
-                                    Sysbox is recommended. Privileged is less secure (testing only). None disables VMs containers.
+                                    Incus is recommended. Privileged is less secure (testing only).
                                 </small>
                             </div>
                         </div>
@@ -883,7 +884,7 @@
                                     <input type="text" class="form-control" id="maxDiskSize" value="30G">
                                     <label for="maxDiskSize">Max Disk Size</label>
                                 </div>
-                                <small class="text-muted d-block" style="font-size: 0.85rem; line-height: 1.2;">
+                                <small id="xfsNote" class="text-muted" style="font-size: 0.85rem; line-height: 1.2;">
                                     Note: Requires XFS filesystem with pquota enabled on the host
                                 </small>
                             </div>
@@ -1253,6 +1254,16 @@
                     
                     <div class="card mb-3 border-primary">
                         <div class="card-body py-2 px-3">
+                            <h6 class="mb-1 fw-bold">Incus Mode</h6>
+                            <p class="mb-0" style="font-size: 0.9rem;">
+                                Recommended. Uses Incus system containers for team isolation. Offers enhanced performance and security.
+                                <a href="https://linuxcontainers.org/incus/" target="_blank">Learn more about Incus</a>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3 border-primary">
+                        <div class="card-body py-2 px-3">
                             <h6 class="mb-1 fw-bold">Sysbox Mode</h6>
                             <p class="mb-0" style="font-size: 0.9rem;">
                                 Recommended. Provides secure container isolation using the Sysbox runtime. Offers strong security boundaries between teams.
@@ -1611,6 +1622,25 @@
             } else {
                 resourceSettingsCard.style.display = 'block';
                 gameSettingsCard.className = 'section card section-card';
+            }
+            
+            // Handle disk limit requirements for Incus mode
+            const enableDiskLimit = document.getElementById('enableDiskLimit');
+            const diskLimitField = document.getElementById('diskLimitField');
+            const xfsNote = document.getElementById('xfsNote');
+            
+            if (vmMode === 'incus') {
+                // Enforce disk limit for Incus mode
+                enableDiskLimit.checked = true;
+                enableDiskLimit.disabled = true;
+                diskLimitField.style.display = 'block';
+                console.log('Disk limit enabled for Incus mode');
+                xfsNote.style.display = 'none'; // Hide XFS note for Incus mode
+            } else {
+                enableDiskLimit.disabled = false;
+                // Only show XFS note for sysbox or privileged modes
+                console.log('Disk limit disabled for non-Incus mode');
+                xfsNote.style.display = (vmMode === 'sysbox' || vmMode === 'privileged') ? 'block' : 'none';
             }
         }
 
@@ -2289,6 +2319,11 @@
                 throw new Error('Server Address is required');
             }
             
+            const vmMode = document.getElementById('vmMode').value;
+            if (vmMode === 'incus' && !document.getElementById('enableDiskLimit').checked) {
+                throw new Error('Disk limit must be enabled for Incus Mode');
+            }
+            
             const config = {
                 wireguard_port: parseInt(document.getElementById('wireguardPort').value),
                 wireguard_profiles: parseInt(document.getElementById('wireguardProfiles').value),
@@ -2594,8 +2629,8 @@
             document.getElementById('maxDiskSize').value = '30G';
             
             document.getElementById('gameserverToken').value = '';
-            document.getElementById('vmMode').value = 'sysbox';
-            updateResourceSettingsVisibility();
+            document.getElementById('vmMode').value = 'incus'; // Set incus as default
+            updateResourceSettingsVisibility(); // Update resource visibility based on VM mode
             
             document.getElementById('exposeGameserver').checked = false;
             document.getElementById('gameserverPortField').style.display = 'none';
