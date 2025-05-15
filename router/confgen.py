@@ -88,7 +88,7 @@ MTU = 1400
 [Peer]
 PublicKey = {server_pub}
 PresharedKey = {preshared_key}
-AllowedIPs = 10.10.0.0/16, 10.60.0.0/16, 10.80.0.0/16
+AllowedIPs = 10.10.0.0/24, 10.60.0.0/16, 10.80.0.0/16
 Endpoint = {server_addr}:{server_port}
 PersistentKeepalive = 15
 """
