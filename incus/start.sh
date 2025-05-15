@@ -2,6 +2,17 @@
 
 chmod +x /incus.sh
 
+trap "cleanup; exit" SIGTERM
+cleanup() {  
+  CHILD_PIDS=$(pgrep -P $$)
+  if [ -n "$CHILD_PIDS" ]; then
+    pkill -TERM -P $$
+    echo "Stopped child processes with PIDs: $CHILD_PIDS"
+  else
+    echo "No child processes found."
+  fi
+}
+
 
 if [[ ! -f /var/lib/incus/ready ]]; then
   /incus.sh &
@@ -29,7 +40,14 @@ else
   iptables -t mangle -A INCUS_VM_CONNECTIONS -s 10.10.100.0/24 -d 10.10.100.0/24 -j DROP
   iptables -t mangle -A PREROUTING -j INCUS_VM_CONNECTIONS
   # Keep the service running
-  exec /incus.sh
+  /incus.sh &
+  echo "Waiting for incus to become ready..."
+  while ! incus ls >/dev/null 2>&1; do
+    sleep 1
+  done
+  echo "incus is now ready"
+  python3 customize-vm.py start || exit 1
+  sleep infinity
 fi
 
 

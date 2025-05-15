@@ -2,6 +2,7 @@ config:
   images.auto_update_interval: "0"
 networks:
 - config:
+    dns.nameservers: 10.10.100.1
     ipv4.address: 10.10.100.1/24
     ipv4.nat: "true"
     ipv6.address: none

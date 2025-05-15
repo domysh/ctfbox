@@ -10,13 +10,6 @@ cleanup() {
   fusermount -u /var/lib/incus-lxcfs
   echo "Stopped lxcfs."
   
-  # Unmount BTRFS filesystem if mounted
-  if mountpoint -q /var/lib/incus/storage-pools/btrfs; then
-    echo "Unmounting BTRFS filesystem..."
-    umount /var/lib/incus/storage-pools/btrfs
-    echo "BTRFS filesystem unmounted."
-  fi
-  
   CHILD_PIDS=$(pgrep -P $$)
   if [ -n "$CHILD_PIDS" ]; then
     pkill -TERM -P $$

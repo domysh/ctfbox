@@ -1,6 +1,7 @@
 import os
 import json
 import sys
+from multiprocessing import Pool
 
 with open("/config.json") as f:
     config = json.load(f)
@@ -90,7 +91,6 @@ def create_base_vm():
     Creates the base VM with optimized storage settings and prepares it for cloning.
     """
     print("Creating base VM with optimized storage settings...")
-    
     # Create and configure base VM using the optimized default storage pool
     base_vm_command = """
         # Launch the base VM with base storage pool
@@ -104,14 +104,12 @@ def create_base_vm():
         incus file push /vmdata/entry.sh base-vm/ -r -p || exit 1
         incus file push /vmdata/services/ base-vm/ -r -p || exit 1
         
-        #incus exec base-vm -- bash -c "mkdir -p /etc/docker && echo '{\\"storage-driver\\": \\"btrfs\\"}' > /etc/docker/daemon.json"
-        
         # Execute build script
+        incus exec base-vm -- bash -c 'mkdir -p /etc/systemd/ && echo -e "[Resolve]\\\\nDNS=10.10.100.1\\\\nFallbackDNS=1.1.1.1" > /etc/systemd/resolved.conf' || exit 1
+        incus exec base-vm -- bash -c 'ln -fsv /run/systemd/resolve/resolv.conf /etc/resolv.conf' || exit 1
+        
         incus exec base-vm bash /build.sh || exit 1
         incus exec base-vm -- bash -c "mv /services/* /root/ && rm -rf /services" || exit 1
-        
-        # Add router to hosts
-        incus exec base-vm -- bash -c "echo '$(dig +short router) router' >> /etc/.hosts_extra" || exit 1
         
         # Initialize VM
         incus exec base-vm -- /usr/bin/_entry_vm_init prebuild || exit 1
@@ -126,29 +124,6 @@ def create_base_vm():
     
     print("Base VM created successfully and ready for cloning")
 
-def create_team_disks():
-    """
-    Creates dedicated BTRFS storage pools for each team directly through Incus
-    """
-    print("Creating separate storage pools for each team VM...")
-    
-    for ele in teams:
-        team_id = ele["id"]
-        
-        # Create a new storage pool directly with Incus
-        storage_command = f"""
-            # Create custom storage pool for this team using Incus
-            incus storage create team{team_id} btrfs size={disk_size_bytes} || exit 1
-        """
-        
-        if os.system(storage_command) != 0:
-            print(f"Error: Failed to create storage pool for team {team_id}")
-            exit(1)
-        
-        print(f"Created dedicated storage pool for team {team_id}")
-    
-    print("All team storage pools created successfully")
-
 def generate_customize_script(team_id:int, token:str):
     """
     Creates a new VM for each team using their dedicated storage pool.
@@ -157,6 +132,8 @@ def generate_customize_script(team_id:int, token:str):
     
     # Create a new VM using the team's dedicated storage pool
     vm_command = f"""
+        incus storage create team{team_id} btrfs size={disk_size_bytes} || exit 1
+    
         # Clone the base VM for this team with dedicated storage pool
         incus copy base-vm vm{team_id} --storage team{team_id} || exit 1
         
@@ -174,30 +151,53 @@ def generate_customize_script(team_id:int, token:str):
         incus file push /router/configs/servers/server-{team_id}.conf vm{team_id}/etc/wireguard/game.conf || exit 1
         incus exec vm{team_id} -- bash -c 'echo "root:{token}" | chpasswd' || exit 1
         
-        # Add router to hosts
-        incus exec vm{team_id} -- bash -c "echo '$(dig +short router) router' >> /etc/.hosts_extra" || exit 1
-        
         # Enable wireguard
         incus exec vm{team_id} -- systemctl enable wg-quick@game || exit 1
+        incus stop vm{team_id} || exit 1
     """
     
     if os.system(vm_command) != 0:
         print(f"Error: Failed to create and configure VM for team {team_id}")
-        exit(1)
+        raise Exception(f"Failed to create VM for team {team_id}")
 
 if "setup" in sys.argv:
+    exit(0)
+
+if "start" in sys.argv:
+    # Start all team VMs in a single command
+    print("Starting all team VMs...")
+    vm_list = " ".join([f"vm{team['id']}" for team in teams])
+    result = os.system(f"incus start {vm_list}")
+    if result == 0:
+        print("All VMs have been started successfully.")
+    else:
+        print("Error: Failed to start some or all VMs.")
     exit(0)
 
 # Main execution starts here
 if not os.path.exists("/var/lib/incus/ready"):
     # Create the base VM
     create_base_vm()
-    # Create disks for each team
-    create_team_disks()
 
-# Create team VMs directly with their team disks
-for ele in teams:
-    generate_customize_script(ele["id"], ele["token"])
-    print(f"VM for team {ele['id']} generated successfully.")
+# Import process pool for parallel execution
+
+# Modify the function to return success status instead of exiting
+def _generate_customize_script_wrapper(team):
+    try:
+        generate_customize_script(team["id"], team["token"])
+        print(f"VM for team {team['id']} generated successfully.")
+        return 0
+    except Exception as e:
+        print(f"Error generating VM for team {team['id']}: {str(e)}")
+        return 1
+
+# Create team VMs in parallel using process pool
+with Pool(processes=min(os.cpu_count(), len(teams))) as pool:
+    results = pool.map(_generate_customize_script_wrapper, teams)
+    
+    # Check if any process failed
+    if any(result != 0 for result in results):
+        print("Error: One or more team VM generation processes failed.")
+        exit(1)
 
 print("All VMs generated successfully.")

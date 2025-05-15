@@ -31,11 +31,6 @@ if [[ "$1" == "prebuild" ]]; then
 fi
 if [[ "$1" == "entry" ]]; then
 
-    # Needed for incus
-    if [[ -f /etc/.hosts_extra  ]]; then
-        cat /etc/.hosts_extra >> /etc/hosts
-    fi
-
     while [[ ! $(docker ps 2> /dev/null) ]]; do
         sleep 1
     done
