@@ -23,6 +23,7 @@ iptables -t nat -A POSTROUTING -p udp --dport 51820 -d $(dig +short router) -j M
 iptables -t nat -A PREROUTING -p udp --dport 51820 -j DNAT --to-destination $(dig +short router):51820
 
 if [[ ! -f /var/lib/incus/ready ]]; then
+  rm -rf /var/lib/incus/*
   /incus.sh &
   # Wait for incus to be ready
   echo "Waiting for incus to become ready..."
@@ -38,10 +39,7 @@ if [[ ! -f /var/lib/incus/ready ]]; then
   touch /var/lib/incus/ready
   exit 0;
 else
-  # Setup BTRFS storage before starting incus
   python3 customize-vm.py setup || exit 1
-  
-
   # Keep the service running
   /incus.sh &
   echo "Waiting for incus to become ready..."
