@@ -291,10 +291,10 @@ def invalid_vm_mode(do_exit:bool=True):
         exit(1)
 
 def incus_data_exists():
-    return os.path.isfile("./incus/data/ready")
+    return cmd_check(f"docker volume inspect {g.project_name}_incus-data >/dev/null 2>&1", no_stderr=True)
 
 def delete_incus_data():
-    shutil.rmtree("./incus/data", ignore_errors=True)
+    cmd_check(f"docker volume rm {g.project_name}_incus-data >/dev/null 2>&1", no_stderr=True)
 
 def write_compose(
         config: Union[Dict[str, Any], Config],
@@ -466,7 +466,7 @@ def write_compose(
                             "./vm:/vmdata:ro",
                             "/dev:/dev:z",
                             "/lib/modules:/lib/modules:ro",
-                            "./incus/data:/var/lib/incus"
+                            "incus-data:/var/lib/incus"
                         ],
                         "privileged": True,
                     }
@@ -513,7 +513,8 @@ def write_compose(
             }} if config.teams and spawn_docker_teams else {}),
             "volumes": {
                 "unixsk": "",
-                "db-data": ""
+                "db-data": "",
+                "incus-data": ""
             },
             "networks": {
                 "externalnet": "",
