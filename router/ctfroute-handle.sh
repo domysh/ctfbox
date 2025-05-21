@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-
 echo "HELO"
 read -r line
 if [[ "$line" == "LOCK" ]]; then
