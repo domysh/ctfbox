@@ -60,11 +60,7 @@ export const RulesContent = () => {
                 </Text>
             ) : null}
             <Box className="center-flex" mt="lg">
-                <img
-                    src="/images/network-1nop.svg"
-                    alt="Network Diagram"
-                    maw="800px"
-                />
+                <img src="/images/network-1nop.svg" alt="Network Diagram" />
             </Box>
             <Text mt="lg">
                 The Game System is responsible for dispatching flags to the
