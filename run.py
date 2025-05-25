@@ -683,7 +683,6 @@ def write_compose(
                         "internalnet": "",
                         "gameserver": {
                             "internal": "true",
-                            "driver": "macvlan",
                             "ipam": {
                                 "driver": "default",
                                 "config": [
