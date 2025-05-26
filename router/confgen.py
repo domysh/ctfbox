@@ -86,7 +86,7 @@ def generate_wg_server_interface(private_key):
 Address = 10.10.252.252/32
 ListenPort = 51820
 PrivateKey = {private_key}
-MTU = 1400
+MTU = 1300
 """
 
 
@@ -105,7 +105,7 @@ def generate_client_config(
     return f"""[Interface]
 PrivateKey = {client_priv}
 Address = {client_ip}/32
-MTU = 1400
+MTU = 1300
 
 [Peer]
 PublicKey = {server_pub}
