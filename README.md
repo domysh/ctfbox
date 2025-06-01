@@ -19,7 +19,7 @@ To install and set up the CTFBox project, follow these steps:
 Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/CTFBox.git
+git clone https://github.com/domysh/CTFBox
 cd CTFBox
 ```
 
