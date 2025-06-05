@@ -117,3 +117,8 @@ You can also give wireguard profile, password and ip to each team member using a
 - Multiple Services: Includes services like Notes and Polls with checkers and exploits for each.
 - Infrastructure Setup: Uses Docker Compose for easy setup and management of the infrastructure.
 - Extensible: Easily add new services, checkers, and exploits.
+
+## Credits
+
+- https://github.com/cmspam/incus-docker/ For the incus docker setup
+- https://ad.cyberchallenge.it/rules for the rules and the infrastructure design
