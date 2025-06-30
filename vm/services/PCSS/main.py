@@ -15,7 +15,7 @@ PCSS - Permanent Cat Storage Service
      |_____________|
 
 Meow! I'm a cat and I'm here to help you store your files.
-A way more secure, reliable and fun way to store your files. (even better than AWS S3!!)
+A more secure, reliable and fun way to store your files, even better than S3 buckets!
 """
 
 no_login_menu_text = """1. Create a new database
