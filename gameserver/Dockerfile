@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM docker.io/oven/bun AS frontend 
+FROM --platform=$BUILDPLATFORM docker.io/oven/bun AS frontend
 WORKDIR /app
 ADD ./frontend/package.json .
 ADD ./frontend/bun.lockb .
@@ -13,9 +13,9 @@ WORKDIR /app/
 RUN apt-get update && \
 	apt-get install -y python3-pip python3-dev python3-capstone build-essential \
 	iproute2 iputils-ping netcat-openbsd traceroute tcpdump ethtool iptables cmake \
-	libcapstone-dev build-essential python3-capstone
+	libcapstone-dev build-essential python3-capstone dnsutils
 
-COPY ./checkers/requirements.txt /tmp/requirements.txt 
+COPY ./checkers/requirements.txt /tmp/requirements.txt
 RUN pip3 install --break-system-packages -r /tmp/requirements.txt
 
 COPY ./entry.sh /tmp/

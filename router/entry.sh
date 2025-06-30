@@ -27,6 +27,7 @@ iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
 # Always allow connection between game infrastructure
 iptables -A FORWARD -s 10.10.0.0/16 -j ACCEPT && iptables -A FORWARD -d 10.10.0.0/16 -j ACCEPT
+
 # ADMINS TEAM IPs can always access the network
 iptables -A FORWARD -s 10.80.253.0/24 -j ACCEPT
 
@@ -66,17 +67,17 @@ ip addr add 10.80.253.253/16 dev wg0
 if [[ -n "$RATE_NET" ]]; then
     # Using HTB qdisc to allocate dedicated bandwidth per network
     tc qdisc add dev wg0 root handle 1: htb default 999 r2q 100
-    
+
     # Create default class for unclassified traffic
     tc class add dev wg0 parent 1: classid 1:999 htb rate 1mbit burst 50k
-    
+
     # Add dedicated classes for each team network
     for i in "${TEAM_ID_ARRAY[@]}" ; do
         # Create classes for player network (10.80.x.0/24) with full bandwidth
         tc class add dev wg0 parent 1: classid 1:8$i htb rate $RATE_NET burst 100k
         tc filter add dev wg0 parent 1: protocol ip prio 1 u32 match ip dst 10.80.$i.0/24 flowid 1:8$i
         tc filter add dev wg0 parent 1: protocol ip prio 1 u32 match ip src 10.80.$i.0/24 flowid 1:8$i
-        
+
         # Create classes for team VM network (10.60.x.0/24) with full bandwidth
         tc class add dev wg0 parent 1: classid 1:6$i htb rate $RATE_NET burst 100k
         tc filter add dev wg0 parent 1: protocol ip prio 1 u32 match ip dst 10.60.$i.0/24 flowid 1:6$i

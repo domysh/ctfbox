@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 
-chmod +x /incus.sh
-
 trap "cleanup; exit" SIGTERM
 cleanup() {
+  echo "Stopping incusd..."
+  incus stop $(incus list --format=json status=RUNNING | jq -r '.[].name')
+  incus admin shutdown
+  pkill -TERM incusd
+  echo "Stopped incusd."
+  echo "Stopping lxcfs..."
+  pkill -TERM lxcfs
+  fusermount -u /var/lib/incus-lxcfs
+  echo "Stopped lxcfs."
+
   CHILD_PIDS=$(pgrep -P $$)
   if [ -n "$CHILD_PIDS" ]; then
     pkill -TERM -P $$
@@ -11,6 +19,19 @@ cleanup() {
   else
     echo "No child processes found."
   fi
+}
+
+incus_run() {
+    mkdir -p /var/lib/incus-lxcfs
+    /opt/incus/bin/lxcfs /var/lib/incus-lxcfs --enable-loadavg --enable-cfs &
+    /usr/lib/systemd/systemd-udevd &
+    UDEVD_PID=$!
+    /opt/incus/bin/incusd &
+    echo "Waiting for incus to become ready..."
+    while ! incus ls >/dev/null 2>&1; do
+      sleep 1
+    done
+    echo "incus is now ready"
 }
 
 echo "Applying network rules..."
@@ -24,16 +45,8 @@ iptables -t nat -A PREROUTING -d 10.10.100.1/32 -p udp --dport 51820 -j DNAT --t
 
 if [[ ! -f /var/lib/incus/ready ]]; then
   rm -rf /var/lib/incus/*
-  /incus.sh &
-  # Wait for incus to be ready
-  echo "Waiting for incus to become ready..."
-  while ! incus ls >/dev/null 2>&1; do
-    sleep 1
-  done
-  echo "incus is now ready"
-
+  incus_run
   cat /incus.yml | incus admin init --preseed || exit 1
-
   # Base VM creation now handled by Python script
   python3 customize-vm.py || exit 1
   touch /var/lib/incus/ready
@@ -41,12 +54,7 @@ if [[ ! -f /var/lib/incus/ready ]]; then
 else
   python3 customize-vm.py setup || exit 1
   # Keep the service running
-  /incus.sh &
-  echo "Waiting for incus to become ready..."
-  while ! incus ls >/dev/null 2>&1; do
-    sleep 1
-  done
-  echo "incus is now ready"
+  incus_run
   python3 customize-vm.py start || exit 1
   sleep infinity
 fi

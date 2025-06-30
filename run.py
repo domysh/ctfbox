@@ -504,9 +504,8 @@ def write_compose(
                             ],
                             "restart": "unless-stopped",
                             "networks": {
-                                "gameserver": {
+                                "internalnet": {
                                     "priority": 10,
-                                    "ipv4_address": "10.10.0.250",
                                 },
                                 "externalnet": {
                                     "priority": 1,
@@ -552,13 +551,7 @@ def write_compose(
                                 "router",
                                 "database",
                             ],
-                            "networks": {
-                                "internalnet": {"priority": 1},
-                                "gameserver": {
-                                    "priority": 10,
-                                    "ipv4_address": "10.10.0.1",
-                                },
-                            },
+                            "networks": ["internalnet"],
                             "volumes": [
                                 "./gameserver/checkers:/app/checkers:z",
                                 "unixsk:/unixsk",
@@ -681,18 +674,6 @@ def write_compose(
                     "networks": {
                         "externalnet": "",
                         "internalnet": "",
-                        "gameserver": {
-                            "internal": "true",
-                            "ipam": {
-                                "driver": "default",
-                                "config": [
-                                    {
-                                        "subnet": "10.10.0.0/24",
-                                        "gateway": "10.10.0.254",
-                                    }
-                                ],
-                            },
-                        },
                         **(
                             {f"vm-team{team.id}": "" for team in config.teams}
                             if spawn_docker_teams

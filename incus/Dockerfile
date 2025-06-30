@@ -24,11 +24,11 @@ RUN echo "deb http://deb.debian.org/debian $(. /etc/os-release && echo ${VERSION
     echo "deb [signed-by=/etc/apt/keyrings/zabbly.asc] https://pkgs.zabbly.com/incus/stable $(. /etc/os-release && echo ${VERSION_CODENAME}) main" > /etc/apt/sources.list.d/zabbly-incus-stable.list && \
 # Install incus and so on
     apt-get update && \
-    apt-get install --no-install-recommends -y fuse nftables ebtables arptables iproute2 thin-provisioning-tools openvswitch-switch zfs-dkms btrfs-progs lvm2 udev iptables kmod  && \
+    apt-get install --no-install-recommends -y fuse nftables ebtables arptables iproute2 thin-provisioning-tools openvswitch-switch zfs-dkms btrfs-progs lvm2 udev iptables kmod jq && \
     apt-get install --no-install-recommends --no-install-suggests -y zfsutils-linux && \
     apt-get install --no-install-recommends -y incus python3-pip dnsutils
 
-COPY ./start.sh ./incus.yml ./incus.sh ./customize-vm.py /
+COPY ./start.sh ./incus.yml ./customize-vm.py /
 RUN chmod +x /start.sh
 
 CMD ["/start.sh"]
