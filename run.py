@@ -278,6 +278,21 @@ def gen_args(args_to_parse: list[str] | None = None):
         "--gameserver-data", "-G", action="store_true", help="Clear gameserver data"
     )
 
+    subcommands.add_parser("listvms", help="List team VMs")
+
+    parser_vmshell = subcommands.add_parser("vmshell", help="Open a shell in the specified team VM")
+    parser_vmshell.add_argument(
+        "team_id",
+        type=int,
+        help="ID of the team whose VM to access (use listvms to see the IDs)",
+    )
+    parser_vmshell.add_argument(
+        "vmshell_args",
+        nargs=argparse.REMAINDER,
+        help="Arguments to pass to exec command for team vms",
+        default=[],
+    )
+
     # Status Command
     subcommands.add_parser("status", help="Show status")
 
@@ -1203,6 +1218,39 @@ def main():
                     compose_cmd = " ".join(args.compose_args)
                     puts(f"Running 'docker compose {compose_cmd}'\n", color=colors.green)
                     composecmd(compose_cmd, g.composefile)
+            case "vmshell":
+                if not config_exists():
+                    puts(
+                        f"Config file not found! please run {sys.argv[0]} start",
+                        color=colors.red,
+                    )
+                elif check_already_running():
+                    config = read_config()
+                    if config.vm_mode == "privileged" or config.vm_mode == "sysbox":
+                        compose_cmd = f"exec team{args.team_id}"
+                    elif config.vm_mode == "incus":
+                        compose_cmd = f"exec incus incus exec vm{args.team_id} --"
+                    elif config.vm_mode == "none":
+                        puts(
+                            "VM 'none' mode selected",
+                            color=colors.yellow,
+                        )
+
+                    if args.vmshell_args:
+                        compose_cmd += f" {' '.join(args.vmshell_args)}"
+                    else:
+                        compose_cmd += " /bin/bash"
+
+                    write_compose(config)
+                    puts(f"Running 'docker compose {compose_cmd}'\n", color=colors.green)
+                    composecmd(compose_cmd, g.composefile)
+                else:
+                    puts(
+                        f"{g.name} is not running!",
+                        color=colors.red,
+                        is_bold=True,
+                        flush=True,
+                    )
             case "restart":
                 if not config_exists():
                     puts(
@@ -1273,6 +1321,23 @@ def main():
             case "status":
                 if check_already_running():
                     puts(f"{g.name} is running!", color=colors.green)
+            case "listvms":
+                if not config_exists():
+                    puts(
+                        f"Config file not found! please run {sys.argv[0]} start",
+                        color=colors.red,
+                    )
+                config = read_config()
+                if config.vm_mode == "none":
+                    puts(
+                        "VM 'none' mode selected, no VMs to list",
+                        color=colors.yellow,
+                    )
+                    return
+                for team in config.teams:
+                    if team.nop:
+                        continue
+                    puts(f"Team {team.id} - {team.name}")
 
     if "logs" in args and args.logs:
         if config_exists():
