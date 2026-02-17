@@ -597,7 +597,6 @@ def write_compose(
                                 "incus": {
                                     "dns": [config.dns],
                                     "build": "./incus",
-                                    "depends_on": ["router"],
                                     "networks": ["externalnet"],
                                     **(
                                         {"restart": "unless-stopped"}
@@ -1039,6 +1038,87 @@ def router_generate_configs(config: Config, down_after_gen: bool = True):
     return False
 
 
+def buildvms(config):
+    vm_dir_hash = dir_sha_hash("./vm")
+    info = get_deploy_info()
+    old_vm_dir_hash = info.get("vm_dir_hash", "")
+    was_built_with = info.get("vm_mode_build", False)
+    vm_router_hash = info.get("vm_router_hash", None)
+    current_router_hash = server_config_hash(config)
+    if config.vm_mode == "privileged" or config.vm_mode == "sysbox":
+        if (
+            not prebuilt_exists()
+            or vm_dir_hash != old_vm_dir_hash
+            or was_built_with != config.vm_mode
+        ):
+            puts("Need to build the team VM image", color=colors.yellow)
+            clear_data_only(
+                remove_prebuilded_container=True,
+                remove_prebuilt_image=True,
+                remove_prebuilder_image=True,
+                remove_incus_data=True,
+            )
+            puts("Building the prebuilder image", color=colors.yellow)
+            if not build_prebuilder():
+                puts("Error building prebuilder image", color=colors.red)
+                exit(1)
+            puts(
+                "Executing prebuilder to create VMs' base image",
+                color=colors.yellow,
+            )
+            if not build_prebuilt(config.vm_mode == "privileged"):
+                puts("Error building prebuilt image", color=colors.red)
+                exit(1)
+            puts(
+                "Saving base VM container as image to be used to build the CTF services\n(this action can take a while and produces no output)",
+                color=colors.yellow,
+            )
+            if not commit_prebuilt():
+                puts("Error commiting prebuilt image", color=colors.red)
+                exit(1)
+            puts("Clear unused images", color=colors.yellow)
+            remove_prebuilded()
+    elif config.vm_mode == "none":
+        puts(
+            "VM 'none' mode selected, skipping VM image build",
+            color=colors.yellow,
+        )
+    elif config.vm_mode == "incus":
+        if (
+            not incus_data_exists()
+            or vm_dir_hash != old_vm_dir_hash
+            or was_built_with != config.vm_mode
+            or vm_router_hash != current_router_hash
+        ):
+            write_compose(config, incus_unless_stopped=False)
+            puts("Need to build the incus VMs", color=colors.yellow)
+            clear_data_only(
+                remove_prebuilded_container=True,
+                remove_prebuilt_image=True,
+                remove_prebuilder_image=True,
+                remove_incus_data=True,
+            )
+            puts("Building the incus VMs", color=colors.yellow)
+            composecmd(
+                "up incus --build --remove-orphans --exit-code-from incus",
+                g.composefile,
+            )
+            write_compose(config)
+        else:
+            puts(
+                "Incus VMs already exists, skipping build",
+                color=colors.yellow,
+            )
+    else:
+        invalid_vm_mode()
+    set_deploy_info(
+        {
+            "vm_dir_hash": vm_dir_hash,
+            "vm_mode_build": config.vm_mode,
+            "vm_router_hash": current_router_hash,
+        }
+    )
+
 def main():
     if args.command == "start":
         if args.config_only:
@@ -1085,6 +1165,16 @@ def main():
                     config = read_config()
                     write_compose(config)
                     router_generate_configs()
+            case "buildvms":
+                if not config_exists():
+                    puts(
+                        "Config file not found! please create config.json first",
+                        color=colors.red,
+                    )
+                else:
+                    config = read_config()
+                if len(config.teams) > 0:
+                    buildvms(config)
             case "start":
                 if check_already_running():
                     puts(f"{g.name} is already running!", color=colors.yellow)
@@ -1126,85 +1216,7 @@ def main():
                     router_generate_configs(config, down_after_gen=False)
 
                 if len(config.teams) > 0:
-                    vm_dir_hash = dir_sha_hash("./vm")
-                    info = get_deploy_info()
-                    old_vm_dir_hash = info.get("vm_dir_hash", "")
-                    was_built_with = info.get("vm_mode_build", False)
-                    vm_router_hash = info.get("vm_router_hash", None)
-                    current_router_hash = server_config_hash(config)
-                    if config.vm_mode == "privileged" or config.vm_mode == "sysbox":
-                        if (
-                            not prebuilt_exists()
-                            or vm_dir_hash != old_vm_dir_hash
-                            or was_built_with != config.vm_mode
-                        ):
-                            puts("Need to build the team VM image", color=colors.yellow)
-                            clear_data_only(
-                                remove_prebuilded_container=True,
-                                remove_prebuilt_image=True,
-                                remove_prebuilder_image=True,
-                                remove_incus_data=True,
-                            )
-                            puts("Building the prebuilder image", color=colors.yellow)
-                            if not build_prebuilder():
-                                puts("Error building prebuilder image", color=colors.red)
-                                exit(1)
-                            puts(
-                                "Executing prebuilder to create VMs' base image",
-                                color=colors.yellow,
-                            )
-                            if not build_prebuilt(config.vm_mode == "privileged"):
-                                puts("Error building prebuilt image", color=colors.red)
-                                exit(1)
-                            puts(
-                                "Saving base VM container as image to be used to build the CTF services\n(this action can take a while and produces no output)",
-                                color=colors.yellow,
-                            )
-                            if not commit_prebuilt():
-                                puts("Error commiting prebuilt image", color=colors.red)
-                                exit(1)
-                            puts("Clear unused images", color=colors.yellow)
-                            remove_prebuilded()
-                    elif config.vm_mode == "none":
-                        puts(
-                            "VM 'none' mode selected, skipping VM image build",
-                            color=colors.yellow,
-                        )
-                    elif config.vm_mode == "incus":
-                        if (
-                            not incus_data_exists()
-                            or vm_dir_hash != old_vm_dir_hash
-                            or was_built_with != config.vm_mode
-                            or vm_router_hash != current_router_hash
-                        ):
-                            write_compose(config, incus_unless_stopped=False)
-                            puts("Need to build the incus VMs", color=colors.yellow)
-                            clear_data_only(
-                                remove_prebuilded_container=True,
-                                remove_prebuilt_image=True,
-                                remove_prebuilder_image=True,
-                                remove_incus_data=True,
-                            )
-                            puts("Building the incus VMs", color=colors.yellow)
-                            composecmd(
-                                "up incus --build --remove-orphans --exit-code-from incus",
-                                g.composefile,
-                            )
-                            write_compose(config)
-                        else:
-                            puts(
-                                "Incus VMs already exists, skipping build",
-                                color=colors.yellow,
-                            )
-                    else:
-                        invalid_vm_mode()
-                    set_deploy_info(
-                        {
-                            "vm_dir_hash": vm_dir_hash,
-                            "vm_mode_build": config.vm_mode,
-                            "vm_router_hash": current_router_hash,
-                        }
-                    )
+                    buildvms(config)
                 puts("Running 'docker compose up -d --build\n", color=colors.green)
                 composecmd("up -d --build --remove-orphans", g.composefile)
             case "compose":
