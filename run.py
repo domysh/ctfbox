@@ -621,6 +621,12 @@ def write_compose(
                                         "incus-data:/var/lib/incus",
                                     ],
                                     "privileged": True,
+                                    "ulimits":{
+                                                "nofile":{
+                                                    "soft": 1048576,
+                                                    "hard": 1048576
+                                                }
+                                    }
                                 }
                             }
                             if spawn_incus
