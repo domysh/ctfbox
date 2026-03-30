@@ -115,7 +115,16 @@ func SetExposedRound(round int64) {
 }
 
 func InitDB() {
-	db := ConnectDB()
+	var db *bun.DB
+	for {
+		db = ConnectDB()
+		if err := db.Ping(); err == nil {
+			break
+		}
+		db.Close()
+		log.Printf("Waiting for database to be ready...")
+		time.Sleep(1 * time.Second)
+	}
 	defer db.Close()
 
 	ctx := context.Background()
