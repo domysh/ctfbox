@@ -40,8 +40,15 @@ iptables -t mangle -A INCUS_VM_CONNECTIONS -s 10.10.100.0/24 -d 10.10.100.1/32 -
 iptables -t mangle -A INCUS_VM_CONNECTIONS -s 10.10.100.1/32 -d 10.10.100.0/24 -j RETURN
 iptables -t mangle -A INCUS_VM_CONNECTIONS -s 10.10.100.0/24 -d 10.10.100.0/24 -j DROP
 iptables -t mangle -A PREROUTING -j INCUS_VM_CONNECTIONS
-iptables -t nat -A POSTROUTING -p udp --dport 51820 -d $(dig +short router) -j MASQUERADE
-iptables -t nat -A PREROUTING -d 10.10.100.1/32 -p udp --dport 51820 -j DNAT --to-destination $(dig +short router):51820
+MY_IP=$(ip -o -4 addr list eth0 | awk '{print $4}' | cut -d/ -f1)
+PREFIX=$(echo "$MY_IP" | cut -d. -f1,2)
+ROUTER_IP=$(getent ahosts router | awk '{print $1}' | grep "^$PREFIX" | head -n 1)
+if [ -z "$ROUTER_IP" ]; then
+    ROUTER_IP=$(getent ahosts router | awk '{print $1}' | head -n 1)
+fi
+
+iptables -t nat -A POSTROUTING -p udp --dport 51820 -d $ROUTER_IP -j MASQUERADE
+iptables -t nat -A PREROUTING -d 10.10.100.1/32 -p udp --dport 51820 -j DNAT --to-destination $ROUTER_IP:51820
 
 if [[ ! -f /var/lib/incus/ready ]]; then
   rm -rf /var/lib/incus/*

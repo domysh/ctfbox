@@ -605,9 +605,12 @@ def write_compose(
                                     ),
                                     "cgroup": "host",
                                     "pid": "host",
+                                    "userns_mode": "host",
+                                    "ipc": "host",
                                     "security_opt": [
                                         "seccomp=unconfined",
                                         "apparmor=unconfined",
+                                        "label=disable",
                                     ],
                                     "sysctls": [
                                         "net.ipv4.ip_forward=1",
