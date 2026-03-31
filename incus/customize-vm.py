@@ -98,7 +98,7 @@ def create_base_vm():
         incus init images:ubuntu/noble base-vm || exit 1
         
         # Start the VM
-        incus start base-vm || exit 1
+        incus start base-vm || ( incus info --show-log base-vm; exit 1 )
         
         # Wait securely for systemd to finish booting and for PTY systems to be mounted
         while ! incus exec base-vm -- bash -c "systemctl is-system-running | grep -q -E 'running|degraded'" 2>/dev/null; do
@@ -145,6 +145,7 @@ def generate_customize_script(team_id:int, token:str):
         # Configure resource limits
         incus config set vm{team_id} limits.cpu={cpu_assigned} || exit 1
         incus config set vm{team_id} limits.memory={ram_assigned_bytes} || exit 1
+        
         # Start the VM
         incus start vm{team_id} || ( incus info --show-log vm{team_id}; exit 1 )
         
