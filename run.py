@@ -603,10 +603,8 @@ def write_compose(
                                         if incus_unless_stopped
                                         else {}
                                     ),
-                                    "cgroup": "host",
                                     "pid": "host",
-                                    "userns_mode": "host",
-                                    "ipc": "host",
+                                    "cgroup": "host",
                                     "security_opt": [
                                         "seccomp=unconfined",
                                         "apparmor=unconfined",
@@ -620,6 +618,7 @@ def write_compose(
                                         "./router:/router:ro",
                                         "./vm:/vmdata:ro",
                                         "/dev:/dev:z",
+                                        "/sys/fs/cgroup:/sys/fs/cgroup:z",
                                         "/lib/modules:/lib/modules:ro",
                                         "incus-data:/var/lib/incus",
                                     ],

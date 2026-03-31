@@ -34,28 +34,28 @@ export const AdminDashboard = () => {
 
     const items = teams.map((item) => (
         <Accordion.Item key={item.id} value={`team${item.id}`}>
-          <Accordion.Control onClick={() => setShownProfile(0)} style={{ userSelect: "none" }}>{item.name}</Accordion.Control>
-          <Accordion.Panel py={40}>
-            <Box className='center-flex-col'>
-                <small style={{ userSelect: "none" }}>Profile {shownProfile+1}</small>
-                <Box className='center-flex' style={{ flex: 1, width: "100%" }}>
-                    <FaArrowLeft onClick={() => setShownProfile(shownProfile == 0?shownProfile:(shownProfile - 1) % item.pins.length)} size={25} cursor="pointer"/>
-                    <Box style={{flex: 1}} />
-                    <Title order={1} style={{ userSelect: "none" }}>{item.pins[shownProfile].pin}</Title>
-                    <Box style={{flex: 1}} />
-                    <FaArrowRight onClick={() => setShownProfile((shownProfile == item.pins.length-1?shownProfile:shownProfile + 1) % item.pins.length)} size={25} cursor="pointer"/>
+            <Accordion.Control onClick={() => setShownProfile(0)} style={{ userSelect: "none" }}>{item.name}</Accordion.Control>
+            <Accordion.Panel>
+                <Box className='center-flex-col' py={40}>
+                    <small style={{ userSelect: "none" }}>Profile {shownProfile + 1}</small>
+                    <Box className='center-flex' style={{ flex: 1, width: "100%" }}>
+                        <FaArrowLeft onClick={() => setShownProfile(shownProfile == 0 ? shownProfile : (shownProfile - 1) % item.pins.length)} size={25} cursor="pointer" />
+                        <Box style={{ flex: 1 }} />
+                        <Title order={1} style={{ userSelect: "none" }}>{item.pins[shownProfile].pin}</Title>
+                        <Box style={{ flex: 1 }} />
+                        <FaArrowRight onClick={() => setShownProfile((shownProfile == item.pins.length - 1 ? shownProfile : shownProfile + 1) % item.pins.length)} size={25} cursor="pointer" />
+                    </Box>
                 </Box>
-            </Box>
             </Accordion.Panel>
         </Accordion.Item>
-      ));
+    ));
 
-    return <Container size="sm" className='center-flex' style={{flex: 1}}>
+    return <Container size="sm" className='center-flex' style={{ flex: 1 }}>
         <Paper bg="dark" p={30} radius={10} style={{ flex: 1 }}>
             <ScrollAreaAutosize display="block" mah="90vh">
                 <Box className='center-flex'>
                     <Title order={1}>Admin Dashboard</Title>
-                    <Box style={{flex: 1}} />
+                    <Box style={{ flex: 1 }} />
                     <ActionIcon color='red' variant='light' onClick={() => setToken(null)} size="lg"><IoLogOut size={20} /></ActionIcon>
                 </Box>
                 <Space h="md" />

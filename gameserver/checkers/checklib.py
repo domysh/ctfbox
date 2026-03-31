@@ -35,7 +35,7 @@ def get_flag_data(flag:str):
 def get_host():
     if os.getenv('TEAM_IP', None):
         return os.getenv('TEAM_IP')
-    return '10.60.' + os.environ['TEAM_ID'] + '.1'
+    raise ValueError("TEAM_IP not set")
 
 def get_data():
     data = {
