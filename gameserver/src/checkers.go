@@ -23,6 +23,7 @@ import (
 type CheckerParams struct {
 	Action string
 	TeamID string
+	TeamIP string
 	Round  string
 	Flag   string
 }
@@ -87,6 +88,7 @@ func runChecker(team string, service string, params *CheckerParams, ctx context.
 	cmd.Env = append(cmd.Env, "TOKEN="+conf.Token)
 	cmd.Env = append(cmd.Env, "ACTION="+params.Action)
 	cmd.Env = append(cmd.Env, "TEAM_ID="+params.TeamID)
+	cmd.Env = append(cmd.Env, "TEAM_IP="+params.TeamIP)
 	cmd.Env = append(cmd.Env, "ROUND="+params.Round)
 	cmd.Env = append(cmd.Env, "FLAG="+params.Flag)
 	cmd.Env = append(cmd.Env, "SERVICE="+service)
@@ -189,18 +191,24 @@ func checkerRoutine() {
 		waitGroup    sync.WaitGroup
 	)
 
-	realIPs := make([]net.IP, 0, len(conf.Teams))
+	type teamMapping struct {
+		ID    string
+		IP    string
+		NetIP net.IP
+	}
+
+	teamMappings := make([]teamMapping, 0, len(conf.Teams))
 	for _, teamInfo := range conf.Teams {
-		ip := teamIDToIP(teamInfo.ID)
-		realIPs = append(realIPs, net.ParseIP(ip))
+		ipStr := teamIDToIP(teamInfo.ID)
+		teamMappings = append(teamMappings, teamMapping{
+			ID:    fmt.Sprint(teamInfo.ID),
+			IP:    ipStr,
+			NetIP: net.ParseIP(ipStr),
+		})
 	}
-	sort.Slice(realIPs, func(i, j int) bool {
-		return bytes.Compare(realIPs[i], realIPs[j]) < 0
+	sort.Slice(teamMappings, func(i, j int) bool {
+		return bytes.Compare(teamMappings[i].NetIP, teamMappings[j].NetIP) < 0
 	})
-	teams := make([]string, len(realIPs))
-	for i, ip := range realIPs {
-		teams[i] = ip.String()
-	}
 
 	if conf.GameEndTime != nil && time.Now().After(*conf.GameEndTime) {
 		log.Infof("Game ended")
@@ -271,11 +279,10 @@ func checkerRoutine() {
 		}
 		timeForNextRound := int64(remainingTimeFromRound(currentRound+1)) / int64(time.Millisecond)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeForNextRound)*time.Millisecond)
-		waitGroup.Add(len(teams) * len(conf.Services))
-		for i, team := range teams {
+		waitGroup.Add(len(teamMappings) * len(conf.Services))
+		for _, tm := range teamMappings {
 			for _, service := range conf.Services {
-
-				go func(teamId int, team string, service string, waitGroup *sync.WaitGroup, maxTimeout int64) {
+				go func(teamId string, team string, service string, waitGroup *sync.WaitGroup, maxTimeout int64) {
 					defer waitGroup.Done()
 
 					var checkersWaitGroup sync.WaitGroup
@@ -319,7 +326,8 @@ func checkerRoutine() {
 
 							params := &CheckerParams{
 								Round:  fmt.Sprint(currentRound),
-								TeamID: fmt.Sprint(teamId),
+								TeamID: teamId,
+								TeamIP: team,
 								Flag:   flag,
 								Action: action,
 							}
@@ -336,7 +344,8 @@ func checkerRoutine() {
 
 							statusHistoryLock.Lock()
 							defer statusHistoryLock.Unlock()
-							if action == PUT_FLAG {
+							switch action {
+							case PUT_FLAG:
 								statusData.PutFlagStatus = status
 								statusData.PutFlagMessage = msg
 								statusData.PutFlagAt = time.Now()
@@ -346,13 +355,13 @@ func checkerRoutine() {
 										log.Criticalf("Error deleting flag %v:%v on %v: %v", team, teamId, service, err)
 									}
 								}
-							} else if action == GET_FLAG {
+							case GET_FLAG:
 								if statusData.GetFlagStatus == OK { // If at least 1 check failed, don't overwrite the status
 									statusData.GetFlagStatus = status
 									statusData.GetFlagMessage = msg
 									statusData.GetFlagAt = time.Now()
 								}
-							} else if action == CHECK_SLA {
+							case CHECK_SLA:
 								statusData.CheckStatus = status
 								statusData.CheckMessage = msg
 								statusData.CheckdAt = time.Now()
@@ -405,7 +414,7 @@ func checkerRoutine() {
 						log.Criticalf("Error inserting status %v:%v on %v: %v", team, teamId, service, err)
 					}
 
-				}(i, team, service, &waitGroup, timeForNextRound)
+				}(tm.ID, tm.IP, service, &waitGroup, timeForNextRound)
 			}
 		}
 

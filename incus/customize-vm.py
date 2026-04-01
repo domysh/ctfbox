@@ -93,11 +93,17 @@ def create_base_vm():
     print("Creating base VM with optimized storage settings...")
     # Create and configure base VM using the optimized default storage pool
     base_vm_command = """
+        
         # Launch the base VM with base storage pool
         incus init images:ubuntu/noble base-vm || exit 1
         
         # Start the VM
-        incus start base-vm || exit 1
+        incus start base-vm || ( incus info --show-log base-vm; exit 1 )
+        
+        # Wait securely for systemd to finish booting and for PTY systems to be mounted
+        while ! incus exec base-vm -- bash -c "systemctl is-system-running | grep -q -E 'running|degraded'" 2>/dev/null; do
+            sleep 1
+        done
         
         # Push required files
         incus file push /vmdata/build.sh base-vm/ -r -p || exit 1
@@ -141,7 +147,12 @@ def generate_customize_script(team_id:int, token:str):
         incus config set vm{team_id} limits.memory={ram_assigned_bytes} || exit 1
         
         # Start the VM
-        incus start vm{team_id} || exit 1
+        incus start vm{team_id} || ( incus info --show-log vm{team_id}; exit 1 )
+        
+        # Wait securely for systemd to finish booting and for PTY systems to be mounted
+        while ! incus exec vm{team_id} -- bash -c "systemctl is-system-running | grep -q -E 'running|degraded'" 2>/dev/null; do
+            sleep 1
+        done
         
         # Configure VM with team-specific settings
         echo "Configuring vm{team_id}..."

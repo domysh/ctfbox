@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ROUTER_IP=$(dig +short router | head -n 1)
+ROUTER_IP=$(dig +short router A | head -n 1)
 
 ip route add 10.60.0.0/16 via $ROUTER_IP
 ip route add 10.80.0.0/16 via $ROUTER_IP
