@@ -1,18 +1,24 @@
 #!/usr/bin/env bash
 
-# Use a mount namespace (not PID namespace) so:
-# - Host PIDs are preserved → LXC cgroup files contain readable PIDs
-# - We get a clean, private cgroup2 mount view for our setup
-# - All children share our process group → SIGTERM to -PGID wipes them all
-if [ -z "$CTFBOX_UNSHARED" ]; then
-  exec unshare -m --kill-child \
-    env CTFBOX_UNSHARED=1 "$0" "$@"
-fi
+# ---------------------------------------------------------------------------
+# Cgroup v2 cleanup zone — must be set up BEFORE any children are spawned so
+# that lxcfs, udevd, incusd and every process they fork all inherit the cgroup.
+# On shutdown, cgroup.kill atomically terminates every surviving process in the
+# hierarchy, even those that detached and changed their process group.
+# ---------------------------------------------------------------------------
+CGROUP_DIR="/sys/fs/cgroup/incus_cleanup_zone"
+mkdir -p "$CGROUP_DIR"
+echo $$ > "$CGROUP_DIR/cgroup.procs"
 
+# Always runs on any exit — nukes every process that inherited the cgroup.
+cgroup_teardown() {
+  echo 1 > "$CGROUP_DIR/cgroup.kill" 2>/dev/null || true
+  sleep 0.5
+  rmdir "$CGROUP_DIR" 2>/dev/null || true
+}
+trap "cgroup_teardown" EXIT
 
-# --- Cleanup via process group (no PID namespace needed) ---
-PGID=$(cut -d' ' -f5 /proc/$$/stat 2>/dev/null || echo $$)
-trap "cleanup; exit" SIGTERM
+# Graceful shutdown — only triggered by SIGTERM/SIGINT.
 cleanup() {
   echo "Stopping incusd and all nested VMs..."
   VM_LIST=$(/opt/incus/bin/incus list --format=json status=RUNNING | jq -r '.[].name' 2>/dev/null || true)
@@ -20,12 +26,12 @@ cleanup() {
     /opt/incus/bin/incus stop $VM_LIST --force || true
   fi
   /opt/incus/bin/incus admin shutdown || true
-  fusermount -u /var/lib/incus-lxcfs || true
+  fusermount -u /var/lib/incus-lxcfs 2>/dev/null || true
   umount -l /var/lib/incus-lxcfs 2>/dev/null || true
-  # Kill our entire process group (all spawned daemons, lxcfs, udevd, etc.)
-  kill -- -${PGID} 2>/dev/null || true
-  echo "Cleanup done."
+  echo "Graceful shutdown done."
+  # cgroup_teardown will fire automatically via EXIT trap
 }
+trap "cleanup; exit" SIGTERM SIGINT
 
 incus_run() {
   mkdir -p /var/lib/incus-lxcfs
@@ -39,14 +45,6 @@ incus_run() {
   echo "incus is now ready"
 }
 
-setup_incus_cgroup_profile() {
-  # Tell LXC to place all container cgroups under ${CGBASE}/vms which
-  # is pre-delegated and empty. This avoids EBUSY from incusd's own cgroup.
-  if [ -n "$SELF_CGROUP" ]; then
-    local vms_path="${SELF_CGROUP}/vms"
-    incus profile set default raw.lxc "lxc.cgroup.dir = ${vms_path}" 2>/dev/null || true
-  fi
-}
 
 echo "Applying network rules..."
 iptables -t mangle -N INCUS_VM_CONNECTIONS
@@ -62,7 +60,6 @@ if [[ ! -f /var/lib/incus/ready ]]; then
   rm -rf /var/lib/incus/*
   incus_run
   cat /incus.yml | incus admin init --preseed || exit 1
-  setup_incus_cgroup_profile
   # Base VM creation now handled by Python script
   python3 customize-vm.py || exit 1
   touch /var/lib/incus/ready
@@ -70,7 +67,6 @@ if [[ ! -f /var/lib/incus/ready ]]; then
 else
   python3 customize-vm.py setup || exit 1
   incus_run
-  setup_incus_cgroup_profile
   python3 customize-vm.py start || exit 1
   sleep infinity
 fi

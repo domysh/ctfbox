@@ -624,10 +624,10 @@ def write_compose(
                                     ],
                                     "privileged": True,
                                     "ulimits":{
-                                                "nofile":{
-                                                    "soft": 1048576,
-                                                    "hard": 1048576
-                                                }
+                                        "nofile":{
+                                            "soft": 1048576,
+                                            "hard": 1048576
+                                        }
                                     }
                                 }
                             }
