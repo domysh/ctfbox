@@ -403,7 +403,7 @@ def build_prebuilder():
 
 def build_prebuilt(privileged):
     return cmd_check(
-        f'docker run -it {"--privileged" if privileged else "--runtime=sysbox-runc"} --name {g.prebuilded_container} {g.prebuild_image}',
+        f"docker run -it --privileged --name {g.prebuilded_container} {g.prebuild_image}",
         print_output=True,
     )
 
@@ -421,7 +421,7 @@ def commit_prebuilt():
 
 def invalid_vm_mode(do_exit: bool = True):
     puts(
-        "Invalid vm mode, please use 'privileged' or 'sysbox' or 'none'",
+        "Invalid vm mode, please use 'privileged' or 'incus' or 'none'",
         color=colors.red,
     )
     if do_exit:
@@ -455,8 +455,6 @@ def write_compose(
     spawn_incus = False
     if config.vm_mode == "privileged":
         is_privileged = True
-        spawn_docker_teams = True
-    elif config.vm_mode == "sysbox":
         spawn_docker_teams = True
     elif config.vm_mode == "none":
         external_wg_server_configs = True
@@ -656,7 +654,7 @@ def write_compose(
                                     **(
                                         {"privileged": "true"}
                                         if is_privileged
-                                        else {"runtime": "sysbox-runc"}
+                                        else {}
                                     ),
                                     "restart": "unless-stopped",
                                     "depends_on": [
@@ -892,13 +890,10 @@ def config_input() -> Config:
 
     while True:
         c.vm_mode = get_input(
-            "VM mode (incus/privileged/sysbox/none)", default_configs.vm_mode
+            "VM mode (incus/privileged/none)", default_configs.vm_mode
         )
         if c.vm_mode.lower() == "privileged":
             c.vm_mode = "privileged"
-            break
-        elif c.vm_mode.lower() == "sysbox":
-            c.vm_mode = "sysbox"
             break
         elif c.vm_mode.lower() == "none":
             c.vm_mode = "none"
@@ -909,7 +904,7 @@ def config_input() -> Config:
         else:
             invalid_vm_mode(do_exit=False)
 
-    if c.vm_mode in ["privileged", "sysbox", "incus"]:
+    if c.vm_mode in ["privileged", "incus"]:
         c.max_vm_cpus = get_input("Max VM CPUs", default_configs.max_vm_cpus)
         c.max_vm_mem = get_input("Max VM Memory", default_configs.max_vm_mem)
         if c.vm_mode == "incus" or get_input(
@@ -1053,7 +1048,7 @@ def buildvms(config):
     was_built_with = info.get("vm_mode_build", False)
     vm_router_hash = info.get("vm_router_hash", None)
     current_router_hash = server_config_hash(config)
-    if config.vm_mode == "privileged" or config.vm_mode == "sysbox":
+    if config.vm_mode == "privileged":
         if (
             not prebuilt_exists()
             or vm_dir_hash != old_vm_dir_hash
@@ -1246,7 +1241,7 @@ def main():
                     )
                 elif check_already_running():
                     config = read_config()
-                    if config.vm_mode == "privileged" or config.vm_mode == "sysbox":
+                    if config.vm_mode == "privileged":
                         compose_cmd = f"exec team{args.team_id}"
                     elif config.vm_mode == "incus":
                         compose_cmd = f"exec incus incus exec vm{args.team_id} --"

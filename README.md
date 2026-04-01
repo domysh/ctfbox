@@ -24,7 +24,7 @@ cd CTFBox
 ```
 
 For running CTFBox, you need docker and have correctly installed.
-The default option to run the VMs is using incus (LXD), you don't need to install it, because of it will be managed by a CTFBox container that will manage an isolated instance of it. Also CTFBox include the support to run [sysbox](https://github.com/nestybox/sysbox) container. You can follow the instructions in the [Sysbox Setup Guide](./docs/sysbox-setup.md) to install and configure Sysbox.
+The default option to run the VMs is using incus (LXD), you don't need to install it, because it will be managed by a CTFBox container that provides an isolated instance.
 
 Now you can run CTFBox using the following command:
 
@@ -34,8 +34,7 @@ Now you can run CTFBox using the following command:
 
 You can configure CTFBox using the terminal or using the config editor [here](https://ctfbox.domy.sh/editor) (sources on demo branch).
 
-NOTE: You can avoid to use sysbox by using privileged mode, but this is not recommended if the VMs are given to untrusted users. The privileged mode will give
-access to some hosts functionality to the VMs, and escape from container is possible.
+NOTE: You can use privileged mode instead of incus, but this is not recommended if the VMs are given to untrusted users. The privileged mode gives access to host functionality to the VMs, and container escape is possible.
 
 
 To connect to the VMs, you need to use one of the wireguard configurations in the wireguard folder.
@@ -98,7 +97,7 @@ Before run the competition, you can customize additional settings in the `config
 - `submission_timeout`: The timeout for flag submissions in seconds.
 - `server_addr`: The public address of the server (used for the wireguard config).
 - `network_limit_bandwidth`: The bandwidth limit for each server (e.g., "20mbit").
-- `vm-mode`: The mode for running the VMs (e.g., "incus", "sysbox", "privileged" or "none").
+- `vm-mode`: The mode for running the VMs (e.g., "incus", "privileged" or "none").
 - `debug`: Enable debug mode for the game server.
 - `tick_time`: The time in seconds for each tick.
 - `teams`: A list of teams with their respective configurations:
