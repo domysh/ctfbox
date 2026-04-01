@@ -5,7 +5,6 @@ LXCFS_PID=""
 UDEVD_PID=""
 INCUSD_PID=""
 
-trap "cleanup; exit" SIGTERM SIGINT
 cleanup() {
   echo "Cleaning up: stopping guests and daemons spawned by this instance..."
   
@@ -35,6 +34,11 @@ cleanup() {
   
   echo "Cleanup complete."
 }
+
+# Ensure signals trigger an exit, which then runs cleanup via EXIT trap
+trap cleanup EXIT
+trap "exit 143" SIGTERM
+trap "exit 130" SIGINT
 
 incus_run() {
   echo "Starting daemons..."
@@ -84,5 +88,6 @@ else
   python3 customize-vm.py setup || exit 1
   incus_run
   python3 customize-vm.py start || exit 1
-  sleep infinity
+  # Better than sleep infinity: wait for a background process or tail
+  tail -f /dev/null & wait $!
 fi

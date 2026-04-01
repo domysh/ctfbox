@@ -26,9 +26,6 @@ cd CTFBox
 For running CTFBox, you need docker and have correctly installed.
 The default option to run the VMs is using incus (LXD), you don't need to install it, because of it will be managed by a CTFBox container that will manage an isolated instance of it. Also CTFBox include the support to run [sysbox](https://github.com/nestybox/sysbox) container. You can follow the instructions in the [Sysbox Setup Guide](./docs/sysbox-setup.md) to install and configure Sysbox.
 
-Note ⚠️: in incus mode the container could create problem to a pre-existing incus installation, or leave processes that keeps running also after stopping the simulation... this issue has not been revolved yet
-
-
 Now you can run CTFBox using the following command:
 
 ```bash
