@@ -596,6 +596,7 @@ def write_compose(
                                     "dns": [config.dns],
                                     "build": "./incus",
                                     "networks": ["externalnet"],
+                                    "stop_signal": "SIGWINCH",
                                     **(
                                         {"restart": "unless-stopped"}
                                         if incus_unless_stopped
