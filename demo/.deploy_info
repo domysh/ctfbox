@@ -1,6 +1,0 @@
-{
-    "vpn_config_hash": "f739d818203f3ef1101c9ed9483aab1ebfc901604bdb00c273e85adb9a7ecee2",
-    "vm_dir_hash": "94dda061d6b0b1ab7ce2efc4e675fba94f4b3bb6868ef0e7eb9604ee7669d3cb",
-    "vm_mode_build": "incus",
-    "vm_router_hash": "7a7bebc107166c57e60cf933dee481aa4d41f74334513d54625ef8bc9b81b8db"
-}
