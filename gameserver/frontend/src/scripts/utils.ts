@@ -1,5 +1,19 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { create } from 'zustand'
+
+export const useBrushRange = (dataLength: number) => {
+    const [range, setRange] = useState<{ startIndex: number, endIndex: number } | undefined>(undefined)
+    const [fullEndIndex, setFullEndIndex] = useState(() => Math.max(dataLength - 1, 0))
+    useEffect(() => {
+        setFullEndIndex(Math.max(dataLength - 1, 0))
+    }, [dataLength])
+    const valid = range && range.endIndex <= fullEndIndex
+    return {
+        startIndex: valid ? range.startIndex : 0,
+        endIndex: valid ? range.endIndex : fullEndIndex,
+        onChange: setRange,
+    }
+}
 
 export function stringToHash(string:string) {
 
@@ -46,7 +60,7 @@ export const useGlobalState = create<GlobalState>()((set) => ({
 
 export const useStickyScrollableHeader = ({ headHeight, topOffset}: { headHeight: number, topOffset: number }) => {
     const tableRef = useRef<HTMLTableElement>(null);
-    const paddingElement = useRef<HTMLDivElement>();
+    const paddingElement = useRef<HTMLDivElement | undefined>(undefined);
     useEffect(() => {
         // Find the scroll container once and keep reference
         let scrollViewport: HTMLElement | null = null;

@@ -22,6 +22,7 @@ import { ChartTooltipProps, LineChart } from "@mantine/charts";
 import {
     hashedColor,
     scoreBoardSortFunction,
+    useBrushRange,
     useGlobalState,
     useStickyScrollableHeader,
 } from "../scripts/utils";
@@ -55,8 +56,8 @@ const ChartTooltip = memo(({ label, payload }: ChartTooltipProps) => {
                 <Box style={{ fontWeight: 400 }}>Round {label}</Box>
                 <Space h="md" />
                 <b>Top {topTeams} Teams:</b>
-                {payload
-                    .sort((a, b) => parseFloat(b.value) - parseFloat(a.value))
+                {[...payload]
+                    .sort((a, b) => parseFloat(String(b.value)) - parseFloat(String(a.value)))
                     .slice(0, topTeams)
                     .map((item) => (
                         <Box key={item.dataKey}>
@@ -89,12 +90,12 @@ const TeamRow = memo(
         const setLoading = useGlobalState((state) => state.setLoading);
         const redirectProps = clickable
             ? {
-                  onClick: () => {
-                      setLoading(true);
-                      navigate(`/scoreboard/team/${teamInfo?.id}`);
-                  },
-                  style: { cursor: "pointer" },
-              }
+                onClick: () => {
+                    setLoading(true);
+                    navigate(`/scoreboard/team/${teamInfo?.id}`);
+                },
+                style: { cursor: "pointer" },
+            }
             : {};
 
         return (
@@ -109,13 +110,13 @@ const TeamRow = memo(
                         <Image
                             src={
                                 teamInfo?.image &&
-                                (teamInfo.image.startsWith("http://") ||
-                                    teamInfo.image.startsWith("https://"))
+                                    (teamInfo.image.startsWith("http://") ||
+                                        teamInfo.image.startsWith("https://"))
                                     ? teamInfo.image
                                     : "/images/teams/" +
-                                      (teamInfo?.image == "" || teamInfo == null
-                                          ? "ctfbox-player.png"
-                                          : teamInfo.image)
+                                    (teamInfo?.image == "" || teamInfo == null
+                                        ? "ctfbox-player.png"
+                                        : teamInfo.image)
                             }
                             alt={teamData.team}
                             mah={120}
@@ -266,66 +267,68 @@ export const ScoreboardPage = () => {
         };
     }, [chartData.data]);
 
+    const brushRange = useBrushRange(processedChartData?.length ?? 0);
+
     const rows = useMemo(
         () =>
             (scoreboardData.data?.scores.length ?? 0) > 0
                 ? scoreboardData.data?.scores
-                      .sort(scoreBoardSortFunction)
-                      .map((teamData, pos) => {
-                          return (
-                              <TeamRow
-                                  key={teamData.team}
-                                  clickable
-                                  teamData={teamData}
-                                  pos={pos}
-                                  services={services}
-                                  teamInfo={teamSolver(teamData.team)}
-                              />
-                          );
-                      })
+                    .sort(scoreBoardSortFunction)
+                    .map((teamData, pos) => {
+                        return (
+                            <TeamRow
+                                key={teamData.team}
+                                clickable
+                                teamData={teamData}
+                                pos={pos}
+                                services={services}
+                                teamInfo={teamSolver(teamData.team)}
+                            />
+                        );
+                    })
                 : configData.data?.teams
-                      .sort((a, b) => a.id - b.id)
-                      .map((ele, pos) => {
-                          return (
-                              <TeamRow
-                                  key={ele.id}
-                                  teamData={{
-                                      team: ele.host,
-                                      score: 0,
-                                      services: configData.data.services.map(
-                                          (service) => ({
-                                              service: service.name,
-                                              stolen_flags: 0,
-                                              lost_flags: 0,
-                                              sla: 0,
-                                              score: 0,
-                                              ticks_up: 0,
-                                              ticks_down: 0,
-                                              put_flag: 0,
-                                              put_flag_msg: "",
-                                              get_flag: 0,
-                                              get_flag_msg: "",
-                                              offensive_points: 0,
-                                              defensive_points: 0,
-                                              sla_check: 0,
-                                              sla_check_msg: "",
-                                              final_score: 0,
-                                              diff_stolen_flags: 0,
-                                              diff_lost_flags: 0,
-                                              diff_offensive_points: 0,
-                                              diff_defensive_points: 0,
-                                              diff_sla: 0,
-                                              diff_score: 0,
-                                              diff_final_score: 0,
-                                          }),
-                                      ),
-                                  }}
-                                  pos={pos}
-                                  services={services}
-                                  teamInfo={ele}
-                              />
-                          );
-                      }),
+                    .sort((a, b) => a.id - b.id)
+                    .map((ele, pos) => {
+                        return (
+                            <TeamRow
+                                key={ele.id}
+                                teamData={{
+                                    team: ele.host,
+                                    score: 0,
+                                    services: configData.data.services.map(
+                                        (service) => ({
+                                            service: service.name,
+                                            stolen_flags: 0,
+                                            lost_flags: 0,
+                                            sla: 0,
+                                            score: 0,
+                                            ticks_up: 0,
+                                            ticks_down: 0,
+                                            put_flag: 0,
+                                            put_flag_msg: "",
+                                            get_flag: 0,
+                                            get_flag_msg: "",
+                                            offensive_points: 0,
+                                            defensive_points: 0,
+                                            sla_check: 0,
+                                            sla_check_msg: "",
+                                            final_score: 0,
+                                            diff_stolen_flags: 0,
+                                            diff_lost_flags: 0,
+                                            diff_offensive_points: 0,
+                                            diff_defensive_points: 0,
+                                            diff_sla: 0,
+                                            diff_score: 0,
+                                            diff_final_score: 0,
+                                        }),
+                                    ),
+                                }}
+                                pos={pos}
+                                services={services}
+                                teamInfo={ele}
+                            />
+                        );
+                    }),
         [scoreboardData.data?.scores, services, teamSolver, navigate],
     );
 
@@ -340,6 +343,7 @@ export const ScoreboardPage = () => {
                 Scoreboard
             </Title>
             <LineChart
+                key={processedChartData?.length ?? 0}
                 connectNulls
                 data={processedChartData ?? []}
                 yAxisProps={{ domain: [minPoints, maxPoints] }}
@@ -356,6 +360,8 @@ export const ScoreboardPage = () => {
                 legendProps={{ verticalAlign: "bottom" }}
                 curveType="linear"
                 h={450}
+                withBrush={(processedChartData?.length ?? 0) > 1}
+                brushProps={{ height: 20, ...brushRange }}
             />
 
             <RoundCounter />
