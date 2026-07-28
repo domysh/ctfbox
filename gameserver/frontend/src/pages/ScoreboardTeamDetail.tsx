@@ -19,6 +19,7 @@ import { LineChart } from "@mantine/charts";
 import {
     hashedColor,
     scoreBoardSortFunction,
+    useBrushRange,
     useGlobalState,
     useStickyScrollableHeader,
 } from "../scripts/utils";
@@ -280,6 +281,8 @@ export const ScoreboardTeamDetail = () => {
         };
     }, [teamData.data]);
 
+    const brushRange = useBrushRange(chartTeamData.length);
+
     const navigateBack = () => {
         setLoading(true);
         navigate("/scoreboard/");
@@ -346,6 +349,9 @@ export const ScoreboardTeamDetail = () => {
                 {currentTeam?.name} Scoreboard
             </Title>
             <LineChart
+                key={chartTeamData.length}
+                withBrush={chartTeamData.length > 1}
+                brushProps={{ height: 20, ...brushRange }}
                 yAxisProps={{
                     domain: [minPoints, maxPoints],
                 }}

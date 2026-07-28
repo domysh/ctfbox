@@ -1,7 +1,7 @@
 FROM --platform=$BUILDPLATFORM docker.io/oven/bun AS frontend
 WORKDIR /app
 ADD ./frontend/package.json .
-ADD ./frontend/bun.lockb .
+ADD ./frontend/bun.lock .
 RUN bun install
 COPY ./frontend/ .
 RUN bun run build
