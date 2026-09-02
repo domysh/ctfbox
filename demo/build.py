@@ -363,7 +363,7 @@ def build_fixtures(out: str) -> None:
         "roundTime": TICK,
         "flag_expire_ticks": FLAG_EXPIRE,
         "submitter_flags_limit": 500,
-        "submitter_rate_limit": 10000,
+        "submitter_rate_limit": 10,  # seconds, like submission_timeout
         "current_round": ROUNDS,
         "flag_regex": "[A-Z0-9]{31}=",
         "init_service_points": INITIAL_SCORE,
