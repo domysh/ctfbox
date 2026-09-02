@@ -363,7 +363,9 @@ def build_fixtures(out: str) -> None:
         "roundTime": TICK,
         "flag_expire_ticks": FLAG_EXPIRE,
         "submitter_flags_limit": 500,
-        "submitter_rate_limit": 10,  # seconds, like submission_timeout
+        # No rate limit in the demo: there is nobody to protect from a
+        # submitter here, and it shows what the "No limit" case looks like.
+        "submitter_rate_limit": None,
         "current_round": ROUNDS,
         "flag_regex": "[A-Z0-9]{31}=",
         "init_service_points": INITIAL_SCORE,
@@ -441,7 +443,7 @@ def build_admin_fixtures(out, rng, teams, state, history, attacks, submissions, 
         "flag_expire_ticks": FLAG_EXPIRE,
         "initial_service_score": INITIAL_SCORE,
         "max_flags_per_request": 500,
-        "submission_timeout": 10.0,
+        "submission_timeout": None,
         "grace_time": 600,
         "checker_timeout": 30,
         "flag_regex": "[A-Z0-9]{31}=",

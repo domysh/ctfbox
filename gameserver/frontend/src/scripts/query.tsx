@@ -22,8 +22,9 @@ type Status = {
     flag_expire_ticks: number;
     submitter_flags_limit: number;
     /** Seconds between two submissions from the same team, as the server
-     *  stores it (`submission_timeout` in config.json). */
-    submitter_rate_limit: number;
+     *  stores it (`submission_timeout` in config.json). Null when the
+     *  organizers set no limit at all. */
+    submitter_rate_limit: number | null;
     current_round: number;
     flag_regex: string;
     init_service_points: number;
