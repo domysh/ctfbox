@@ -207,7 +207,7 @@ export const RulesContent = () => {
                         value={
                             data.submitter_rate_limit
                                 ? `1 / ${secondDurationToString(
-                                      data.submitter_rate_limit / 1000,
+                                      data.submitter_rate_limit,
                                   )}`
                                 : "No limit"
                         }
@@ -470,7 +470,7 @@ for service in services:
                                 The endpoint accepts one request per{" "}
                                 <b>
                                     {secondDurationToString(
-                                        data.submitter_rate_limit / 1000,
+                                        data.submitter_rate_limit,
                                     )}
                                 </b>{" "}
                                 and up to
