@@ -28,6 +28,9 @@ import { FaHashtag } from "react-icons/fa6";
 import { ImTarget } from "react-icons/im";
 import { FaServer } from "react-icons/fa6";
 import { ServiceScoreData } from "../components/ServiceScoreData";
+import { ServiceWeight } from "../components/ServiceWeight";
+
+type ServiceColumn = { name: string; weight?: number };
 import { RoundCounter } from "../components/RoundCounter";
 import { useNavigate, useParams } from "react-router-dom";
 import { NotFoundContent } from "../components/NotFoundContent";
@@ -43,7 +46,7 @@ const TeamRoundRow = memo(
     }: {
         round: { round: number; score: TeamScores };
         currentTeam?: { name: string };
-        services: { name: string }[];
+        services: ServiceColumn[];
     }) => {
         return (
             <Table.Tr>
@@ -98,7 +101,7 @@ const TeamRoundRow = memo(
     },
 );
 
-const TableHeader = memo(({ services }: { services: { name: string }[] }) => (
+const TableHeader = memo(({ services }: { services: ServiceColumn[] }) => (
     <Table.Thead h={60}>
         <Table.Tr style={{ backgroundColor: "var(--mantine-color-dark-8)" }}>
             <Table.Th style={{ width: "10px" }}>
@@ -126,6 +129,7 @@ const TableHeader = memo(({ services }: { services: { name: string }[] }) => (
                         <FaServer size={20} />
                         <Space w="xs" />
                         {service.name}
+                        <ServiceWeight weight={service.weight} />
                     </Box>
                 </Table.Th>
             ))}

@@ -4,29 +4,18 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"fmt"
-	"game/db"
-	"game/log"
 	"math/rand"
 	"net"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	"game/db"
+	"game/log"
+
 	"github.com/uptrace/bun"
 )
-
-type CheckerParams struct {
-	Action string
-	TeamID string
-	TeamIP string
-	Round  string
-	Flag   string
-}
 
 const flagLen = 32
 
@@ -36,6 +25,10 @@ const (
 	ERROR    = 110
 	KILLED   = -1
 	CRITICAL = 1337
+	// NOT_CHECKED marks a check that never ran: there was nothing to verify,
+	// which is not the same as a check that ran and passed. It counts as up
+	// for the SLA, but the scoreboard draws it grey instead of green.
+	NOT_CHECKED = 100
 )
 
 const (
@@ -45,6 +38,7 @@ const (
 )
 
 var randSrc *rand.Rand
+var randLock sync.Mutex
 
 func initRand() {
 	randSrc = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -52,12 +46,23 @@ func initRand() {
 
 func genFlag() string {
 	letters := "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	randLock.Lock()
+	defer randLock.Unlock()
 	var flag string
 	for range flagLen - 1 {
 		index := randSrc.Intn(len(letters))
 		flag += string(letters[index])
 	}
 	return flag + "="
+}
+
+func randomOffset(window time.Duration) time.Duration {
+	if window <= 0 {
+		return 0
+	}
+	randLock.Lock()
+	defer randLock.Unlock()
+	return time.Duration(randSrc.Int63n(int64(window)))
 }
 
 func genCheckFlag(team string, service string, round uint) string {
@@ -75,6 +80,7 @@ func genCheckFlag(team string, service string, round uint) string {
 				log.Debugf("DUPLICATE FLAG %v -> %+v", flag, team)
 			} else {
 				log.Criticalf("Error inserting flag %v:%v on %v: %v", team, flag, service, err)
+				return flag
 			}
 		} else {
 			log.Debugf("NEW FLAG %v -> %+v", flag, team)
@@ -83,73 +89,8 @@ func genCheckFlag(team string, service string, round uint) string {
 	}
 }
 
-func runChecker(team string, service string, params *CheckerParams, ctx context.Context) (int, string) {
-	cmd := exec.CommandContext(ctx, "python3", "checker.py")
-	cmd.Env = append(cmd.Env, "TOKEN="+conf.Token)
-	cmd.Env = append(cmd.Env, "ACTION="+params.Action)
-	cmd.Env = append(cmd.Env, "TEAM_ID="+params.TeamID)
-	cmd.Env = append(cmd.Env, "TEAM_IP="+params.TeamIP)
-	cmd.Env = append(cmd.Env, "ROUND="+params.Round)
-	cmd.Env = append(cmd.Env, "FLAG="+params.Flag)
-	cmd.Env = append(cmd.Env, "SERVICE="+service)
-	cmd.Env = append(cmd.Env, "TERM=xterm")
-	cmd.Env = append(cmd.Env, fmt.Sprintf("PYTHONPATH=%s:%s", os.Getenv("PYTHONPATH"), "../"))
-
-	workingDir, err := filepath.Abs("../checkers/" + service)
-	if err != nil {
-		log.Criticalf("Error getting working directory for checker %v %v:%v on %v: %v", params.Action, team, params.TeamID, service, err)
-		return CRITICAL, "Checker system error"
-	}
-	cmd.Dir = workingDir
-
-	var outb, errb bytes.Buffer
-	cmd.Stdout = &outb
-	cmd.Stderr = &errb
-
-	if err := cmd.Start(); err != nil {
-		log.Criticalf("Error running checker %v %v:%v on %v: %v", params.Action, team, params.TeamID, service, err)
-		return CRITICAL, "Checker system error"
-	}
-
-	if err = cmd.Wait(); err == nil {
-		log.Criticalf("Error checker status %v %v:%v on %v: no exit status", params.Action, team, params.TeamID, service)
-		return CRITICAL, "Checker system error"
-	}
-
-	msg := outb.String()
-
-	log.Infof("Checker %v %v:%v on %v output: %v", params.Action, team, params.TeamID, service, errb.String())
-
-	exiterr, ok := err.(*exec.ExitError)
-	if !ok {
-		log.Criticalf("Error waiting for checker %v %v:%v on %v: %v", params.Action, team, params.TeamID, service, err)
-		return CRITICAL, "Checker system error"
-	}
-
-	var color string
-	exitCode := exiterr.ExitCode()
-	switch exitCode {
-	case OK:
-		color = log.GREEN
-		msg = "Everything is ok"
-	case DOWN:
-		color = log.RED
-	case ERROR:
-		color = log.HIGH_RED
-	case KILLED:
-		color = log.PURPLE
-		msg = "Checker timeout (killed, service is probably down)"
-	default:
-		log.Infof("Checker unknown status %v: %v%v%v from %v:%v on %v", params.Action, color, exitCode, log.END, team, params.TeamID, service)
-		return ERROR, msg
-	}
-
-	log.Infof("Checker status %v: %v%v%v from %v:%v on %v", params.Action, color, exitCode, log.END, team, params.TeamID, service)
-	return exitCode, msg
-}
-
 func calcRoundStartTime(round uint) time.Time {
-	return conf.GameStartTime.Add(time.Duration(int64(conf.RoundLen) * int64(round)))
+	return gs.StartTime().Add(time.Duration(int64(gs.RoundLen()) * int64(round)))
 }
 
 func remainingTimeFromRound(round uint) time.Duration {
@@ -157,25 +98,70 @@ func remainingTimeFromRound(round uint) time.Duration {
 }
 
 func waitForRound(round uint) {
-	timeToWait := time.Until(calcRoundStartTime(round))
-	if timeToWait > 0 {
+	for {
+		timeToWait := time.Until(calcRoundStartTime(round))
+		if timeToWait <= 0 {
+			return
+		}
+		// Sleep in slices: an admin can move the start time (pause/resume) while
+		// we are waiting and we must notice.
+		if timeToWait > time.Second {
+			timeToWait = time.Second
+		}
 		time.Sleep(timeToWait)
 	}
 }
 
 func waitForGraceTime() {
-	timeToWait := time.Until(conf.GameStartTime.Add(-conf.GraceDuration))
+	timeToWait := time.Until(gs.StartTime().Add(-gs.GraceDuration()))
 	if timeToWait > 0 {
 		time.Sleep(timeToWait)
 	}
 }
 
-// return error if the flag is already submitted
-func calcSLA(team string, service string) (sla float64, totSla uint, upSla uint, err error) {
-	var ctx context.Context = context.Background()
-	totQuery := conn.NewSelect().Model((*db.StatusHistory)(nil)).ColumnExpr("count(id)").Where("team = ? and service = ? and put_flag_status != ? and get_flag_status != ? and check_status != ?", team, service, CRITICAL, CRITICAL, CRITICAL)
-	upQuery := conn.NewSelect().Model((*db.StatusHistory)(nil)).ColumnExpr("count(id)").Where("team = ? and service = ? and put_flag_status = ? and get_flag_status = ? and check_status = ?", team, service, OK, OK, OK)
-	if err := conn.NewSelect().ColumnExpr("(?)", totQuery).ColumnExpr("(?)", upQuery).Scan(ctx, &totSla, &upSla); err != nil {
+// waitWhilePaused blocks while the organizers keep the game paused and shifts
+// the game clock forward by the paused duration on resume, so that the round
+// numbering stays coherent with the wall clock.
+func waitWhilePaused() {
+	if !gs.Settings().GamePaused {
+		return
+	}
+	pausedAt := time.Now()
+	log.Warningf("Game paused by the organizers")
+	for gs.Settings().GamePaused {
+		time.Sleep(time.Second)
+	}
+	elapsed := time.Since(pausedAt)
+	shiftGameClock(elapsed)
+	log.Warningf("Game resumed, clock shifted by %v", elapsed.Truncate(time.Second))
+}
+
+func shiftGameClock(delta time.Duration) {
+	newStart := gs.StartTime().Add(delta)
+	db.SetStartTime(newStart)
+	if end := gs.EndTime(); end != nil {
+		newEnd := end.Add(delta)
+		writeSetting(setEndTime, newEnd.Format(time.RFC3339))
+	}
+	if freeze := gs.Settings().ScoreboardFreezeAt; freeze != nil {
+		newFreeze := freeze.Add(delta)
+		writeSetting(setFreezeAt, newFreeze.Format(time.RFC3339))
+	}
+	ReloadState()
+	invalidateAllCaches()
+}
+
+// calcSLA returns the ratio of rounds the service was fully up.
+//
+// It takes the database handle explicitly because it is called from inside the
+// transaction that just inserted the status of the current round: using the
+// pool instead would not see that row and the SLA would lag one round behind.
+func calcSLA(dbc bun.IDB, ctx context.Context, team string, service string) (sla float64, totSla uint, upSla uint, err error) {
+	totQuery := dbc.NewSelect().Model((*db.StatusHistory)(nil)).ColumnExpr("count(id)").Where("team = ? and service = ? and put_flag_status != ? and get_flag_status != ? and check_status != ?", team, service, CRITICAL, CRITICAL, CRITICAL)
+	upQuery := dbc.NewSelect().Model((*db.StatusHistory)(nil)).ColumnExpr("count(id)").
+		Where("team = ? and service = ? and put_flag_status = ? and check_status = ? and get_flag_status in (?, ?)",
+			team, service, OK, OK, OK, NOT_CHECKED)
+	if err := dbc.NewSelect().ColumnExpr("(?)", totQuery).ColumnExpr("(?)", upQuery).Scan(ctx, &totSla, &upSla); err != nil {
 		log.Errorf("Error fetching sla status: %v", err)
 		return 0.0, 0, 0, err
 	}
@@ -185,32 +171,181 @@ func calcSLA(team string, service string) (sla float64, totSla uint, upSla uint,
 	return float64(upSla) / float64(totSla), totSla, upSla, nil
 }
 
-func checkerRoutine() {
-	var (
-		currentRound uint = 0
-		waitGroup    sync.WaitGroup
-	)
+type teamMapping struct {
+	ID    int
+	IP    string
+	NetIP net.IP
+}
 
-	type teamMapping struct {
-		ID    string
-		IP    string
-		NetIP net.IP
-	}
-
-	teamMappings := make([]teamMapping, 0, len(conf.Teams))
-	for _, teamInfo := range conf.Teams {
-		ipStr := teamIDToIP(teamInfo.ID)
-		teamMappings = append(teamMappings, teamMapping{
-			ID:    fmt.Sprint(teamInfo.ID),
-			IP:    ipStr,
-			NetIP: net.ParseIP(ipStr),
+func sortedTeamMappings() []teamMapping {
+	teams := gs.Teams()
+	mappings := make([]teamMapping, 0, len(teams))
+	for _, team := range teams {
+		mappings = append(mappings, teamMapping{
+			ID:    team.ID,
+			IP:    team.IP,
+			NetIP: net.ParseIP(team.IP),
 		})
 	}
-	sort.Slice(teamMappings, func(i, j int) bool {
-		return bytes.Compare(teamMappings[i].NetIP, teamMappings[j].NetIP) < 0
+	sort.Slice(mappings, func(i, j int) bool {
+		return bytes.Compare(mappings[i].NetIP, mappings[j].NetIP) < 0
 	})
+	return mappings
+}
 
-	if conf.GameEndTime != nil && time.Now().After(*conf.GameEndTime) {
+// runServiceRound submits every checker job of one (team, service) pair and
+// writes the resulting status row once the round is over.
+func runServiceRound(tm teamMapping, service string, currentRound uint, roundDeadline time.Time, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	settings := gs.Settings()
+	ctx := context.Background()
+
+	validFlags := make([]db.Flag, 0)
+	if err := conn.NewSelect().Model(&validFlags).
+		Where("team = ? and service = ? and ? - round < ?", tm.IP, service, currentRound, settings.FlagExpireTicks).
+		Scan(ctx); err != nil {
+		log.Errorf("Error fetching valid flags: %v", err)
+		return
+	}
+
+	newFlag := genCheckFlag(tm.IP, service, currentRound)
+
+	statusData := db.StatusHistory{
+		Team:    tm.IP,
+		Service: service,
+		Round:   currentRound,
+		// Defaults for a GET_FLAG that may never run (first rounds).
+		GetFlagStatus:  NOT_CHECKED,
+		GetFlagMessage: "There was no flag to check",
+		GetFlagAt:      time.Now(),
+	}
+
+	// Spread the checks over the round, leaving room for the checker timeout.
+	checkerTimeout := gs.CheckerTimeout()
+	window := time.Until(roundDeadline) - checkerTimeout - 5*time.Second
+	if window < 0 {
+		window = 0
+	}
+
+	type pending struct {
+		action string
+		ch     chan JobResult
+	}
+	waiting := make([]pending, 0, len(validFlags)+2)
+
+	submit := func(action string, flag string) {
+		job := &Job{
+			Round:     currentRound,
+			TeamID:    tm.ID,
+			TeamIP:    tm.IP,
+			Service:   service,
+			Action:    action,
+			Flag:      flag,
+			Timeout:   int64(checkerTimeout / time.Second),
+			NotBefore: time.Now().Add(randomOffset(window)),
+			Deadline:  roundDeadline,
+		}
+		waiting = append(waiting, pending{action: action, ch: dispatcher.Submit(job)})
+	}
+
+	submit(PUT_FLAG, newFlag)
+	submit(CHECK_SLA, "")
+	for _, flag := range validFlags {
+		submit(GET_FLAG, flag.ID)
+	}
+
+	var lock sync.Mutex
+	var jobsWg sync.WaitGroup
+	jobsWg.Add(len(waiting))
+	for _, p := range waiting {
+		go func(p pending) {
+			defer jobsWg.Done()
+			var res JobResult
+			select {
+			case res = <-p.ch:
+			case <-time.After(time.Until(roundDeadline) + 10*time.Second):
+				res = JobResult{Status: KILLED, Message: "Checker never reported back"}
+			}
+
+			lock.Lock()
+			defer lock.Unlock()
+			switch p.action {
+			case PUT_FLAG:
+				statusData.PutFlagStatus = res.Status
+				statusData.PutFlagMessage = res.Message
+				statusData.PutFlagAt = time.Now()
+				if res.Status != OK {
+					// The flag never made it into the service: forget about it.
+					if _, err := conn.NewDelete().Model(&db.Flag{}).Where("id = ?", newFlag).Exec(ctx); err != nil {
+						log.Criticalf("Error deleting flag of %v on %v: %v", tm.IP, service, err)
+					}
+				}
+			case GET_FLAG:
+				// Overwrite the "nothing to check" default, then keep the
+				// first failure.
+				if statusData.GetFlagStatus == NOT_CHECKED || statusData.GetFlagStatus == OK {
+					statusData.GetFlagStatus = res.Status
+					statusData.GetFlagMessage = res.Message
+					statusData.GetFlagAt = time.Now()
+				}
+			case CHECK_SLA:
+				statusData.CheckStatus = res.Status
+				statusData.CheckMessage = res.Message
+				statusData.CheckdAt = time.Now()
+			}
+		}(p)
+	}
+
+	jobsWg.Wait()
+	waitForRound(currentRound) // only publish the status when the round is over
+
+	err := conn.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.NewInsert().Model(&statusData).Exec(ctx); err != nil {
+			log.Criticalf("Error inserting sla status %v on %v: %v", tm.IP, service, err)
+			return err
+		}
+		var err error
+		if statusData.Sla, statusData.SlaTotTimes, statusData.SlaUpTimes, err = calcSLA(tx, ctx, tm.IP, service); err != nil {
+			return err
+		}
+		if err := tx.NewSelect().ColumnExpr("score, offense, defense").Model((*db.ServiceScore)(nil)).
+			Where("team = ? and service = ?", tm.IP, service).
+			Scan(ctx, &statusData.Score, &statusData.OffensePoints, &statusData.DefensePoints); err != nil {
+			log.Criticalf("Error fetching score %v on %v: %v", tm.IP, service, err)
+			return err
+		}
+		if err := tx.NewSelect().Model((*db.FlagSubmission)(nil)).ColumnExpr("count(*)").
+			Join("JOIN flags flag ON flag.id = submit.flag_id").
+			Where("submit.team = ? and flag.service = ?", tm.IP, service).
+			Scan(ctx, &statusData.StolenFlags); err != nil && err != sql.ErrNoRows {
+			log.Errorf("Error fetching stolen flags: %v", err)
+			return err
+		}
+		if err := tx.NewSelect().Model((*db.FlagSubmission)(nil)).ColumnExpr("count(*)").
+			Join("JOIN flags flag ON flag.id = submit.flag_id").
+			Where("flag.team = ? and flag.service = ?", tm.IP, service).
+			Scan(ctx, &statusData.LostFlags); err != nil && err != sql.ErrNoRows {
+			log.Errorf("Error fetching lost flags: %v", err)
+			return err
+		}
+		if _, err := tx.NewUpdate().Model(&statusData).
+			Where("team = ? and service = ? and round = ?", tm.IP, service, currentRound).
+			Exec(ctx); err != nil {
+			log.Criticalf("Error updating sla status %v on %v: %v", tm.IP, service, err)
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		log.Criticalf("Error storing status %v on %v: %v", tm.IP, service, err)
+	}
+}
+
+func checkerRoutine() {
+	var currentRound uint = 0
+
+	if gs.GameEnded() {
 		log.Infof("Game ended")
 		if err := CtfRouteLock(); err != nil {
 			log.Errorf("Error locking routes: %v", err)
@@ -221,15 +356,14 @@ func checkerRoutine() {
 	wasRunning := false
 	isInGrace := false
 
-	if time.Now().After(conf.GameStartTime) {
-		//Game already started
+	if time.Now().After(gs.StartTime()) {
 		log.Infof("Game already started!")
 		if err := CtfRouteUnlock(); err != nil {
 			log.Errorf("Error unlocking routes: %v", err)
 		}
 		wasRunning = true
-		currentRound = uint(time.Since(conf.GameStartTime) / conf.RoundLen)
-	} else if time.Now().After(conf.GameStartTime.Add(-conf.GraceDuration)) {
+		currentRound = uint(time.Since(gs.StartTime()) / gs.RoundLen())
+	} else if time.Now().After(gs.StartTime().Add(-gs.GraceDuration())) {
 		log.Infof("Game in grace period!")
 		if err := CtfRouteLock(); err != nil {
 			log.Errorf("Error locking routes: %v", err)
@@ -239,16 +373,15 @@ func checkerRoutine() {
 
 	if currentRound > 0 {
 		lastRoundExposed := db.GetExposedRound()
-		//Delating data after the last round exposed (probably uncompleted)
+		// Data after the last exposed round is probably half written.
 		if _, err := conn.NewDelete().Model((*db.Flag)(nil)).Where("round > ?", lastRoundExposed).Exec(context.Background()); err != nil {
 			log.Criticalf("Error deleting flags for round %v: %v", currentRound, err)
 		}
 		if _, err := conn.NewDelete().Model((*db.StatusHistory)(nil)).Where("round > ?", lastRoundExposed).Exec(context.Background()); err != nil {
 			log.Criticalf("Error deleting status for round %v: %v", currentRound, err)
 		}
-		//Wait for the next round (probably game server restarted)
 		currentRound++
-		waitForRound(currentRound) // Wait for the next round
+		waitForRound(currentRound)
 		if !wasRunning {
 			if err := CtfRouteUnlock(); err != nil {
 				log.Errorf("Error unlocking routes: %v", err)
@@ -270,162 +403,62 @@ func checkerRoutine() {
 	log.Infof("Starting checker loop with round %v", currentRound)
 
 	for {
-		if conf.GameEndTime != nil && time.Now().After(*conf.GameEndTime) {
+		waitWhilePaused()
+
+		if gs.GameEnded() {
 			log.Infof("Game ended")
 			if err := CtfRouteLock(); err != nil {
 				log.Errorf("Error locking routes: %v", err)
 			}
 			break
 		}
-		timeForNextRound := int64(remainingTimeFromRound(currentRound+1)) / int64(time.Millisecond)
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeForNextRound)*time.Millisecond)
-		waitGroup.Add(len(teamMappings) * len(conf.Services))
-		for _, tm := range teamMappings {
-			for _, service := range conf.Services {
-				go func(teamId string, team string, service string, waitGroup *sync.WaitGroup, maxTimeout int64) {
-					defer waitGroup.Done()
 
-					var checkersWaitGroup sync.WaitGroup
-					var statusHistoryLock sync.Mutex
+		applyScheduledFreeze(currentRound)
 
-					validFlags := make([]db.Flag, 0)
-					if err := conn.NewSelect().Model(&validFlags).Where("team = ? and service = ? and ? - round < ?", team, service, currentRound, conf.FlagExpireTicks).Scan(ctx); err != nil {
-						log.Errorf("Error fetching valid flags: %v", err)
-						return
-					}
+		roundDeadline := calcRoundStartTime(currentRound + 1)
+		teams := sortedTeamMappings()
+		services := gs.CheckedServices()
 
-					newFlag := genCheckFlag(team, service, currentRound)
+		if len(teams) == 0 || len(services) == 0 {
+			log.Warningf("Nothing to check on round %v (%d teams, %d services)", currentRound, len(teams), len(services))
+		}
 
-					statusData := db.StatusHistory{
-						Team:    team,
-						Service: service,
-						Round:   currentRound,
-						// Default values for get flag that colud never be called in some checks
-						GetFlagStatus:  OK,
-						GetFlagMessage: "There was no flag to check",
-						GetFlagAt:      time.Now(),
-					}
+		log.Infof("Round %v: dispatching %d checks over %d workers (%d slots)",
+			currentRound, len(teams)*len(services), len(registry.List()), registry.Capacity())
 
-					dbctx := context.Background()
-
-					checkersWaitGroup.Add(len(validFlags) + 2)
-					for j := range len(validFlags) + 2 {
-						flag := newFlag
-						if j >= 2 {
-							flag = validFlags[j-2].ID
-						}
-						action := GET_FLAG
-						if j == 0 {
-							action = PUT_FLAG
-						}
-						if j == 1 {
-							action = CHECK_SLA
-						}
-						go func() {
-							defer checkersWaitGroup.Done()
-
-							params := &CheckerParams{
-								Round:  fmt.Sprint(currentRound),
-								TeamID: teamId,
-								TeamIP: team,
-								Flag:   flag,
-								Action: action,
-							}
-							sleepTime := int(maxTimeout) - 20000
-							if sleepTime < 0 {
-								sleepTime = 0
-							} else {
-								sleepTime = rand.Intn(sleepTime)
-							}
-							//Random timeout to avoid all checkers to run at the same time and to avoid timing detection
-							time.Sleep(time.Duration(sleepTime) * time.Millisecond)
-
-							status, msg := runChecker(team, service, params, ctx)
-
-							statusHistoryLock.Lock()
-							defer statusHistoryLock.Unlock()
-							switch action {
-							case PUT_FLAG:
-								statusData.PutFlagStatus = status
-								statusData.PutFlagMessage = msg
-								statusData.PutFlagAt = time.Now()
-								if status != OK {
-									//Delete the flag if the put failed
-									if _, err := conn.NewDelete().Model(&db.Flag{}).Where("id = ?", flag).Exec(dbctx); err != nil {
-										log.Criticalf("Error deleting flag %v:%v on %v: %v", team, teamId, service, err)
-									}
-								}
-							case GET_FLAG:
-								if statusData.GetFlagStatus == OK { // If at least 1 check failed, don't overwrite the status
-									statusData.GetFlagStatus = status
-									statusData.GetFlagMessage = msg
-									statusData.GetFlagAt = time.Now()
-								}
-							case CHECK_SLA:
-								statusData.CheckStatus = status
-								statusData.CheckMessage = msg
-								statusData.CheckdAt = time.Now()
-							}
-
-						}()
-					}
-
-					checkersWaitGroup.Wait()
-					waitForRound(currentRound) // Wait for the end of the round before updating the database
-
-					err := conn.RunInTx(dbctx, nil, func(dbctx context.Context, tx bun.Tx) error {
-						_, err := conn.NewInsert().Model(&statusData).Exec(dbctx)
-						if err != nil {
-							log.Criticalf("Error inserting sla status %v:%v on %v: %v", team, teamId, service, err)
-							return err
-						}
-						if statusData.Sla, statusData.SlaTotTimes, statusData.SlaUpTimes, err = calcSLA(team, service); err != nil {
-							log.Criticalf("Error calculating sla %v:%v on %v: %v", team, teamId, service, err)
-							return err
-						}
-						if err := conn.NewSelect().ColumnExpr("score, offense, defense").Model((*db.ServiceScore)(nil)).Where("team = ? and service = ?", team, service).Scan(dbctx, &statusData.Score, &statusData.OffensePoints, &statusData.DefensePoints); err != nil {
-							log.Criticalf("Error fetching score %v:%v on %v: %v", team, teamId, service, err)
-							return err
-						}
-
-						if err = conn.NewSelect().Model((*db.FlagSubmission)(nil)).ColumnExpr("count(*)").Join("JOIN flags flag ON flag.id = submit.flag_id").Where("submit.team = ? and flag.service = ?", team, service).Scan(dbctx, &statusData.StolenFlags); err != nil {
-							if err != sql.ErrNoRows {
-								log.Panicf("Error fetching stolen flags: %v", err)
-								return err
-							}
-						}
-
-						if err = conn.NewSelect().Model((*db.FlagSubmission)(nil)).ColumnExpr("count(*)").Join("JOIN flags flag ON flag.id = submit.flag_id").Where("flag.team = ? and flag.service = ?", team, service).Scan(dbctx, &statusData.LostFlags); err != nil {
-							if err != sql.ErrNoRows {
-								log.Panicf("Error fetching lost flags: %v", err)
-								return err
-							}
-						}
-
-						if _, err = conn.NewUpdate().Model(&statusData).Where("team = ? and service = ? and round = ?", team, service, currentRound).Exec(dbctx); err != nil {
-							log.Criticalf("Error updating sla status %v:%v on %v: %v", team, teamId, service)
-							return err
-						}
-
-						return nil
-					})
-
-					if err != nil {
-						log.Criticalf("Error inserting status %v:%v on %v: %v", team, teamId, service, err)
-					}
-
-				}(tm.ID, tm.IP, service, &waitGroup, timeForNextRound)
+		var wg sync.WaitGroup
+		wg.Add(len(teams) * len(services))
+		for _, tm := range teams {
+			for _, service := range services {
+				go runServiceRound(tm, service, currentRound, roundDeadline, &wg)
 			}
 		}
 
-		waitGroup.Wait()
-		<-ctx.Done()
-		cancel()
+		wg.Wait()
+		waitForRound(currentRound + 1)
 		currentRound++
-		waitForRound(currentRound)
 		db.SetExposedRound(int64(currentRound - 1))
+		pruneJobs(currentRound, 5)
 
-		// Invalida tutte le cache dopo l'aggiornamento del round
 		invalidateAllCaches()
 	}
+}
+
+// applyScheduledFreeze flips the scoreboard into frozen mode when the planned
+// freeze time is reached.
+func applyScheduledFreeze(currentRound uint) {
+	settings := gs.Settings()
+	if settings.ScoreboardFrozen || settings.ScoreboardFreezeAt == nil {
+		return
+	}
+	if time.Now().Before(*settings.ScoreboardFreezeAt) {
+		return
+	}
+	freezeRound := int(currentRound) - 1
+	if freezeRound < 0 {
+		freezeRound = 0
+	}
+	gs.SetScoreboardFreeze(true, freezeRound)
+	auditLog("system", "scoreboard.freeze", "", "scheduled freeze at round "+itoa(freezeRound))
+	log.Warningf("Scoreboard frozen at round %v", freezeRound)
 }

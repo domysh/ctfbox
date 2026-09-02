@@ -31,12 +31,14 @@ import { FaHashtag } from "react-icons/fa6";
 import { ImTarget } from "react-icons/im";
 import { FaServer } from "react-icons/fa6";
 import { ServiceScoreData } from "../components/ServiceScoreData";
+import { ServiceWeight } from "../components/ServiceWeight";
 import { RoundCounter } from "../components/RoundCounter";
 import { useNavigate } from "react-router-dom";
 import { DiffArrow } from "../components/DiffArrow";
 import { useMemo, memo, useEffect } from "react";
 import { HiOutlineCursorClick } from "react-icons/hi";
 import { RiGhostFill } from "react-icons/ri";
+import { GameBanners } from "../components/GameBanners";
 
 const ChartTooltip = memo(({ label, payload }: ChartTooltipProps) => {
     const teamSolver = useTeamSolver();
@@ -82,7 +84,7 @@ const TeamRow = memo(
     }: {
         teamData: TeamScores;
         pos: number;
-        services: { name: string }[];
+        services: { name: string; weight?: number }[];
         teamInfo?: TeamStatusInfo;
         clickable?: boolean;
     }) => {
@@ -339,9 +341,11 @@ export const ScoreboardPage = () => {
     if (!dataLoaded) return <></>;
     return (
         <Box>
-            <Title order={1} mb="60px" mt="xs">
+            <Title order={1} mb="lg" mt="xs">
                 Scoreboard
             </Title>
+            <GameBanners />
+            <Space h="40px" />
             <LineChart
                 key={processedChartData?.length ?? 0}
                 connectNulls
@@ -406,6 +410,9 @@ export const ScoreboardPage = () => {
                                         <FaServer size={20} />
                                         <Space w="xs" />
                                         {service.name}
+                                        <ServiceWeight
+                                            weight={service.weight}
+                                        />
                                     </Box>
                                 </Table.Th>
                             ))}

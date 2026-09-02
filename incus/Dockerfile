@@ -28,7 +28,7 @@ RUN echo "deb http://deb.debian.org/debian $(. /etc/os-release && echo ${VERSION
     apt-get install --no-install-recommends --no-install-suggests -y zfsutils-linux && \
     apt-get install --no-install-recommends -y incus python3-pip dnsutils
 
-COPY ./start.sh ./incus.yml ./customize-vm.py /
-RUN chmod +x /start.sh
+COPY ./start.sh ./incus.yml ./customize-vm.py ./agent.py /
+RUN chmod +x /start.sh /agent.py
 
 CMD ["/start.sh"]

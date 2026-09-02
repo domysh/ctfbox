@@ -5,11 +5,11 @@ RUN apk update && apk add iptables iproute2 bash ethtool tcpdump \
 
 WORKDIR /app
 
-COPY ./entry.sh ./confgen.py /app/
+COPY ./entry.sh ./confgen.py ./agent.py /app/
 COPY --chown=root:root ./ctfroute.sh /usr/sbin/ctfroute
 COPY ./ctfroute-handle.sh /app/ctfroute-handle.sh
 
-RUN chmod +x /app/entry.sh
+RUN chmod +x /app/entry.sh /app/agent.py
 RUN chmod +x /usr/sbin/ctfroute
 
 HEALTHCHECK --retries=5 --interval=2s --timeout=30s --start-period=1s --start-interval=1s \

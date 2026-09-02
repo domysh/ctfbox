@@ -1,11 +1,21 @@
 __pycache__/
 /config.json
+/config.simulation.json
 volumes/**
 volumes/
 /compose.yml
 /.ctfbox-compose.yml
+/.ctfbox-compose*.yml
+/.ctfbox-sim-compose*.yml
+/.ctfbox-sim-teams.yml
 /.ctfbox-secrets-tmp
 /.ctfbox-secrets-tmp/** */
 /.deploy_info
 incus/data/**
 incus/data
+/simulation/checkers/checklib.py
+/simulation/checkers/requirements.txt
+/simulation/checkers/*/flag_ids/
+
+# Output of ./demo/build.py: the assembled public site.
+_site/
