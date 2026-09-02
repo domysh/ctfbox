@@ -72,6 +72,19 @@ incus_run() {
   echo "incus is now ready"
 }
 
+INSTANCE_TYPE="${INCUS_INSTANCE_TYPE:-container}"
+
+# Real virtual machines need hardware acceleration: without /dev/kvm incus would
+# fall back to a software emulated CPU, which is far too slow to run a game.
+if [ "$INSTANCE_TYPE" = "virtual-machine" ] && [ ! -e /dev/kvm ]; then
+  echo "[ERROR] vm_mode 'incus-vm' needs KVM, but /dev/kvm is not available in this container." >&2
+  echo "[ERROR] This usually means the host is not Linux (Docker Desktop, WSL without nested virt)," >&2
+  echo "[ERROR] or that the CPU virtualization extensions are disabled in the BIOS." >&2
+  echo "[ERROR] Use vm_mode 'incus' to run the team boxes as system containers instead." >&2
+  exit 1
+fi
+echo "Team boxes will run as: $INSTANCE_TYPE"
+
 # Ensure IP forwarding is enabled for the bridge
 sysctl -w net.ipv4.ip_forward=1 2>/dev/null || true
 
@@ -103,5 +116,8 @@ else
   python3 customize-vm.py setup || exit 1
   incus_run
   python3 customize-vm.py start || exit 1
+  # Lets the control room reset a single box without an ssh session. It only
+  # answers the game server, on the internal network, with the cluster token.
+  python3 /agent.py &
   sleep infinity & wait $!
 fi

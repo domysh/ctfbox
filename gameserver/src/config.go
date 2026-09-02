@@ -1,52 +1,100 @@
 package main
 
 import (
-	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
-	"game/db"
-	"game/log"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
-
-	"github.com/uptrace/bun"
 )
 
+const configPath = "../config.json"
+
+// TeamInfo is the bootstrap description of a team as written in config.json.
 type TeamInfo struct {
 	ID    int     `json:"id"`
 	Token *string `json:"token"`
 	Name  string  `json:"name"`
 	Image string  `json:"image"`
 	Nop   bool    `json:"nop"`
+	Node  string  `json:"node,omitempty"`
 }
 
+// NodeInfo describes one machine of a distributed deployment. A single-machine
+// deployment simply has no nodes declared and everything runs locally.
+type NodeInfo struct {
+	Name               string   `json:"name"`
+	Roles              []string `json:"roles"`
+	Address            string   `json:"address"`
+	PublicAddress      string   `json:"public_address,omitempty"`
+	SSH                string   `json:"ssh,omitempty"`
+	Path               string   `json:"path,omitempty"`
+	Weight             int      `json:"weight,omitempty"`
+	CheckerConcurrency int      `json:"checker_concurrency,omitempty"`
+	// Teams whose tunnels terminate on this node, and whose vulnbox runs on it.
+	// The two are independent: several VM nodes can hang off one VPN node.
+	Teams   []int `json:"teams,omitempty"`
+	VMTeams []int `json:"vm_teams,omitempty"`
+}
+
+func (n *NodeInfo) HasRole(role string) bool {
+	for _, r := range n.Roles {
+		if r == role {
+			return true
+		}
+	}
+	return false
+}
+
+// Config is the raw content of config.json. Everything that can legitimately
+// change while the game is running is copied into GameState at boot and from
+// then on the database is the authority (see state.go).
 type Config struct {
-	RoundLen            time.Duration
-	GraceDuration       time.Duration
-	SubmitterLimitTime  time.Duration
-	GameStartTime       time.Time
-	GameEndTime         *time.Time
-	FlagRegex           string
-	Services            []string
-	Round               int64      `json:"tick_time"`
 	Token               string     `json:"gameserver_token"`
 	Teams               []TeamInfo `json:"teams"`
-	CheckerDir          string
-	FlagExpireTicks     int64    `json:"flag_expire_ticks"`
-	InitialServiceScore float64  `json:"initial_service_score"`
-	SubmitterTimeout    *float64 `json:"submission_timeout"`
-	MaxFlagsPerRequest  int      `json:"max_flags_per_request"`
-	Debug               bool     `json:"debug"`
-	StartTime           *string  `json:"start_time"`
-	EndTime             *string  `json:"end_time"`
-	GraceTime           *int64   `json:"grace_time"`
+	Round               int64      `json:"tick_time"`
+	FlagExpireTicks     int64      `json:"flag_expire_ticks"`
+	InitialServiceScore float64    `json:"initial_service_score"`
+	SubmitterTimeout    *float64   `json:"submission_timeout"`
+	MaxFlagsPerRequest  int        `json:"max_flags_per_request"`
+	Debug               bool       `json:"debug"`
+	StartTime           *string    `json:"start_time"`
+	EndTime             *string    `json:"end_time"`
+	GraceTime           *int64     `json:"grace_time"`
+	ScoreboardFreeze    *string    `json:"scoreboard_freeze_time"`
+	CheckerConcurrency  int        `json:"checker_concurrency"`
+	CheckerTimeout      int64      `json:"checker_timeout"`
+	// How the team boxes are run: incus, incus-vm, privileged or none. The
+	// control room needs it to know whether a box can be reset at all.
+	VMMode string     `json:"vm_mode"`
+	Nodes  []NodeInfo `json:"nodes"`
 }
 
 var conf *Config
-var conn *bun.DB
+
+// role of this process: "control" runs the whole game server, "worker" only
+// executes checkers for a remote control node.
+var (
+	processRole    = "control"
+	processNode    = "main"
+	controlBaseURL = ""
+)
+
+func loadRawConfig(path string) (*Config, error) {
+	c := &Config{}
+	file, err := os.Open(path)
+	if err != nil {
+		return c, err
+	}
+	defer file.Close()
+
+	if err = json.NewDecoder(file).Decode(c); err != nil {
+		return c, err
+	}
+	return c, nil
+}
 
 func extractTeamID(ip string) int {
 	teamID := 0
@@ -61,140 +109,47 @@ func teamIDToIP(teamID int) string {
 	return fmt.Sprintf("10.60.%d.1", teamID)
 }
 
-func (c *Config) getTeamByID(teamID int) *TeamInfo {
-	for _, teamInfo := range c.Teams {
-		if teamID == teamInfo.ID {
-			return &teamInfo
-		}
-	}
-	return nil
-}
+// configMutationLock serialises the read-modify-write cycles on config.json so
+// that two concurrent admin requests cannot lose each other's changes.
+var configMutationLock sync.Mutex
 
-func (c *Config) getTeamByToken(token string) *TeamInfo {
-	for _, teamInfo := range c.Teams {
-		if teamInfo.Token != nil && *teamInfo.Token == token {
-			return &teamInfo
-		}
-	}
-	return nil
-}
+// patchConfigFile applies a shallow patch to config.json preserving every key
+// the game server does not know about (the file is also read by run.py).
+func patchConfigFile(patch map[string]interface{}) error {
+	configMutationLock.Lock()
+	defer configMutationLock.Unlock()
 
-func initScoreboard() {
-	var ctx context.Context = context.Background()
-	log.Debugf("Initializing scoreboard")
-
-	for _, teamInfo := range conf.Teams {
-		team := teamIDToIP(teamInfo.ID)
-		for _, service := range conf.Services {
-			fetchedScore := new(db.ServiceScore)
-			err := conn.NewSelect().Model(fetchedScore).Where("team = ? and service = ?", team, service).Scan(ctx)
-			if err != nil {
-				if err == sql.ErrNoRows {
-					_, err := conn.NewInsert().Model(&db.ServiceScore{
-						Team:    team,
-						Service: service,
-						Score:   conf.InitialServiceScore,
-						Offense: 0.0,
-						Defense: 0.0,
-					}).Exec(ctx)
-					if err != nil {
-						log.Panicf("Error inserting service score %v", err)
-					}
-				} else {
-					log.Panicf("Error fetching service score %v", err)
-				}
-			}
-		}
-	}
-
-}
-
-func LoadConfig(path string) (*Config, error) {
-	c := &Config{}
-
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return c, err
-	}
-	file, err := os.Open(path)
+	raw, err := os.ReadFile(configPath)
 	if err != nil {
-		return c, err
+		return err
 	}
-	defer file.Close()
-
-	dec := json.NewDecoder(file)
-	if err = dec.Decode(c); err != nil {
-		return c, err
+	var data map[string]interface{}
+	if err := json.Unmarshal(raw, &data); err != nil {
+		return err
 	}
-
-	conf = c
-	conf.FlagRegex = "[A-Z0-9]{31}="
-
-	conf.RoundLen = time.Duration(conf.Round) * time.Second
-	if conf.GraceTime != nil {
-		conf.GraceDuration = time.Duration(*conf.GraceTime) * time.Second
-	} else {
-		conf.GraceDuration = 0
+	for k, v := range patch {
+		if v == nil {
+			data[k] = nil
+			continue
+		}
+		data[k] = v
 	}
-	if conf.SubmitterTimeout != nil {
-		conf.SubmitterLimitTime = time.Duration(*conf.SubmitterTimeout) * time.Second
-	}
-
-	// Init services data
-	conf.Services = make([]string, 0)
-	entries, err := os.ReadDir("../checkers")
+	out, err := json.MarshalIndent(data, "", "    ")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	for _, e := range entries {
-		if e.IsDir() {
-			checkerPath := "../checkers/" + e.Name() + "/checker.py"
-			if _, err := os.Stat(checkerPath); err == nil {
-				conf.Services = append(conf.Services, e.Name())
-			}
-		}
+	// Written in place on purpose: config.json is a single file bind mount, so
+	// the usual write-to-temp-and-rename dance fails with EBUSY/EXDEV.
+	return os.WriteFile(configPath, out, 0o644)
+}
+
+func parseTimePtr(value *string) (*time.Time, error) {
+	if value == nil || strings.TrimSpace(*value) == "" {
+		return nil, nil
 	}
-
-	if conf.Debug {
-		log.SetLogLevel("debug")
-	} else {
-		log.SetLogLevel("info")
+	parsed, err := time.Parse(time.RFC3339, *value)
+	if err != nil {
+		return nil, err
 	}
-
-	initRand()
-	db.InitDB()
-	conn = db.ConnectDB()
-	initScoreboard()
-
-	dbStartTime := db.GetStartTime()
-
-	if dbStartTime == nil {
-		if conf.StartTime != nil {
-			startTime, err := time.Parse(time.RFC3339, *conf.StartTime)
-			if err != nil {
-				log.Panicf("Error parsing start time: %v", err)
-			}
-			db.SetStartTime(startTime)
-		} else {
-			db.SetStartTime(time.Now().UTC().Add(conf.GraceDuration))
-		}
-	}
-
-	dbStartTime = db.GetStartTime()
-	if dbStartTime == nil {
-		log.Panicf("Error fetching start time from database")
-	}
-
-	conf.GameStartTime = *dbStartTime
-
-	if conf.EndTime != nil {
-		endTime, err := time.Parse(time.RFC3339, *conf.EndTime)
-		if err != nil {
-			log.Panicf("Error parsing end time: %v", err)
-		}
-		conf.GameEndTime = &endTime
-	} else {
-		conf.GameEndTime = nil
-	}
-
-	return conf, nil
+	return &parsed, nil
 }

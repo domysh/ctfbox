@@ -92,13 +92,13 @@ func submitFlagID(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		teamId = extractTeamID(sub.TeamID)
 	}
-	teamInfo := conf.getTeamByID(teamId)
+	teamInfo := gs.TeamByID(teamId)
 	if teamInfo == nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		log.Errorf("Error: invalid team id %v", sub.TeamID)
 		return
 	}
-	team := teamIDToIP(teamInfo.ID)
+	team := teamInfo.IP
 
 	var associatedFlag = new(db.Flag)
 	if err := conn.NewSelect().Model(associatedFlag).Where("team = ? and round = ? and service = ?", team, sub.Round, sub.ServiceID).Scan(ctx); err != nil {
@@ -143,7 +143,7 @@ func getOrUpdateCompleteCache(ctx context.Context, currentRound int) (map[string
 
 	// Recupera tutti i flag validi dal database
 	validFlags := make([]db.Flag, 0)
-	if err := conn.NewSelect().Model(&validFlags).Where("? - round < ? and round <= ?", currentRound, conf.FlagExpireTicks, currentRound).Scan(ctx); err != nil {
+	if err := conn.NewSelect().Model(&validFlags).Where("? - round < ? and round <= ?", currentRound, gs.Settings().FlagExpireTicks, currentRound).Scan(ctx); err != nil {
 		return nil, nil, err
 	}
 
@@ -292,7 +292,7 @@ func retriveFlagIDs(w http.ResponseWriter, r *http.Request) {
 			ok_service = false
 		} else {
 			found := false
-			for _, s := range conf.Services {
+			for _, s := range gs.ServiceNames() {
 				if services[0] == s {
 					found = true
 					break
@@ -317,14 +317,7 @@ func retriveFlagIDs(w http.ResponseWriter, r *http.Request) {
 				log.Errorf("Error: invalid team id %v", teamList[0])
 				return
 			}
-			teamExists := false
-			for _, t := range conf.Teams {
-				if teamId == t.ID {
-					teamExists = true
-					break
-				}
-			}
-			if !teamExists {
+			if gs.TeamByID(teamId) == nil {
 				http.Error(w, "Invalid request", http.StatusBadRequest)
 				log.Errorf("Error: invalid team id %v", teamId)
 				return
@@ -417,10 +410,14 @@ func serveFlagIDs() {
 
 	router.HandleFunc("/postFlagId", submitFlagID).Methods("POST")
 	router.HandleFunc("/flagIds", retriveFlagIDs).Methods("GET")
+	// Shared checker scratch space, used by checklib instead of the local
+	// `flag_ids/` directory: with distributed checkers PUT_FLAG and GET_FLAG of
+	// the same flag can run on two different machines.
+	router.HandleFunc("/flagData", storeFlagData).Methods("POST")
+	router.HandleFunc("/flagData", loadFlagData).Methods("GET")
 
 	log.Noticef("Starting flag_ids server on :8081")
 
-	// Applica middleware di compressione
 	compressedRouter := compressMiddleware(router)
 
 	srv := &http.Server{
@@ -431,4 +428,61 @@ func serveFlagIDs() {
 	}
 
 	log.Fatal(srv.ListenAndServe())
+}
+
+// ----------------------------------------------------------------------------
+// checker scratch space
+// ----------------------------------------------------------------------------
+
+type flagDataRequest struct {
+	Token string      `json:"token"`
+	Flag  string      `json:"flag"`
+	Data  interface{} `json:"data"`
+}
+
+func storeFlagData(w http.ResponseWriter, r *http.Request) {
+	var req flagDataRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	if req.Token != conf.Token || req.Flag == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	res, err := conn.NewUpdate().Model((*db.Flag)(nil)).
+		Set("checker_data = ?", db.FlagIdWrapper{K: req.Data}).
+		Where("id = ?", req.Flag).Exec(r.Context())
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		log.Criticalf("Error storing checker data: %v", err)
+		return
+	}
+	if affected, _ := res.RowsAffected(); affected == 0 {
+		http.Error(w, "Unknown flag", http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func loadFlagData(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	if query.Get("token") != conf.Token {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	flag := query.Get("flag")
+	if flag == "" {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	row := new(db.Flag)
+	if err := conn.NewSelect().Model(row).Column("checker_data").Where("id = ?", flag).Scan(r.Context()); err != nil {
+		http.Error(w, "Unknown flag", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{"data": row.CheckerData.K}); err != nil {
+		log.Errorf("Error encoding checker data: %v", err)
+	}
 }

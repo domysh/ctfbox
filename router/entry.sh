@@ -14,7 +14,30 @@ iptables -t nat -A SCOREBOARD_EXPOSE -s 10.80.0.0/16 -j RETURN
 iptables -t nat -A SCOREBOARD_EXPOSE -j DNAT --to-destination 10.10.0.1
 iptables -t nat -A PREROUTING -p tcp --dport 80 -j SCOREBOARD_EXPOSE
 
+#----- PROTECT THE CLUSTER CONTROL PLANE -----
+# The internal cluster API (checker workers, router agents, traffic ingest) must
+# never be reachable from a player tunnel, even though the whole 10.10.0.0/16
+# infrastructure network is otherwise allowed.
+iptables -N CLUSTER_GUARD
+iptables -A FORWARD -j CLUSTER_GUARD
+iptables -A CLUSTER_GUARD -s 10.80.0.0/16 -p tcp --dport 8082 -j DROP
+iptables -A CLUSTER_GUARD -s 10.60.0.0/16 -p tcp --dport 8082 -j DROP
+iptables -A CLUSTER_GUARD -s 10.80.0.0/16 -p tcp --dport 8090 -j DROP
+iptables -A CLUSTER_GUARD -s 10.60.0.0/16 -p tcp --dport 8090 -j DROP
+
 #----- ANONYMIZE TRAFFIC AND BASIC RULES -----
+# Traffic arriving from a VPN tunnel and directed at the game infrastructure
+# keeps its real source address: the control room authorizes by WireGuard
+# profile, so it has to see which tunnel the request came from. It is limited to
+# the tunnel subnets on purpose - those are the only ones whose replies are
+# routed back through this router, and anything else would break the DNAT of the
+# publicly exposed scoreboard. Traffic between players and vulnboxes is still
+# anonymized, so a defender cannot tell which team is attacking it.
+iptables -t nat -A POSTROUTING -s 10.80.0.0/16 -d 10.10.0.0/16 -j RETURN
+# Infrastructure talking to infrastructure keeps its address too: the game
+# server has to tell one node's agent from another's, and they all reach it
+# across the mesh. Anonymizing here would make every node look the same.
+iptables -t nat -A POSTROUTING -s 10.10.0.0/16 -d 10.10.0.0/16 -j RETURN
 iptables -t nat -A POSTROUTING -j MASQUERADE
 iptables -t mangle -A POSTROUTING -j TTL --ttl-set 60 # Reset TTL
 
@@ -85,10 +108,21 @@ if [[ -n "$RATE_NET" ]]; then
     done
 fi
 
+#----- MESH LINK WITH THE OTHER NODES (distributed deployments only) -----
+# run.py drops a wgmesh.conf in the config directory when more than one node
+# takes part in the game; a single machine deployment simply has no mesh.
+if [[ -f /app/configs/wgmesh.conf ]]; then
+    ln -sf /app/configs/wgmesh.conf /etc/wireguard/wgmesh.conf
+    wg-quick up wgmesh && echo "Mesh link with the other nodes is up"
+fi
+
 #----- SETTING UP CTFROUTE SERVER -----
 if [[ "$VM_NET_LOCKED" != "n" ]]; then
     ctfroute freeze
 fi
+
+#----- ROUTER AGENT (traffic monitoring + remote control) -----
+python3 /app/agent.py &
 
 rm -f /unixsk/ctfroute.sock
 touch /running

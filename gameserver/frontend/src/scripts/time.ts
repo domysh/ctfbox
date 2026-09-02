@@ -30,6 +30,13 @@ export const durationToString = (duration: Duration): string => {
     if (duration.seconds() > 0) {
         result.push(`${duration.seconds()} s`)
     }
+    // Anything under a second has no whole component to show, and an empty
+    // string reads as a bug ("1 / " with nothing after it). Say the
+    // milliseconds instead, and call a zero duration what it is.
+    if (result.length === 0) {
+        const millis = Math.round(duration.asMilliseconds())
+        return millis > 0 ? `${millis} ms` : "0 s"
+    }
     return result.join(", ")
 }
 

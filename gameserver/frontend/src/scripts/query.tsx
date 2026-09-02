@@ -9,11 +9,12 @@ export type TeamStatusInfo = {
     host: string;
     image: string;
     nop: boolean;
+    banned?: boolean;
 };
 
 type Status = {
     teams: TeamStatusInfo[];
-    services: { name: string }[];
+    services: { name: string; enabled?: boolean; weight?: number }[];
     start_grace: string;
     start: string;
     end?: string;
@@ -24,6 +25,11 @@ type Status = {
     current_round: number;
     flag_regex: string;
     init_service_points: number;
+    scoreboard_frozen: boolean;
+    scoreboard_freeze_time: string | null;
+    freeze_round: number;
+    game_paused: boolean;
+    network_state: string;
 };
 
 export type TeamServiceScore = {
@@ -60,7 +66,17 @@ export type TeamScores = {
 
 type Scoreboard = {
     round: number;
+    frozen: boolean;
+    freeze_round: number;
     scores: TeamScores[];
+};
+
+export type PublicAnnouncement = {
+    id: number;
+    at: string;
+    title: string;
+    body: string;
+    severity: string;
 };
 
 type TeamScoreboardDetails = {
@@ -113,6 +129,16 @@ export const useChartQuery = () =>
             (await fetch(baseUrl + "/api/chart").then((c) =>
                 c.json(),
             )) as ChartInfo,
+    });
+
+export const useAnnouncementsQuery = () =>
+    useQuery({
+        queryKey: ["announcements"],
+        queryFn: async () =>
+            (await fetch(baseUrl + "/api/announcements").then((c) =>
+                c.json(),
+            )) as PublicAnnouncement[],
+        refetchInterval: 1000 * 20,
     });
 
 export const useTeamSolver = () => {

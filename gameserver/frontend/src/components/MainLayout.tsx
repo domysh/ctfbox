@@ -16,17 +16,23 @@ import { useStatusQuery } from "../scripts/query";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { NotFoundContent } from "./NotFoundContent";
+import { AdminPage } from "../pages/AdminPage";
+import { useAdminAccess } from "../scripts/admin";
 import { useGlobalState } from "../scripts/utils";
 
 type Pages =
     | "rules"
     | "scoreboard"
     | "scoreboard-team"
+    | "admin"
     | "not-found"
     | "loading";
 
 export const MainLayout = ({ page }: { page: Pages }) => {
     const config = useStatusQuery();
+    // The control room button only exists for whoever is connected through an
+    // admin VPN profile: to everybody else the page simply is not there.
+    const adminAccess = useAdminAccess();
     const [oldRound, setOldRound] = useState(-1);
     const queryClient = useQueryClient();
 
@@ -53,6 +59,7 @@ export const MainLayout = ({ page }: { page: Pages }) => {
         if (page == "scoreboard") return <ScoreboardPage key="scoreboard" />;
         if (page == "scoreboard-team")
             return <ScoreboardTeamDetail key="scoreboard-team" />;
+        if (page == "admin") return <AdminPage key="admin" />;
         return <Loader size={40} />;
     }, [page]);
 
@@ -100,6 +107,25 @@ export const MainLayout = ({ page }: { page: Pages }) => {
                                 </Button>
                             </Link>
                         </Title>
+                        {adminAccess.data?.admin && (
+                            <>
+                                <Space w="md" />
+                                <Title order={5}>
+                                    <Link to="/admin">
+                                        <Button
+                                            color="grape"
+                                            variant={
+                                                page == "admin"
+                                                    ? "filled"
+                                                    : "outline"
+                                            }
+                                        >
+                                            Admin
+                                        </Button>
+                                    </Link>
+                                </Title>
+                            </>
+                        )}
                         <Space w="md" />
                     </Box>
                 </Box>

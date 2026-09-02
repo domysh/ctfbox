@@ -9,12 +9,21 @@ import { FaStar } from "react-icons/fa";
 import { DiffArrow } from "./DiffArrow";
 
 
+// Checker status codes, mirroring the constants in gameserver/src/checkers.go.
+const CHECK_OK = 101
+const CHECK_NOT_RUN = 100 // nothing to verify: not a pass, not a failure
+
 export const ServiceScoreData = ({ score }: { score?: TeamServiceScore }) => {
 
     if (!score) return <></>
 
-    const slaOk = score.sla_check == 101 && score.get_flag == 101 && score.put_flag == 101
+    // A check that never ran (no flag to look for yet) does not bring the
+    // service down, but it is not a green light either: it stays grey.
+    const isUp = (status: number) => status == CHECK_OK || status == CHECK_NOT_RUN
+    const slaOk = isUp(score.sla_check) && isUp(score.get_flag) && isUp(score.put_flag)
     const slaUnknown = score.sla_check == 0 && score.get_flag == 0 && score.put_flag == 0
+    const checkColor = (status: number) =>
+        slaUnknown || status == CHECK_NOT_RUN ? "gray" : status == CHECK_OK ? "green" : "red"
 
     const showDetailModal = (title:string, msg:string) => {
         modals.open({
@@ -66,30 +75,30 @@ export const ServiceScoreData = ({ score }: { score?: TeamServiceScore }) => {
             <Box display="flex" style={{ alignItems: "center", textWrap: "nowrap" }}>
                 <FaWrench size={16} /><Space w="xs" />
                 <Box p={3} className="center-flex" style={{ borderRadius: "100px" }}>
-                    <Tooltip label={slaUnknown?"SLA CHECK":"SLA CHECK: "+score.sla_check_msg.substring(0,150)} position="top" withArrow color={slaUnknown?"gray":score.sla_check == 101 ? "green": "red"}>
+                    <Tooltip label={slaUnknown?"SLA CHECK":"SLA CHECK: "+score.sla_check_msg.substring(0,150)} position="top" withArrow color={checkColor(score.sla_check)}>
                         <Box
                             py={4} px={10}
-                            style={{ backgroundColor: slaUnknown?"gray":score.sla_check == 101 ? "green": "red", borderTopLeftRadius: 6, borderBottomLeftRadius: 6 }}
+                            style={{ backgroundColor: checkColor(score.sla_check), borderTopLeftRadius: 6, borderBottomLeftRadius: 6 }}
                             className="center-flex"
                             onClick={slaUnknown ? ()=>{}:()=>showDetailModal(`SLA CHECK on ${score.service}`, score.sla_check_msg)}
                         >
                             <FaPlug size={14}/>
                         </Box>
                     </Tooltip>
-                    <Tooltip label={slaUnknown?"PUT FLAG":"PUT FLAG: "+score.put_flag_msg.substring(0,150)} position="top" withArrow color={slaUnknown?"gray":score.put_flag == 101 ? "green": "red"}>
+                    <Tooltip label={slaUnknown?"PUT FLAG":"PUT FLAG: "+score.put_flag_msg.substring(0,150)} position="top" withArrow color={checkColor(score.put_flag)}>
                         <Box
                             py={4} px={10}
-                            style={{ backgroundColor: slaUnknown?"gray":score.put_flag == 101 ? "green": "red"}}
+                            style={{ backgroundColor: checkColor(score.put_flag)}}
                             className="center-flex"
                             onClick={slaUnknown ? ()=>{}:()=>showDetailModal(`PUT FLAG on ${score.service}`, score.put_flag_msg)}
                         >
                             <FaPlus size={14} />
                         </Box> 
                     </Tooltip>
-                    <Tooltip label={slaUnknown?"GET FLAG":"GET FLAG: "+score.get_flag_msg.substring(0,150)} position="top" withArrow color={slaUnknown?"gray":score.get_flag == 101 ? "green": "red"}>
+                    <Tooltip label={slaUnknown?"GET FLAG":"GET FLAG: "+score.get_flag_msg.substring(0,150)} position="top" withArrow color={checkColor(score.get_flag)}>
                         <Box
                             py={4} px={12}
-                            style={{ backgroundColor: slaUnknown?"gray":score.get_flag == 101 ? "green": "red", borderTopRightRadius: 6, borderBottomRightRadius: 6 }}
+                            style={{ backgroundColor: checkColor(score.get_flag), borderTopRightRadius: 6, borderBottomRightRadius: 6 }}
                             className="center-flex"
                             onClick={slaUnknown ? ()=>{}:()=>showDetailModal(`GET FLAG on ${score.service}`, score.get_flag_msg)}
                         >
