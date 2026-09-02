@@ -1,14 +1,34 @@
 # Builds the CTFBox site and publishes it on GitHub Pages.
 #
-# The site is the real scoreboard frontend, built from source on every push and
-# served against generated API fixtures, plus the configuration editor at
-# /editor. Nothing here is a committed snapshot: change the frontend and the
-# demo changes with it, admin control room included.
+# The site is the real scoreboard frontend, built from source, served against
+# generated API fixtures, plus the configuration editor at /editor. Nothing here
+# is a committed snapshot: change the frontend and the demo changes with it,
+# admin control room included.
+#
+# It runs as rarely as it can while still catching a broken site:
+#
+# * only on the two branches that matter, and only when something that reaches
+#   the published page changed - a commit to run.py or to the game server does
+#   not move a pixel of it;
+# * a pull request from this repository is skipped, because the push that
+#   created it already ran. Only a fork's pull request needs its own run, since
+#   its pushes never reach us.
 name: Site
 
 on:
   push:
+    branches: [main, dev]
+    paths:
+      - "editor/**"
+      - "gameserver/frontend/**"
+      - "demo/**"
+      - ".github/workflows/static.yml"
   pull_request:
+    paths:
+      - "editor/**"
+      - "gameserver/frontend/**"
+      - "demo/**"
+      - ".github/workflows/static.yml"
   workflow_dispatch:
 
 permissions:
@@ -16,15 +36,20 @@ permissions:
   pages: write
   id-token: write
 
-# Never cancel a deployment halfway through. Branches are grouped separately so
-# that a build on a feature branch does not queue behind main.
 concurrency:
   group: "pages-${{ github.ref }}"
-  cancel-in-progress: false
+  # A deployment is never interrupted halfway through. A check on a branch is:
+  # the push that follows it has already made it irrelevant.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   build:
     name: Build site
+    # A pull request opened from a branch of this repository was already built
+    # by the push that created it; only a fork needs a run of its own.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
